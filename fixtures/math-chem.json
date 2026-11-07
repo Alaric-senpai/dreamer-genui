@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "water-equation",
+          "type": "math",
+          "tex": "\\ce{H2O}",
+          "display": true
+        },
+        {
+          "id": "photosynth-eq",
+          "type": "math",
+          "tex": "\\ce{6CO2 + 6H2O -[{[{\\text{light}}]}]-> C6H12O6 + 6O2}",
+          "display": true
+        },
+        {
+          "id": "glucose",
+          "type": "math",
+          "tex": "\\ce{C6H12O6}",
+          "display": false
+        }
+      ]
+    }
+  ]
+}
