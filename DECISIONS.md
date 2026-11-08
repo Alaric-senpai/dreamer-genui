@@ -130,7 +130,9 @@ Independent reviewer verified with commands and found 8 majors + several minors.
 6. **Registry manifests used loose hand-rolled schemas** — they now import the canonical per-type schemas from `schema/blocks.ts` (single source of truth; the registry can never drift from the protocol schema). Per-type schemas are exported from `blocks.ts` for this purpose.
 7. **Resolver never consulted the registry** — a registry precheck runs before schema parse so unknown block types surface as `unknown-type` (not generic `invalid-node`).
 8. **Idempotency hash was prefix-based** — replaced with a full-string djb2 hash; retry-on-failure semantics documented on `applyPartial`/`applyFinal`.
-9. Minors: `update` props can no longer override `id`/`type`; `remove` drops detours targeting the removed node; history-cap (50) now tested; `./core` subpath export added; `foo` stub removed from the root export; `core/index.ts` re-exports the protocol types; figure kinds derived from `FigureSchema` instead of a duplicated list.
+9. **Minors:** `update` props can no longer override `id`/`type`; `remove` drops detours targeting the removed node; history-cap (50) now tested; `./core` subpath export added (plus the matching tsup `core/index` entry after review round 2 flagged the build miss); `foo` stub removed from the root export; `core/index.ts` re-exports the protocol types; figure kinds derived from `FigureSchema` instead of a duplicated list.
+
+Verification: `pnpm test` → **160/160 passing**; `tsc --noEmit` clean; build emits `dist/core/index.js` (esm/cjs/dts) and the `./core` export was import-verified in node. Commits: `403282c` (M2 initial) → `2b778ab` (review round 1 fixes) → `d5fb9ae` (review round 2: tsup core entry + nit sweep). Final verdict: **approve**.
 
 ### Deferred rulings (recorded, not silently dropped)
 
