@@ -116,3 +116,25 @@ AGENTS.md section 6.4 defines `type Inline = string | Mark` — no array form. T
 - `packages/dreamer-genui/src/core/`: `types.ts`, `errors.ts`, `events.ts` (generic `EventBus<T>`), `registry.ts` (9 built-in manifests with `promptGuide` snippets, lazy loader hooks), `validator.ts` (`validateOp`, `resolveNodeRef`, `MAX_DETOUR_DEPTH = 2`), `reducer.ts` (pure `boardReducer`, `back`, `createBoard`), `resolver.ts` (`BoardResolver` with `events`/`errors` buses, idempotent `applyPartial`, history-capped `back`), `generators/` (`serialize-board.ts`, `prompt-guide.ts`, `capabilities.ts`), `index.ts` (public re-exports).
 - Tests: `tests/core/{reducer,resolver,validator,registry,events,generators}.test.ts` — 58 core tests. Total suite: **144 tests, all passing**; `tsc --noEmit` clean; zero React import in `schema/` and `core/`.
 
+---
+
+## M2 Review Round (independent reviewer → request-changes → all findings fixed)
+
+Independent reviewer verified with commands and found 8 majors + several minors. Fixes applied:
+
+1. **`applyFinal` was ledger-blind** — the canonical streaming flow (partials → final) re-validated every op and produced a `duplicate-id` storm. `applyFinal` is now ledger-aware (skips already-applied keys, retries failed ones, then clears the ledger); test asserts zero error emissions.
+2. **`parentId/itemId` refs bypassed `bad-target`** — `resolveNodeRef` now returns the parent id only when the parent node exists in board state.
+3. **Intra-op duplicate ids slipped through** — duplicate detection is now set-based per op, checking the op itself, existing nodes, and open detour block ids.
+4. **Detour block ids invisible** — `serializeBoard` now lists each detour block's id and type, and also emits `parentId/item` refs for `choices`/`steps`/`table`, so the tutor can reference detour items and items next turn. `Detour` gained `targetRef` (original authored ref) for the M4 return control.
+5. **Prompt guide is registry-aware** — per-type snippets now come from registered manifests (built-ins and plugins alike); `include` filters types, `exclude` supports `ops`/`protocol`/`examples`/type ids, `compact` omits protocol details and examples, `language` appends an output instruction. Snapshot test added.
+6. **Registry manifests used loose hand-rolled schemas** — they now import the canonical per-type schemas from `schema/blocks.ts` (single source of truth; the registry can never drift from the protocol schema). Per-type schemas are exported from `blocks.ts` for this purpose.
+7. **Resolver never consulted the registry** — a registry precheck runs before schema parse so unknown block types surface as `unknown-type` (not generic `invalid-node`).
+8. **Idempotency hash was prefix-based** — replaced with a full-string djb2 hash; retry-on-failure semantics documented on `applyPartial`/`applyFinal`.
+9. Minors: `update` props can no longer override `id`/`type`; `remove` drops detours targeting the removed node; history-cap (50) now tested; `./core` subpath export added; `foo` stub removed from the root export; `core/index.ts` re-exports the protocol types; figure kinds derived from `FigureSchema` instead of a duplicated list.
+
+### Deferred rulings (recorded, not silently dropped)
+
+- **Per-node registry resolution (loader kickoff, skeletons, fallbacks) is wired in M3**, not in the headless resolver. The M2 resolver validates + reduces + routes unknown-type; full manifest-driven loading happens when the React renderer builds the pipeline (AGENTS 7.3).
+- **`update` props are not validated per node type at M2** — the resolver applies them through a merge that excludes identity fields; full per-type validation arrives with the M3 registry-driven node resolution.
+- **Registry-wired tape**: `back()` restores the snapshot without re-opening its detours (detours were cleared when the snapshot was pushed); acceptable for "back to previous topic" semantics and unchanged from the M2 plan.
+

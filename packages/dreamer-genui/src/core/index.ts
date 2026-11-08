@@ -1,7 +1,9 @@
-import type { Op } from '../schema/ops';
-import type { Block } from '../schema/blocks';
-import type { UIEvent } from '../schema/events';
-import type { ErrorCode } from '../schema/errors';
+// Re-export the protocol types so hosts depending only on `dreamer-genui/core`
+// can type ops and blocks without importing the schema package directly.
+export type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp } from '../schema/ops';
+export type { Block } from '../schema/blocks';
+export type { UIEvent } from '../schema/events';
+export type { ErrorCode } from '../schema/errors';
 
 export * from './types';
 export * from './errors';

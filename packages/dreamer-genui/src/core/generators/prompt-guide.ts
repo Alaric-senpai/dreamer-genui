@@ -1,13 +1,15 @@
-import { createRegistry, type Registry } from '../registry';
+import type { Registry } from '../registry';
 
 export interface PromptGuideOptions {
   compact?: boolean;
   language?: string;
+  /** Only include these registered types (by id). Unregistered ids are reported. */
   include?: string[];
+  /** Sections or type ids to exclude: 'ops' | 'protocol' | 'examples' | <type id>. */
   exclude?: string[];
 }
 
-// Built-in prompt guide text (not loaded from registry — filled in progressively)
+// Operations section (registry-independent)
 const OPS_GUIDE = `## Operations
 
 Reply format: { "v": 1, "ops": [...] }
@@ -18,19 +20,10 @@ Reply format: { "v": 1, "ops": [...] }
 - **update**: Merge props into an existing node (props are merged into the block).
 - **remove**: Delete a node from the board.
 
-## Block Types
+Node ids must be unique across the board (including attached detour blocks).`;
 
-- **text** (variant: body|definition|heading|note): content is Inline[].
-- **figure** (figure.kind: image|icon|diagram|labeled|chart|lottie): alt is required.
-- **choices** (intent: navigate|answer, layout: chips|list|grid): items have id, label, ref.
-- **steps** (reveal: sequential|all): items have id, title, content: Inline[].
-- **callout** (tone: info|success|warn|danger): content: Inline[].
-- **group** (layout: stack|row|grid): contains nested blocks: Block[].
-- **table**: columns: {id, label}[], rows: Record<string, Inline[]>[].
-- **math**: tex is a KaTeX string (use \\ce{} for chemistry).
-- **code** (lang, source): code block.
-
-## Inline Marks
+// Protocol-wide sections that do not come from the registry
+const PROTOCOL_GUIDE = `## Inline Marks
 
 - **highlight** (text, color?): highlight text with color token (accent|info|success|warn|danger|muted).
 - **emphasis** (text): italic/bold emphasis.
@@ -87,35 +80,51 @@ const WORKED_EXAMPLES = `
 ] }
 `;
 
+/**
+ * Build the tutor-facing prompt guide.
+ *
+ * Registry-aware: the per-type snippets come from the registered manifests
+ * (built-ins and plugins alike), so a plugin's snippet or an asset pack's part
+ * ids appear automatically. options.include filters the listed types;
+ * options.exclude removes sections ('ops', 'protocol', 'examples') or type ids;
+ * compact omits the protocol details and worked examples; language appends an
+ * output-language instruction.
+ */
 export function getSystemPromptGuide(registry: Registry, options?: PromptGuideOptions): string {
+  const excluded = new Set(options?.exclude ?? []);
   const parts: string[] = [];
 
-  // Header
   parts.push('# dreamer-genui Prompt Guide\n');
   parts.push('Reply format is JSON. Output only JSON matching this format.\n');
 
-  // Ops guide (always included unless explicitly excluded)
-  const excluded = new Set(options?.exclude ?? []);
-  if (!excluded.has('ops')) {
-    parts.push(OPS_GUIDE);
-  }
+  if (!excluded.has('ops')) parts.push(OPS_GUIDE, '\n');
+  if (!excluded.has('protocol')) parts.push(PROTOCOL_GUIDE, '\n');
 
-  // Include only specific blocks if specified
-  if (options?.include?.length) {
-    const cap = registry.getCapabilities();
-    const missing = options.include.filter(t => !cap.includes(t));
-    if (missing.length) {
-      parts.push(`\n## Available Types\n${cap.map(t => `- ${t}`).join('\n')}\n`);
+  // Registry-aware block-type snippets
+  const include = options?.include?.length ? options.include : undefined;
+  const caps = registry.getCapabilities();
+  const missing = include ? include.filter(t => !caps.includes(t)) : [];
+  const selected = include ? caps.filter(t => include.includes(t)) : caps;
+  const remaining = selected.filter(t => !excluded.has(t));
+
+  if (remaining.length) {
+    parts.push('## Block Types\n');
+    for (const t of remaining) {
+      const guide = registry.getManifest(t)?.promptGuide;
+      parts.push(`- **${t}**${guide ? `: ${guide}` : ''}\n`);
     }
   }
 
-  // Append capabilities from registry
-  const caps = registry.getCapabilities();
-  parts.push(`\n## Available Block Types\n${caps.map(t => `- ${t}`).join('\n')}\n`);
+  if (missing.length > 0) {
+    parts.push(`\nNote: requested types not registered: ${missing.join(', ')}.\n`);
+  }
 
-  // Worked examples (unless compact)
-  if (!options?.compact) {
+  if (!options?.compact && !excluded.has('examples')) {
     parts.push(WORKED_EXAMPLES);
+  }
+
+  if (options?.language) {
+    parts.push(`Write all student-facing text in ${options.language}.`);
   }
 
   return parts.join('\n');

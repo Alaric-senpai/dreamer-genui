@@ -42,6 +42,16 @@ describe('createRegistry', () => {
     expect(result.error?.code).toBe('invalid-node');
   });
 
+  test('manifest schemas are the canonical schemas (inline marks accepted, bad content rejected)', () => {
+    const reg = createRegistry();
+    // valid inline mark content parses
+    const ok = reg.resolve('text', { id: 't1', type: 'text', variant: 'body', content: ['Hello ', { mark: 'highlight', text: 'living things' }] });
+    expect(ok.valid).toBe(true);
+    // invalid content (non-inline number) rejects — proves the schema is not a loose z.unknown() copy
+    const bad = reg.resolve('text', { id: 't2', type: 'text', variant: 'body', content: [1234] });
+    expect(bad.valid).toBe(false);
+  });
+
   test('registerLoader + getLoader works', () => {
     const reg = createRegistry();
     let called = false;

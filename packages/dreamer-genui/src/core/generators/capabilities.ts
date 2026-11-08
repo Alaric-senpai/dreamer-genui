@@ -1,7 +1,11 @@
-import type { Registry } from '../registry';
-import { createRegistry } from '../registry';
+import { createRegistry, type Registry } from '../registry';
+import { FigureSchema } from '../../schema/figures';
 
-const FIGURE_KINDS = ['image', 'icon', 'diagram', 'labeled', 'chart', 'lottie'] as const;
+// Derive figure kinds from the canonical FigureSchema so the capability list
+// can never drift from the schema.
+type FigureMember = { shape: { kind: { value: string } } };
+const FIGURE_KINDS: string[] = (FigureSchema as unknown as { options: FigureMember[] })
+  .options.map(m => m.shape.kind.value);
 
 /** Extend registry types with figure kinds (figure.image, figure.tree, ...). */
 export function getCapabilities(registry: Registry): string[] {
@@ -16,3 +20,4 @@ export function getCapabilities(registry: Registry): string[] {
 export function getDefaultCapabilities(): string[] {
   return getCapabilities(createRegistry());
 }
+

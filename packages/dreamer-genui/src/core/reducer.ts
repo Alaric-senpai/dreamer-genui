@@ -54,6 +54,7 @@ function applyAttach(state: BoardState, op: AttachOp): BoardState {
   const newDetour = {
     id: op.blocks[0]?.id ?? `detour-${detourDepth}`,
     targetNodeId: targetId,
+    targetRef: op.to, // full parent/item ref, preserved for the M4 return control
     blocks: op.blocks,
     openAt: detourDepth,
   };
@@ -75,13 +76,18 @@ function applyReplace(state: BoardState, op: ReplaceOp): BoardState {
 function applyUpdate(state: BoardState, op: UpdateOp): BoardState {
   const existing = state.nodes[op.id];
   if (!existing) return state;
+  // id and type are identity fields — never allow an update to override them
+  // (that would desynchronize the node key from block.id and break the
+  // discriminated union). Per-type validation of the remaining props is
+  // deferred to M3 (registry-driven).
+  const { id: _id, type: _type, ...rest } = op.props;
   return {
     ...state,
     nodes: {
       ...state.nodes,
       [op.id]: {
         ...existing,
-        block: { ...existing.block, ...op.props } as Block,
+        block: { ...existing.block, ...rest } as Block,
       },
     },
   };
@@ -89,7 +95,9 @@ function applyUpdate(state: BoardState, op: UpdateOp): BoardState {
 
 function applyRemove(state: BoardState, op: RemoveOp): BoardState {
   const { [op.id]: _removed, ...remainingNodes } = state.nodes;
-  return { ...state, nodes: remainingNodes };
+  // Drop detours whose target was removed — they would point at a dead node.
+  const detours = state.detours.filter(d => d.targetNodeId !== op.id);
+  return { ...state, nodes: remainingNodes, detours };
 }
 
 /**

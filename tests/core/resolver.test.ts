@@ -73,7 +73,6 @@ describe('BoardResolver', () => {
         { op: 'attach', to: 'n1', blocks: [{ id: 'd2', type: 'text', variant: 'body', content: [] }], ...ATTACH_DEFAULTS },
       ],
     });
-    // Third attach at depth 2 = max — should error
     const results = r2.applyOps({
       v: 1,
       ops: [{ op: 'attach', to: 'n1', blocks: [{ id: 'd3', type: 'text', variant: 'body', content: [] }], ...ATTACH_DEFAULTS }],
@@ -116,12 +115,47 @@ describe('BoardResolver', () => {
     expect(nodeCountAfterSecond).toBe(1);
   });
 
-  test('applyFinal clears the streaming ledger', () => {
+  test('applyFinal after the same partial applies cleanly — no duplicate-id storm', () => {
     const resolver = new BoardResolver();
-    const partial = { v: 1 as const, ops: [{ op: 'append' as const, blocks: [{ id: 'n1', type: 'text' as const, variant: 'body' as const, content: [] }] }] };
-    resolver.applyPartial(partial);
-    resolver.applyFinal(partial);
+    const errors: unknown[] = [];
+    resolver.errors.subscribe(e => errors.push(e));
+    const reply = { v: 1 as const, ops: [{ op: 'append' as const, blocks: [{ id: 'n1', type: 'text' as const, variant: 'body' as const, content: [] }] }] };
+    const partialResults = resolver.applyPartial(reply);
+    expect(partialResults.every(r => r.status === 'applied')).toBe(true);
+    const finalResults = resolver.applyFinal(reply); // same reply + ledger-aware → skip, no re-apply
+    expect(finalResults.every(r => r.status === 'applied')).toBe(true);
+    expect(errors).toHaveLength(0); // no duplicate-id emissions
     expect(resolver.getState().nodes['n1']).toBeDefined();
+  });
+
+  test('applyFinal retries a failed partial op', () => {
+    const resolver = new BoardResolver();
+    // partial: attach before target exists → fails, not ledger-recorded
+    resolver.applyPartial({
+      v: 1,
+      ops: [{ op: 'attach', to: 'n1', blocks: [{ id: 'd1', type: 'text', variant: 'body', content: [] }], ...ATTACH_DEFAULTS }],
+    });
+    const final = resolver.applyFinal({
+      v: 1,
+      ops: [
+        { op: 'append', blocks: [{ id: 'n1', type: 'text', variant: 'body', content: [] }] },
+        { op: 'attach', to: 'n1', blocks: [{ id: 'd1', type: 'text', variant: 'body', content: [] }], ...ATTACH_DEFAULTS },
+      ],
+    });
+    expect(final[0]?.status).toBe('applied');
+    expect(final[1]?.status).toBe('applied'); // retried at final
+    expect(resolver.getState().detours).toHaveLength(1);
+  });
+
+  test('unknown block type surfaces as unknown-type through the resolver', () => {
+    const resolver = new BoardResolver();
+    const results = resolver.applyOps({
+      v: 1,
+      ops: [{ op: 'append', blocks: [{ id: 'x1', type: 'made-up-widget' } as unknown as never] }],
+    });
+    expect(results[0]?.status).toBe('error');
+    expect(results[0]?.error?.code).toBe('unknown-type');
+    expect(results[0]?.error?.type).toBe('made-up-widget');
   });
 
   test('getState returns defined state with id', () => {

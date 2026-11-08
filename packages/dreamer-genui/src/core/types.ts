@@ -22,9 +22,10 @@ export interface ResolvedNode {
 // Detour: an attached explainer on top of a target node
 export interface Detour {
   id: string;
-  targetNodeId: string;   // NodeRef of the target
-  blocks: Block[];         // blocks shown in the detour
-  openAt: number;         // 0 = first detour, 1 = nested, 2 = second nested
+  targetNodeId: string;   // resolved NodeId of the target (parent for parent/item refs)
+  targetRef?: string;     // original NodeRef as authored (e.g. "branches/botany")
+  blocks: Block[];        // blocks shown in the detour
+  openAt: number;         // 0 = first detour, 1 = nested; capped by MAX_DETOUR_DEPTH (2)
 }
 
 // BoardSnapshot: immutable snapshot of the board before a replace

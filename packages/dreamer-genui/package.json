@@ -8,7 +8,8 @@
   "exports": {
     ".": "./dist/index.js",
     "./schema": "./dist/schema/index.js",
-    "./schema/*": "./dist/schema/*.js"
+    "./schema/*": "./dist/schema/*.js",
+    "./core": "./dist/core/index.js"
   },
   "files": ["dist"],
   "scripts": {

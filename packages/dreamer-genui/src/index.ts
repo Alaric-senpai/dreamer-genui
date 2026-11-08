@@ -1,1 +1,2 @@
-export const foo = 'bar';
+export * from './schema';
+export * from './core';

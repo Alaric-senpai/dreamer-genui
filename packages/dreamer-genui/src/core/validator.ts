@@ -15,19 +15,42 @@ export const MAX_DETOUR_DEPTH = 2;
 
 /**
  * Resolve a NodeRef to a NodeId.
- * NodeRef format: "nodeId" or "parentId/itemId" (for items inside a node).
- * For now, only simple "nodeId" format is supported.
+ *
+ * NodeRef is either a plain node id or a `parentId/itemId` reference to an item
+ * inside a node (e.g. `branches/botany`). Item contents are not modelled in the
+ * board state (they live on the component in M3+), so an item ref resolves to
+ * its parent node — and only if that parent actually exists, so a bogus parent
+ * is rejected with `bad-target` instead of silently succeeding.
  */
 export function resolveNodeRef(state: BoardState, ref: NodeRef): string | null {
-  // Simple case: ref is the node id
   if (ref.includes('/')) {
-    // parentId/itemId format — treat itemId as the node id for now
-    // Full support for parent/item refs is added in M4 when components exist
     const parts = ref.split('/');
-    if (parts.length === 2) return parts[0] ?? null; // parent
+    const parent = parts[0];
+    if (parent && !parent.includes('/') && parent in state.nodes) {
+      return parent;
+    }
     return null;
   }
   return ref in state.nodes ? ref : null;
+}
+
+/**
+ * Check that every block id is unique: within the op itself, against existing
+ * nodes, and against ids already used by open detour blocks.
+ * AGENTS 6.1: "NodeId: short tutor-authored string, unique per board."
+ */
+function checkDuplicateIds(state: BoardState, blocks: readonly { id: string }[]): LibraryError | undefined {
+  const seen = new Set<string>();
+  for (const detour of state.detours) {
+    for (const b of detour.blocks) seen.add(b.id);
+  }
+  for (const block of blocks) {
+    if (block.id in state.nodes || seen.has(block.id)) {
+      return createError('duplicate-id', `Duplicate node id: ${block.id}`, block.id);
+    }
+    seen.add(block.id);
+  }
+  return undefined;
 }
 
 /**
@@ -44,11 +67,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
 
   switch (op.op) {
     case 'append': {
-      for (const block of op.blocks) {
-        if (block.id in state.nodes) {
-          return { valid: false, error: createError('duplicate-id', `Duplicate node id: ${block.id}`, block.id) };
-        }
-      }
+      const dup = checkDuplicateIds(state, op.blocks);
+      if (dup) return { valid: false, error: dup };
       return { valid: true, op };
     }
 
@@ -62,22 +82,14 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
       if (state.detours.length >= MAX_DETOUR_DEPTH) {
         return { valid: false, error: createError('depth-exceeded', `Max detour depth (${MAX_DETOUR_DEPTH}) exceeded`, op.to) };
       }
-      // Check for duplicate ids in the attach blocks
-      for (const block of op.blocks) {
-        if (block.id in state.nodes) {
-          return { valid: false, error: createError('duplicate-id', `Duplicate node id: ${block.id}`, block.id) };
-        }
-      }
+      const dup = checkDuplicateIds(state, op.blocks);
+      if (dup) return { valid: false, error: dup };
       return { valid: true, op };
     }
 
     case 'replace': {
-      // No pre-existing state checks for replace
-      for (const block of op.blocks) {
-        if (block.id in state.nodes) {
-          return { valid: false, error: createError('duplicate-id', `Duplicate node id: ${block.id}`, block.id) };
-        }
-      }
+      const dup = checkDuplicateIds(state, op.blocks);
+      if (dup) return { valid: false, error: dup };
       return { valid: true, op };
     }
 

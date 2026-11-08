@@ -1,7 +1,17 @@
-import { z, type ZodType } from 'zod';
+import type { ZodType } from 'zod';
 import { createError } from './errors';
 import type { LibraryError, ResolvedNode } from './types';
-import type { Block } from '../schema/blocks';
+import {
+  TextBlockSchema,
+  FigureBlockSchema,
+  ChoicesBlockSchema,
+  StepsBlockSchema,
+  CalloutBlockSchema,
+  GroupBlockSchema,
+  TableBlockSchema,
+  MathBlockSchema,
+  CodeBlockSchema,
+} from '../schema/blocks';
 
 export interface TypeManifest {
   schema: ZodType;
@@ -39,46 +49,20 @@ export interface RegistryOptions {
   onError?: (err: LibraryError) => void;
 }
 
-// Built-in type manifests (schema + optional promptGuide).
-// Loaders are added in M3 when the React renderer is built.
+// Built-in type manifests. Schemas are the CANONICAL per-type schemas from
+// schema/blocks.ts (single source of truth — the registry never re-derives or
+// loosens them). Loaders are added in M3 when the React renderer is built.
 // promptGuide snippets are the minimal tutor-facing hint per type.
 const BUILTIN_MANIFESTS: Record<string, TypeManifest> = {
-  text: {
-    schema: z.object({ id: z.string(), type: z.literal('text'), variant: z.enum(['body', 'definition', 'heading', 'note']), content: z.array(z.unknown()) }),
-    promptGuide: 'text block: variant (body|definition|heading|note), content is Inline[] array.',
-  },
-  figure: {
-    schema: z.object({ id: z.string(), type: z.literal('figure'), figure: z.unknown(), caption: z.array(z.unknown()).optional() }),
-    promptGuide: 'figure block: figure.kind (image|icon|diagram|labeled|chart|lottie), alt required.',
-  },
-  choices: {
-    schema: z.object({ id: z.string(), type: z.literal('choices'), intent: z.enum(['navigate', 'answer']), layout: z.enum(['chips', 'list', 'grid']), items: z.array(z.object({ id: z.string(), label: z.string() })) }),
-    promptGuide: 'choices block: items array with {id, label}. intent=navigate emits select; intent=answer emits answer.',
-  },
-  steps: {
-    schema: z.object({ id: z.string(), type: z.literal('steps'), reveal: z.enum(['sequential', 'all']), items: z.array(z.object({ id: z.string(), title: z.string(), content: z.array(z.unknown()) })) }),
-    promptGuide: 'steps block: items array with {id, title, content: Inline[]}. reveal=sequential reveals one at a time.',
-  },
-  callout: {
-    schema: z.object({ id: z.string(), type: z.literal('callout'), tone: z.enum(['info', 'success', 'warn', 'danger']), content: z.array(z.unknown()) }),
-    promptGuide: 'callout block: tone (info|success|warn|danger), content: Inline[].',
-  },
-  group: {
-    schema: z.object({ id: z.string(), type: z.literal('group'), layout: z.enum(['stack', 'row', 'grid']), blocks: z.array(z.unknown()) }),
-    promptGuide: 'group block: layout (stack|row|grid), blocks: Block[].',
-  },
-  table: {
-    schema: z.object({ id: z.string(), type: z.literal('table'), columns: z.array(z.object({ id: z.string(), label: z.string() })), rows: z.array(z.record(z.string(), z.array(z.unknown()))) }),
-    promptGuide: 'table block: columns: {id, label}[], rows: {colId: Inline[]}[]',
-  },
-  math: {
-    schema: z.object({ id: z.string(), type: z.literal('math'), tex: z.string() }),
-    promptGuide: 'math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.',
-  },
-  code: {
-    schema: z.object({ id: z.string(), type: z.literal('code'), lang: z.string(), source: z.string() }),
-    promptGuide: 'code block: lang (python|javascript|etc.), source is the code string.',
-  },
+  text: { schema: TextBlockSchema, promptGuide: 'text block: variant (body|definition|heading|note), content is Inline[] array.' },
+  figure: { schema: FigureBlockSchema, promptGuide: 'figure block: figure.kind (image|icon|diagram|labeled|chart|lottie), alt required.' },
+  choices: { schema: ChoicesBlockSchema, promptGuide: 'choices block: items array with {id, label}. intent=navigate emits select; intent=answer emits answer.' },
+  steps: { schema: StepsBlockSchema, promptGuide: 'steps block: items array with {id, title, content: Inline[]}. reveal=sequential reveals one at a time.' },
+  callout: { schema: CalloutBlockSchema, promptGuide: 'callout block: tone (info|success|warn|danger), content: Inline[].' },
+  group: { schema: GroupBlockSchema, promptGuide: 'group block: layout (stack|row|grid), blocks: Block[].' },
+  table: { schema: TableBlockSchema, promptGuide: 'table block: columns: {id, label}[], rows: {colId: Inline[]}[]' },
+  math: { schema: MathBlockSchema, promptGuide: 'math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.' },
+  code: { schema: CodeBlockSchema, promptGuide: 'code block: lang (python|javascript|etc.), source is the code string.' },
 };
 
 export function createRegistry(options: RegistryOptions = {}): Registry {

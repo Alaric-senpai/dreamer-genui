@@ -92,8 +92,39 @@ describe('resolveNodeRef', () => {
     expect(resolveNodeRef(s, 'ghost')).toBeNull();
   });
 
-  test('resolves parentId/itemId format (parent only)', () => {
-    const s = mkState(['n1', 'branches/botany']);
+  test('resolves parentId/itemId format when the parent exists', () => {
+    const s = mkState(['n1', 'branches']);
     expect(resolveNodeRef(s, 'branches/botany')).toBe('branches');
+  });
+
+  test('parent/item ref with unknown parent is null (bad-target path)', () => {
+    const s = mkState(['n1']);
+    expect(resolveNodeRef(s, 'ghost/item')).toBeNull();
+  });
+
+  test('attach with parent/item ref to unknown parent rejects with bad-target', () => {
+    const s = mkState(['n1']);
+    const result = validateOp(s, {
+      op: 'attach', to: 'ghost/item', blocks: [{ id: 'd1', type: 'text', variant: 'body', content: [] }],
+      placement: 'inline', connector: 'none', mode: 'inline',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error?.code).toBe('bad-target');
+  });
+
+  test('two blocks with the same id inside one append op reject', () => {
+    const s = mkState();
+    const block = { id: 'x', type: 'text', variant: 'body', content: [] };
+    const result = validateOp(s, { op: 'append', blocks: [block, { ...block }] });
+    expect(result.valid).toBe(false);
+    expect(result.error?.code).toBe('duplicate-id');
+  });
+
+  test('append cannot reuse an id already used by an open detour block', () => {
+    const s = mkState(['n1']);
+    s.detours = [{ id: 'd0', targetNodeId: 'n1', blocks: [{ id: 'detour-x', type: 'text', variant: 'body', content: [] }], openAt: 0 }];
+    const result = validateOp(s, { op: 'append', blocks: [{ id: 'detour-x', type: 'text', variant: 'body', content: [] }] });
+    expect(result.valid).toBe(false);
+    expect(result.error?.code).toBe('duplicate-id');
   });
 });

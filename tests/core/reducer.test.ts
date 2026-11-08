@@ -69,6 +69,21 @@ describe('boardReducer', () => {
     expect(next.nodes['n1']).toBeUndefined();
   });
 
+  test('update cannot override id or type', () => {
+    const s = mkState([SAMPLE_BLOCK]);
+    const next = boardReducer(s, { op: 'update', id: 'n1', props: { variant: 'heading', id: 'hijack', type: 'code' } });
+    expect(next.nodes['n1']?.block.id).toBe('n1');
+    expect(next.nodes['n1']?.block.type).toBe('text');
+    expect(next.nodes['n1']?.block.variant).toBe('heading');
+  });
+
+  test('remove clears detours targeting the removed node', () => {
+    const s = mkState([SAMPLE_BLOCK, BLOCK2]);
+    s.detours = [{ id: 'd1', targetNodeId: 'n1', blocks: [], openAt: 0 }];
+    const next = boardReducer(s, { op: 'remove', id: 'n1' });
+    expect(next.detours).toHaveLength(0);
+  });
+
   test('attach creates detour', () => {
     const s = mkState([SAMPLE_BLOCK]);
     const BLOCK_ATT = { id: 'a1', type: 'text' as const, variant: 'body' as const, content: ['Attached'] };
@@ -82,6 +97,25 @@ describe('boardReducer', () => {
     const next = boardReducer(s, { op: 'append', blocks: [BLOCK2] });
     expect(next).not.toBe(s);
     expect(s.nodes['n2']).toBeUndefined(); // original unchanged
+  });
+
+  test('history is capped at 50 snapshots', () => {
+    let s = mkState([SAMPLE_BLOCK]);
+    for (let i = 0; i < 55; i++) {
+      s = boardReducer(s, { op: 'replace', blocks: [{ id: `r${i}`, type: 'text', variant: 'body', content: [] }] });
+    }
+    expect(s.history.length).toBe(50);
+  });
+
+  test('attach stores the original target ref', () => {
+    const s = mkState();
+    s.nodes['branches'] = { id: 'branches', block: { id: 'branches', type: 'text', variant: 'body', content: [] }, state: 'complete' };
+    const next = boardReducer(s, {
+      op: 'attach', to: 'branches/botany', blocks: [{ id: 'a1', type: 'text', variant: 'body', content: ['x'] }],
+      placement: 'inline', connector: 'none', mode: 'inline',
+    });
+    expect(next.detours[0]?.targetNodeId).toBe('branches');
+    expect(next.detours[0]?.targetRef).toBe('branches/botany');
   });
 
   test('back pops history', () => {

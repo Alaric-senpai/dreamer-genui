@@ -1,0 +1,98 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`getSystemPromptGuide > snapshot (default options, built-ins registry) 1`] = `
+"# dreamer-genui Prompt Guide
+
+Reply format is JSON. Output only JSON matching this format.
+
+## Operations
+
+Reply format: { "v": 1, "ops": [...] }
+
+- **append**: Add blocks to the board. Blocks appear in order. Use 'after' to insert after a specific node id.
+- **attach**: Open a secondary explainer ON an existing node (max depth 2). The rest of the board dims (spotlight mode). Use 'placement' (right|left|above|below|overlay|inline), 'connector' (line|arrow|bracket|none), and 'target.annotate' (circle|underline|box|highlight|bracket|none). The built-in Return control closes the detour.
+- **replace**: Start a new board. The old board is saved in history (max 50). Use 'title' to name the new topic.
+- **update**: Merge props into an existing node (props are merged into the block).
+- **remove**: Delete a node from the board.
+
+Node ids must be unique across the board (including attached detour blocks).
+
+
+## Inline Marks
+
+- **highlight** (text, color?): highlight text with color token (accent|info|success|warn|danger|muted).
+- **emphasis** (text): italic/bold emphasis.
+- **term** (text, definition): term with inline definition tooltip.
+- **focusable** (text, ref): clickable text that emits a 'focus' UIEvent with ref.
+- **annotate** (text, kind, color?): circle|underline|box|bracket|strike.
+- **math** (tex): inline math.
+
+## Motion
+
+Use 'enter.effect' on blocks: reveal|rise|pop|sweep|draw|stagger|none. Set 'order' to group animations (same order = simultaneous). 'delay' and 'duration' are in ms. 'emphasis' (pulse|underline|glow) plays after enter. 'exit' (fade|shrink|none).
+
+Reduced motion: all effects fall back to instant/unanimated. Always show all content even without animation.
+
+## Figures
+
+- **diagram** (kind: tree|radial|flow|cycle): no coordinates. Label nodes with nodes[].id, nodes[].label. Connect with edges[]. Set 'focusable:true' to emit 'focus' on node click.
+- **labeled** (pack, art): reference named parts by id (highlight and label by part id).
+- **chart** (type: bar|line|pie|scatter): series[].data is number[] or {x, y}[].
+- **lottie** (src, loop?): alt required.
+
+## Idempotency
+
+When streaming partial replies: include 'after' in append ops to maintain order. Partial blocks are resolved once complete. Never emit duplicate node ids on the same board.
+
+## Events
+
+The library emits: focus, select, answer, action (return|continue|hint|custom).
+The host app handles correctness, grading, and routing.
+
+
+## Block Types
+
+- **text**: text block: variant (body|definition|heading|note), content is Inline[] array.
+
+- **figure**: figure block: figure.kind (image|icon|diagram|labeled|chart|lottie), alt required.
+
+- **choices**: choices block: items array with {id, label}. intent=navigate emits select; intent=answer emits answer.
+
+- **steps**: steps block: items array with {id, title, content: Inline[]}. reveal=sequential reveals one at a time.
+
+- **callout**: callout block: tone (info|success|warn|danger), content: Inline[].
+
+- **group**: group block: layout (stack|row|grid), blocks: Block[].
+
+- **table**: table block: columns: {id, label}[], rows: {colId: Inline[]}[]
+
+- **math**: math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.
+
+- **code**: code block: lang (python|javascript|etc.), source is the code string.
+
+
+## Worked Examples
+
+### Example 1: Define a concept
+{ "v": 1, "ops": [
+  { "op": "append", "blocks": [
+    { "id": "def1", "type": "text", "variant": "definition",
+      "content": ["Biology is the study of ", { "mark": "highlight", "text": "living things" }] }
+  ] }
+] }
+
+### Example 2: Attach an explainer
+{ "v": 1, "ops": [
+  { "op": "attach", "to": "branches/botany", "blocks": [
+    { "id": "botany-detail", "type": "text", "variant": "body", "content": ["Botany studies plants."] }
+  ], "placement": "right", "connector": "arrow", "target": { "annotate": "circle" } }
+] }
+
+### Example 3: Replace with new topic
+{ "v": 1, "ops": [
+  { "op": "replace", "title": "Photosynthesis", "blocks": [
+    { "id": "photo1", "type": "math", "tex": "\\\\ce{6CO2 + 6H2O -> C6H12O6 + 6O2}", "display": true }
+  ] }
+] }
+"
+`;

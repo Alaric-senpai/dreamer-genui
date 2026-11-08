@@ -31,13 +31,29 @@ describe('serializeBoard', () => {
     expect(out).toContain('Photosynthesis');
   });
 
-  test('includes open detours', () => {
+  test('includes open detours with their block ids and types', () => {
     const state = createBoard('b1');
     state.nodes['n1'] = { id: 'n1', block: { id: 'n1', type: 'text', variant: 'body', content: [] }, state: 'complete' };
-    state.detours = [{ id: 'd1', targetNodeId: 'n1', blocks: [], openAt: 0 }];
+    state.detours = [{
+      id: 'd1', targetNodeId: 'n1', openAt: 0,
+      blocks: [{ id: 'botany-detail', type: 'text', variant: 'body', content: ['Botany studies plants.'] }],
+    }];
     const out = serializeBoard(state);
     expect(out).toContain('Open detours');
     expect(out).toContain('n1');
+    expect(out).toContain('botany-detail');   // detour node id visible to the tutor
+    expect(out).toContain('text');
+  });
+
+  test('emits parent/item refs for choices items', () => {
+    const state = createBoard('b1');
+    state.nodes['branches'] = {
+      id: 'branches',
+      block: { id: 'branches', type: 'choices', intent: 'navigate', layout: 'list', items: [{ id: 'botany', label: 'Botany' }, { id: 'zoology', label: 'Zoology' }] },
+      state: 'complete',
+    };
+    const out = serializeBoard(state);
+    expect(out).toContain('branches/botany branches/zoology');
   });
 
   test('includes history count', () => {
@@ -57,12 +73,22 @@ describe('getSystemPromptGuide', () => {
     expect(guide).toContain('replace');
   });
 
-  test('returns a string containing block types', () => {
+  test('is registry-aware — includes the built-in manifest snippets', () => {
     const reg = createRegistry();
     const guide = getSystemPromptGuide(reg);
-    expect(guide).toContain('text');
-    expect(guide).toContain('choices');
-    expect(guide).toContain('steps');
+    expect(guide).toContain('## Block Types');
+    expect(guide).toContain('intent=navigate emits select');      // choices snippet
+    expect(guide).toContain('KaTeX-compatible');                  // math snippet
+    expect(guide).toContain('**table**');                         // every registered type listed
+    expect(guide).toContain('**group**');
+  });
+
+  test('include filters the listed types and reports unregistered ones', () => {
+    const reg = createRegistry();
+    const guide = getSystemPromptGuide(reg, { include: ['text', 'no-such-type'] });
+    expect(guide).toContain('**text**');
+    expect(guide).not.toContain('**choices**');
+    expect(guide).toContain('not registered: no-such-type');
   });
 
   test('compact mode is shorter', () => {
@@ -70,6 +96,24 @@ describe('getSystemPromptGuide', () => {
     const full = getSystemPromptGuide(reg);
     const compact = getSystemPromptGuide(reg, { compact: true });
     expect(compact.length).toBeLessThan(full.length);
+  });
+
+  test('language appends an output-language instruction', () => {
+    const reg = createRegistry();
+    const guide = getSystemPromptGuide(reg, { language: 'Swahili' });
+    expect(guide).toContain('Write all student-facing text in Swahili');
+  });
+
+  test('snapshot (default options, built-ins registry)', () => {
+    const reg = createRegistry();
+    expect(getSystemPromptGuide(reg)).toMatchSnapshot();
+  });
+
+  test('worked example escapes the mhchem macro correctly', () => {
+    const reg = createRegistry();
+    const guide = getSystemPromptGuide(reg);
+    // In JSON the tex must read "\\ce{...}" (a single backslash when unescaped)
+    expect(guide).toContain('"tex": "\\\\ce{6CO2 + 6H2O -> C6H12O6 + 6O2}"');
   });
 
   test('excludes ops when in exclude list', () => {
