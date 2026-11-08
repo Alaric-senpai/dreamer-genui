@@ -9,7 +9,22 @@
     "build": "pnpm -r --filter dreamer-genui build"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/jest-axe": "^3.5.9",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "jest-axe": "^11.0.0",
+    "jsdom": "^31.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "@react-aria/focus": "^3.22.1",
+    "@react-aria/interactions": "^3.28.1",
+    "motion": "^14.10.1"
   }
 }

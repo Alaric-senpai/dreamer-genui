@@ -112,3 +112,13 @@ BlockSchema = z.discriminatedUnion('type', [
 
 export { BlockSchema };
 export type Block = z.infer<typeof BlockSchema>;
+// Per-type inferred aliases (used by the React layer and consumers)
+export type TextBlock = z.infer<typeof TextBlockSchema>;
+export type FigureBlock = z.infer<typeof FigureBlockSchema>;
+export type ChoicesBlock = z.infer<typeof ChoicesBlockSchema>;
+export type StepsBlock = z.infer<typeof StepsBlockSchema>;
+export type CalloutBlock = z.infer<typeof CalloutBlockSchema>;
+export type TableBlock = z.infer<typeof TableBlockSchema>;
+export type MathBlock = z.infer<typeof MathBlockSchema>;
+export type CodeBlock = z.infer<typeof CodeBlockSchema>;
+export type GroupBlock = z.infer<typeof GroupBlockSchema>;

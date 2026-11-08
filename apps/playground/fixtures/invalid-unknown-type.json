@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "unknown-widget",
+          "type": "unknown-widget-type",
+          "name": "This should fail schema validation"
+        }
+      ]
+    }
+  ]
+}

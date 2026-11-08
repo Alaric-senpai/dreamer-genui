@@ -1,0 +1,52 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "replace",
+      "title": "Photosynthesis",
+      "blocks": [
+        {
+          "id": "photo-def",
+          "type": "text",
+          "variant": "definition",
+          "content": [
+            "Photosynthesis is the process by which ",
+            { "mark": "term", "text": "autotrophs", "definition": "organisms that produce their own food" },
+            " convert light energy into chemical energy stored in glucose."
+          ],
+          "enter": { "effect": "reveal", "order": 1 }
+        },
+        {
+          "id": "photo-eq",
+          "type": "math",
+          "tex": "\\ce{6CO2 + 6H2O + light \\rightarrow C6H12O6 + 6O2}",
+          "display": true,
+          "enter": { "effect": "draw", "order": 2 }
+        },
+        {
+          "id": "photo-steps",
+          "type": "steps",
+          "reveal": "sequential",
+          "items": [
+            {
+              "id": "step-1",
+              "title": "Light absorption",
+              "content": ["Chlorophyll in chloroplasts absorbs light energy."]
+            },
+            {
+              "id": "step-2",
+              "title": "Water splitting",
+              "content": ["Water is split into oxygen, protons and electrons."]
+            },
+            {
+              "id": "step-3",
+              "title": "Carbon fixation",
+              "content": ["CO2 is reduced to form glucose using ATP and NADPH."]
+            }
+          ],
+          "enter": { "effect": "stagger", "order": 3 }
+        }
+      ]
+    }
+  ]
+}

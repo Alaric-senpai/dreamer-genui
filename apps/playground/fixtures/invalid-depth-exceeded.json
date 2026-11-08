@@ -1,0 +1,55 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "detour-0",
+          "type": "text",
+          "variant": "body",
+          "content": ["Top level"]
+        }
+      ]
+    },
+    {
+      "op": "attach",
+      "to": "detour-0",
+      "blocks": [
+        {
+          "id": "detour-1",
+          "type": "text",
+          "variant": "body",
+          "content": ["First detour level"]
+        }
+      ],
+      "placement": "right"
+    },
+    {
+      "op": "attach",
+      "to": "detour-1",
+      "blocks": [
+        {
+          "id": "detour-2",
+          "type": "text",
+          "variant": "body",
+          "content": ["Second detour level — depth 2"]
+        }
+      ],
+      "placement": "right"
+    },
+    {
+      "op": "attach",
+      "to": "detour-2",
+      "blocks": [
+        {
+          "id": "detour-3",
+          "type": "text",
+          "variant": "body",
+          "content": ["THIRD detour level — depth 3, should be REJECTED"]
+        }
+      ],
+      "placement": "right"
+    }
+  ]
+}

@@ -140,3 +140,43 @@ Verification: `pnpm test` → **160/160 passing**; `tsc --noEmit` clean; build e
 - **`update` props are not validated per node type at M2** — the resolver applies them through a merge that excludes identity fields; full per-type validation arrives with the M3 registry-driven node resolution.
 - **Registry-wired tape**: `back()` restores the snapshot without re-opening its detours (detours were cleared when the snapshot was pushed); acceptable for "back to previous topic" semantics and unchanged from the M2 plan.
 
+---
+
+## M3 Rulings (renderer)
+
+1. **Native `<button>` instead of React Aria for choices/term/focusable** — axe-clean markup with `aria-pressed` (multi-select choices) and `role="button"` terms; zero extra bundle. `@react-aria/focus`/`interactions` remain installed (M4 will use them for roving focus if needed). — Cost if wrong: rework if keyboard focus management outgrows native semantics.
+
+2. **`LazyMotion features={domAnimation} strict`** — `m.div` only works inside the provider's `LazyMotion`, which tree-shakes motion to the dom-animation feature set and hard-throws on forbidden usage. `MotionDriver` presets animate transform/opacity only. GSAP untouched (M5). — Cost if wrong: silent bundle growth.
+
+3. **Reduced motion renders plain divs** — `createReducedMotionDriver()` returns `null` for every preset, so `<Animated>` takes the unanimated path; content, ordering, and interactions are identical. Enforced by test: wrappers must carry no inline animation styles. — Cost if wrong: motion-safety regression invisible to tests.
+
+4. **jsdom matchMedia stub with getter-backed `matches` + listener notification** — motion initializes its reduced-motion store on the first `useReducedMotion()` call and holds the query object forever; a static `matches` value freezes the first (false) state across tests. `setup.ts` re-evaluates `matches` on each access and `setReducedMotion(on)` notifies subscribed listeners. — Cost if wrong: order-dependent false-green tests.
+
+5. **`BoardStore` = headless `BoardResolver` + version counter** — `useSyncExternalStore` subscribes to a monotonically increasing integer; state is read imperatively on each render. Mutating methods wrap the resolver and bump `version`. — Cost if wrong: stale or looping renders.
+
+6. **Live region announces only the newest node** — `role="status"` + `aria-live="polite"` + `aria-atomic`, one node text per append; announcing the whole board each op would be noise. — Cost if wrong: verbose screen-reader output.
+
+7. **Group nesting capped at one level (`nested` prop)** — a group inside a group renders `FallbackView` and emits `depth-exceeded`; recursion is bounded by the renderer regardless of protocol validation. — Cost if wrong: stack overflow on adversarial content.
+
+8. **`term` mark anchors to itself** — `emit({ type: 'focus', nodeId: mark.text, label: definition })`; the protocol has no ref on `term`, so the term text is the anchor id tutors match on.
+
+9. **Node-state classes are part of the surface** — every rendered node wrapper gets `dgui-node dgui-node-<state>` + `data-node-id`; hosts (and M4 behavior) style/hook off these classes rather than re-rendering internals.
+
+10. **Peer deps for React** — `react`/`react-dom` are `peerDependencies >=18 <20`; `motion` a regular dep. Root devDeps carry react 19 for the test env (pnpm workspace, playground uses react 19.2.8).
+
+### Deferred to M4+
+
+- **Per-node registry-driven resolution** (loader kickoffs, skeletons, per-type update validation) — the M2 deferral still stands; M3 renders resolver output with fallback views.
+- **Board-level `onEvent`** is plumbed as a prop but events currently flow through the provider sink; merging both sinks is M4.
+- figure/table/math/code render `FallbackView` until M5 (figures) / M6 (table/math/code).
+
+## M3 Deliverables
+
+- `packages/dreamer-genui/src/theme/tokens.ts`: token set (colour roles, typography, shape/space, motion), `lightTheme`/`darkTheme`, `resolveTheme(name, overrides)`.
+- `packages/dreamer-genui/src/react/motion/`: `driver.ts` (`MotionDriver`, enter/emphasis/exit presets, `createMotionDriver` + `createReducedMotionDriver`, `STAGGER_SECONDS = 0.12`), `animated.tsx` (`MotionProvider` with `LazyMotion strict` + reduced-motion driver selection, `Animated` rendering `m.div` or plain `div`).
+- `packages/dreamer-genui/src/react/provider.tsx`: `DreamerProvider` (registry, theme CSS variables on wrapper, event/error sinks, i18n strings), `useDreamer`, `useEmitEvent`.
+- `packages/dreamer-genui/src/react/use-board.ts`: `createBoardStore`, `useBoard`, `useBoardVersion`.
+- `packages/dreamer-genui/src/react/components/`: `inline.tsx` (highlight/emphasis/term/focusable/annotate/math marks), `blocks.tsx` (Text variants, Choices chips/list/grid + select/answer, Callout, Steps, Group), `block-renderer.tsx` (`NodeView`, `FallbackView`, group nesting cap, M5/M6 placeholders), plus `board.tsx` (`Board` + live region) and `index.ts`.
+- `apps/playground/`: Next 16.4 playground (fixture picker incl. invalid fixtures, live board, event/error logs, light/dark switch) — `next build` passes.
+- Tests: `tests/react/board.test.tsx` (13 tests). **Total: 173/173 passing; `tsc --noEmit` clean; `pnpm --filter dreamer-genui build` emits `dist/react/index.js` (esm/cjs/dts); `grep` confirms zero React imports in `schema/` and `core/`.**
+

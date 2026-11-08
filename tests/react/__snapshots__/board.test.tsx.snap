@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<Board> with define-biology.json > renders the definition text and the highlighted phrase 1`] = `
+<mark
+  class="dgui-mark-highlight"
+  data-color="accent"
+>
+  living things
+</mark>
+`;

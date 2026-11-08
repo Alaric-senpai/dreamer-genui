@@ -1,0 +1,33 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "def-bio",
+          "type": "text",
+          "variant": "definition",
+          "content": [
+            "Biology is the study of ",
+            { "mark": "highlight", "text": "living things", "color": "accent" },
+            ". It includes the structure, function, growth, origin, evolution and distribution of all living organisms."
+          ],
+          "enter": { "effect": "rise", "order": 1 }
+        },
+        {
+          "id": "branches",
+          "type": "choices",
+          "intent": "navigate",
+          "layout": "chips",
+          "items": [
+            { "id": "botany", "label": "Botany", "ref": "branches/botany", "icon": "leaf" },
+            { "id": "zoology", "label": "Zoology", "ref": "branches/zoology", "icon": "paw" },
+            { "id": "microbiology", "label": "Microbiology", "ref": "branches/microbiology", "icon": "bug" }
+          ],
+          "enter": { "effect": "stagger", "order": 2 }
+        }
+      ]
+    }
+  ]
+}

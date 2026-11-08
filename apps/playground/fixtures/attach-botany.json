@@ -1,0 +1,33 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "attach",
+      "to": "branches/botany",
+      "blocks": [
+        {
+          "id": "botany-detail",
+          "type": "text",
+          "variant": "body",
+          "content": [
+            "Botany is the scientific study of plants. Topics include plant structure, growth, reproduction, metabolism, diseases, and their ecological roles."
+          ],
+          "enter": { "effect": "rise" }
+        },
+        {
+          "id": "botany-callout",
+          "type": "callout",
+          "tone": "info",
+          "title": "Key point",
+          "content": [
+            "Plants are producers — they make their own food through photosynthesis."
+          ]
+        }
+      ],
+      "placement": "right",
+      "connector": "arrow",
+      "target": { "annotate": "circle" },
+      "mode": "spotlight"
+    }
+  ]
+}

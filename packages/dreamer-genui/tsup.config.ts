@@ -5,6 +5,7 @@ export default defineConfig({
     index: './src/index.ts',
     'schema/index': './src/schema/index.ts',
     'core/index': './src/core/index.ts',
+    'react/index': './src/react/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,

@@ -1,0 +1,69 @@
+import { Fragment } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import type { Inline, Mark } from '../../schema/inline';
+import { useEmitEvent } from '../provider';
+
+function markText(t: string | string[] | undefined): string {
+  if (Array.isArray(t)) return t.join(' ');
+  return t ?? '';
+}
+
+/** Render a single mark. Unknown marks degrade to plain text (never crash). */
+function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
+  const emit = useEmitEvent();
+  switch (mark.mark) {
+    case 'highlight':
+      return (
+        <mark className="dgui-mark-highlight" data-color={mark.color ?? 'accent'}>
+          {markText(mark.text)}
+        </mark>
+      );
+    case 'emphasis':
+      return <em className="dgui-mark-emphasis">{markText(mark.text)}</em>;
+    case 'term':
+      return (
+        <span
+          className="dgui-mark-term"
+          role="button"
+          tabIndex={0}
+          title={mark.definition}
+          aria-label={`${mark.text}: ${mark.definition}`}
+          onClick={() => emit({ type: 'focus', nodeId: mark.text, label: mark.definition })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') emit({ type: 'focus', nodeId: mark.text, label: mark.definition });
+          }}
+        >
+          {mark.text}
+        </span>
+      );
+    case 'focusable':
+      return (
+        <button type="button" className="dgui-mark-focusable" onClick={() => emit({ type: 'focus', nodeId: mark.ref, label: markText(mark.text) })}>
+          {markText(mark.text)}
+        </button>
+      );
+    case 'annotate': {
+      const style: CSSProperties = { textDecorationColor: 'var(--dgui-color-accent)' };
+      if (mark.kind === 'underline') style.textDecoration = 'underline';
+      else if (mark.kind === 'strike') style.textDecoration = 'line-through';
+      else if (mark.kind === 'box') style.border = '2px solid var(--dgui-color-accent)';
+      else style.textDecoration = 'underline'; // circle/bracket get SVG strokes in M5
+      return (
+        <span className={`dgui-mark-annotate dgui-annotate-${mark.kind}`} data-color={mark.color} style={style}>
+          {markText(mark.text)}
+        </span>
+      );
+    }
+    case 'math':
+      // KaTeX rendering lands in M6; plain text keeps content visible and safe.
+      return <code className="dgui-mark-math" data-tex={mark.tex}>{mark.tex}</code>;
+  }
+}
+
+/** Render `Inline[]` — strings and marks, degrading gracefully. */
+export function renderInline(content: Inline[] | undefined): ReactNode {
+  if (!content) return null;
+  return content.map((part, i) =>
+    typeof part === 'string' ? <Fragment key={i}>{part}</Fragment> : <MarkRenderer key={i} mark={part} />
+  );
+}
