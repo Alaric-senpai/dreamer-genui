@@ -8,7 +8,6 @@ import type { Registry } from './registry';
 import { createRegistry } from './registry';
 import type { Reply } from '../schema/envelope';
 import type { Op } from '../schema/ops';
-import type { Block } from '../schema/blocks';
 
 interface ResolverOptions {
   /** Registry used to resolve block types. Defaults to a fresh built-ins registry. */

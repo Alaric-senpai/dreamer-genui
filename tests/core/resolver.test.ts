@@ -44,26 +44,7 @@ describe('BoardResolver', () => {
   });
 
   test('applyOps depth-exceeded emits error', () => {
-    const resolver = new BoardResolver();
-    resolver.applyOps({
-      v: 1,
-      ops: [{ op: 'append', blocks: [{ id: 'n1', type: 'text', variant: 'body', content: [] }] }],
-    });
-    resolver.applyPartial({
-      v: 1,
-      ops: [{ op: 'attach', to: 'n1', blocks: [{ id: 'd1', type: 'text', variant: 'body', content: [] }], ...ATTACH_DEFAULTS }],
-    });
-    resolver.applyOps({
-      v: 1,
-      ops: [{ op: 'attach', to: 'n1', blocks: [{ id: 'd2', type: 'text', variant: 'body', content: [] }], ...ATTACH_DEFAULTS }],
-    });
-    // attach at depth 1 is allowed; now fill the board's detours directly to simulate depth 2
-    const state = { ...resolver.getState() };
-    (state as { detours: unknown[] }).detours = [
-      { id: 'd1', targetNodeId: 'n1', blocks: [], openAt: 0 },
-      { id: 'd2', targetNodeId: 'n1', blocks: [], openAt: 1 },
-    ];
-    // Replace internal state via a fresh resolver seeded through applyPartial
+    // r2 fills the board to depth 2 (MAX): three attaches on the same target
     const r2 = new BoardResolver();
     r2.applyPartial({
       v: 1,
