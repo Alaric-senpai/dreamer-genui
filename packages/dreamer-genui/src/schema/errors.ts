@@ -9,3 +9,5 @@ export const ErrorCodeSchema = z.enum([
   'depth-exceeded',
   'version-mismatch',
 ]);
+
+export type ErrorCode = z.infer<typeof ErrorCodeSchema>;

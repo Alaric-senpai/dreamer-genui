@@ -92,3 +92,27 @@ AGENTS.md section 6.4 defines `type Inline = string | Mark` — no array form. T
 3. **Ruling: `zod-to-json-schema@^3.25.2`** (not `^4.0.2`) — v4 does not exist on npm. — Cost if wrong: install failure.
 
 4. **Ruling: `z.array(InlineSchema)` not needed in schema** — Block schemas use `z.array(InlineSchema)` directly for `content` fields. Inline schema itself is `z.union([z.string(), MarkSchema])`. — Cost if wrong: would need refactoring if inline ever needed to be recursive.
+
+---
+
+## M2 Rulings During Implementation
+
+1. **Ruling: `EventBus` is generic (`EventBus<T>`)** — The resolver holds a separate `EventBus<UIEvent>` (framework events to the host) and `EventBus<LibraryError>` (errors to the host). A non-generic bus would force unsafe casts when emitting typed payloads. — Cost if wrong: type-erased event payloads at the host boundary.
+
+2. **Ruling: `back()` with empty history is a no-op** — Popping nothing leaves the board (including open detours) unchanged; detours are only cleared when a snapshot is actually restored. — Cost if wrong: a stray "Back" tap could silently wipe an open detour.
+
+3. **Ruling: zod `.optional().default()` makes fields required in the inferred OUTPUT type** — `AttachOp` output requires `placement`, `connector`, `mode` even though Zod parse accepts them missing. Constructing attach op literals in TS requires providing all three (library-internal code and tests; fine, defaults made explicit). — Cost if wrong: type errors or accidental contracts where defaults aren't documented.
+
+4. **Ruling: idempotency key is `"${index}:${contentHash(op)}"`** — index alone is not stable across partial refetches; content hash guards against tutor edits mid-stream producing duplicate node ids. — Cost if wrong: duplicate nodes or silently skipped ops during streaming.
+
+5. **Ruling: resolver exposes errors via `errors` event bus + `onError` callback** — Both the stream API (`onError` per host) and bus (Blurs the line: `errors` bus is for internal observers, `onError` is the host-facing path). Duplicate handlers are okay (idempotent surface). — Cost if wrong: error delivered twice during a host event.
+
+6. **Ruling: prompt guide escapes double backslashes in template literals** — KaTeX `\\ce{}` needs one literal backslash in the emitted guide; template-literal escaping produces the desired `\\ce{...}` JSON escape. Verified in worked examples. — Cost if wrong: tutor copies an escaped wrong and gets a KaTeX parse error.
+
+---
+
+## M2 Deliverables
+
+- `packages/dreamer-genui/src/core/`: `types.ts`, `errors.ts`, `events.ts` (generic `EventBus<T>`), `registry.ts` (9 built-in manifests with `promptGuide` snippets, lazy loader hooks), `validator.ts` (`validateOp`, `resolveNodeRef`, `MAX_DETOUR_DEPTH = 2`), `reducer.ts` (pure `boardReducer`, `back`, `createBoard`), `resolver.ts` (`BoardResolver` with `events`/`errors` buses, idempotent `applyPartial`, history-capped `back`), `generators/` (`serialize-board.ts`, `prompt-guide.ts`, `capabilities.ts`), `index.ts` (public re-exports).
+- Tests: `tests/core/{reducer,resolver,validator,registry,events,generators}.test.ts` — 58 core tests. Total suite: **144 tests, all passing**; `tsc --noEmit` clean; zero React import in `schema/` and `core/`.
+
