@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ElementType, ReactNode } from 'react';
 import type { Block, TextBlock, ChoicesBlock, CalloutBlock, StepsBlock, GroupBlock } from '../../schema/blocks';
 import { renderInline } from './inline';
@@ -25,13 +26,16 @@ export function TextBlockView({ block }: { block: TextBlock }): ReactNode {
 
 export function ChoicesView({ block }: { block: ChoicesBlock }): ReactNode {
   const emit = useEmitEvent();
-  const selected = new Set<string>();
+  // Selection must survive re-renders (streams, host state updates, theme swaps).
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
   function fire(item: ChoicesBlock['items'][number]): void {
     if (block.intent === 'answer') {
       if (block.multi) {
-        selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
-        emit({ type: 'answer', nodeId: block.id, value: [...selected] });
+        const next = new Set(selected);
+        next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+        setSelected(next);
+        emit({ type: 'answer', nodeId: block.id, value: [...next] });
       } else {
         emit({ type: 'answer', nodeId: block.id, value: item.id });
       }

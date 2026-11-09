@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { Registry } from '../core/registry';
 import type { LibraryError } from '../core/types';
@@ -6,6 +6,7 @@ import type { UIEvent } from '../schema/events';
 import type { ThemeName, ThemeTokens } from '../theme/tokens';
 import { resolveTheme } from '../theme/tokens';
 import { MotionProvider } from './motion/animated';
+import { BoardEmitContext } from './emit-context';
 
 /** UI strings — all overridable for i18n. */
 export interface UIStrings {
@@ -31,7 +32,6 @@ export interface DreamerContextValue {
 }
 
 const DreamerContext = createContext<DreamerContextValue | null>(null);
-
 export interface DreamerProviderProps {
   registry: Registry;
   theme?: ThemeName | ThemeTokens;
@@ -49,13 +49,17 @@ export interface DreamerProviderProps {
  */
 export function DreamerProvider({ registry, theme = 'light', themeOverrides, onEvent, onError, strings, children }: DreamerProviderProps) {
   const tokens = typeof theme === 'string' ? resolveTheme(theme, themeOverrides) : { ...resolveTheme('light'), ...theme };
-  const value: DreamerContextValue = {
-    registry,
-    theme: tokens,
-    onEvent,
-    onError,
-    strings: { ...defaultStrings, ...strings },
-  };
+  // Memoized so consumers do not re-render on unrelated provider re-renders.
+  const value = useMemo<DreamerContextValue>(
+    () => ({
+      registry,
+      theme: tokens,
+      onEvent,
+      onError,
+      strings: { ...defaultStrings, ...strings },
+    }),
+    [registry, tokens, onEvent, onError, strings]
+  );
   return (
     <div style={tokens as React.CSSProperties} data-dreamer-root="">
       <DreamerContext.Provider value={value}>
@@ -72,8 +76,11 @@ export function useDreamer(): DreamerContextValue {
   return ctx;
 }
 
-/** Emit a UIEvent to the host (provider sink + any Board-level sink). */
+/** Emit a UIEvent. Inside a <Board>, events go onto the board's bus (so both
+ * provider-level and board-level sinks fire); outside, straight to the
+ * provider sink. */
 export function useEmitEvent(): (event: UIEvent) => void {
+  const boardEmit = useContext(BoardEmitContext);
   const { onEvent } = useDreamer();
-  return (event) => onEvent?.(event);
+  return boardEmit ?? ((event) => onEvent?.(event));
 }

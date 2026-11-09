@@ -30,7 +30,11 @@ function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
           aria-label={`${mark.text}: ${mark.definition}`}
           onClick={() => emit({ type: 'focus', nodeId: mark.text, label: mark.definition })}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') emit({ type: 'focus', nodeId: mark.text, label: mark.definition });
+            if (e.key === 'Enter' || e.key === ' ') {
+              // Space must not scroll the page when "pressing" a term
+              e.preventDefault();
+              emit({ type: 'focus', nodeId: mark.text, label: mark.definition });
+            }
           }}
         >
           {mark.text}

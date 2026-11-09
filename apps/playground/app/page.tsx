@@ -1,20 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DreamerProvider, Board, useBoard, type UIEvent, type ThemeName, type Reply } from 'dreamer-genui';
 import { createRegistry } from 'dreamer-genui/core';
 import type { LibraryError } from 'dreamer-genui/core';
 
-// Fixture names bundled with the playground (see ../fixtures)
-import defineBiology from '../fixtures/define-biology.json';
-import attachBotany from '../fixtures/attach-botany.json';
-import replaceNewTopic from '../fixtures/replace-new-topic.json';
-import streamingPartial from '../fixtures/streaming-partial.json';
-import mathChem from '../fixtures/math-chem.json';
-import chartBar from '../fixtures/chart-bar.json';
-import invalidDuplicate from '../fixtures/invalid-duplicate-id.json';
-import invalidUnknownType from '../fixtures/invalid-unknown-type.json';
-import invalidDepth from '../fixtures/invalid-depth-exceeded.json';
+// Fixtures import from the repo's canonical fixtures/ directory (the one the
+// test suite uses too — no duplicated copies).
+import defineBiology from '../../../fixtures/define-biology.json';
+import attachBotany from '../../../fixtures/attach-botany.json';
+import replaceNewTopic from '../../../fixtures/replace-new-topic.json';
+import streamingPartial from '../../../fixtures/streaming-partial.json';
+import mathChem from '../../../fixtures/math-chem.json';
+import chartBar from '../../../fixtures/chart-bar.json';
+import invalidDuplicate from '../../../fixtures/invalid-duplicate-id.json';
+import invalidUnknownType from '../../../fixtures/invalid-unknown-type.json';
+import invalidDepth from '../../../fixtures/invalid-depth-exceeded.json';
 
 const FIXTURES: Record<string, Reply> = {
   'define-biology': defineBiology as Reply,
@@ -36,6 +37,15 @@ export default function Home() {
   const [events, setEvents] = useState<UIEvent[]>([]);
   const [errors, setErrors] = useState<LibraryError[]>([]);
   const board = useBoard();
+  const loadedRef = useRef(false);
+
+  // Initial load: render define-biology with zero clicks (idempotent across StrictMode).
+  useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    board.reset();
+    board.applyFinal(FIXTURES['define-biology']);
+  }, [board]);
 
   function loadFixture(name: string): void {
     setFixtureName(name);
@@ -43,6 +53,8 @@ export default function Home() {
     setErrors([]);
     board.reset();
     board.applyFinal(FIXTURES[name]);
+    console.log(events)
+    // console.log(board)
   }
 
   const stats = useMemo(

@@ -2,14 +2,15 @@
 import { describe, expect, test, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { DreamerProvider } from '../../packages/dreamer-genui/src/react/provider';
 import { Board } from '../../packages/dreamer-genui/src/react/board';
 import { createBoardStore } from '../../packages/dreamer-genui/src/react/use-board';
-import { BoardResolver } from '../../packages/dreamer-genui/src/core/resolver';
 import { createRegistry } from '../../packages/dreamer-genui/src/core/registry';
 import { resolveTheme } from '../../packages/dreamer-genui/src/theme/tokens';
 import type { Reply } from '../../packages/dreamer-genui/src/schema/envelope';
@@ -112,6 +113,24 @@ describe('<Board> with define-biology.json', () => {
     const region = screen.getByRole('status');
     expect(region).toHaveAttribute('aria-live', 'polite');
   });
+
+  test('live region announces a replace even though node count drops', async () => {
+    const store = createBoardStore();
+    store.applyFinal(FIXTURE);
+    const REPLACE = JSON.parse(
+      readFileSync(join(process.cwd(), 'fixtures/replace-new-topic.json'), 'utf8')
+    ) as Reply;
+    render(
+      <DreamerProvider registry={createRegistry()}>
+        <Board store={store} />
+      </DreamerProvider>
+    );
+    store.applyFinal(REPLACE);
+    // The newest node is the steps block — titles and contents are announced.
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain('Carbon fixation');
+    });
+  });
 });
 
 describe('reduced motion', () => {
@@ -136,10 +155,9 @@ describe('reduced motion', () => {
 });
 
 describe('errors and fallbacks', () => {
-  test('unknown type is rejected end-to-end and reported through onError', () => {
+  test('unknown type is rejected end-to-end and reported through onError (default store path)', () => {
     const errors: LibraryError[] = [];
-    const resolver = new BoardResolver({ onError: (e) => errors.push(e) });
-    const store = createBoardStore(resolver);
+    const store = createBoardStore(); // default resolver — errors must still reach the host
     const reply: Reply = {
       v: 1,
       ops: [{ op: 'append', blocks: [{ id: 'x1', type: 'made-up-widget' } as unknown as never] }],
@@ -153,6 +171,26 @@ describe('errors and fallbacks', () => {
     );
     expect(errors).toEqual([expect.objectContaining({ code: 'unknown-type', type: 'made-up-widget' })]);
     expect(Object.keys(store.getState().nodes)).toHaveLength(0); // rejected, not rendered
+  });
+
+  test('duplicate-id errors reach onError through the default store path', () => {
+    const errors: LibraryError[] = [];
+    const store = createBoardStore();
+    const reply: Reply = {
+      v: 1,
+      ops: [
+        { op: 'append', blocks: [{ id: 'dup', type: 'text', variant: 'body', content: ['one'] }] },
+        { op: 'append', blocks: [{ id: 'dup', type: 'text', variant: 'body', content: ['two'] }] },
+      ],
+    };
+    store.applyFinal(reply);
+    render(
+      <DreamerProvider registry={createRegistry()} onError={(e) => errors.push(e)}>
+        <Board store={store} />
+      </DreamerProvider>
+    );
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.every((e) => e.code === 'duplicate-id')).toBe(true);
   });
 });
 
@@ -190,7 +228,7 @@ describe('board store', () => {
     expect(notified).toBe(2);
   });
 
-  test('clicking a choice still works when Board-level onEvent is used', async () => {
+  test('clicking a choice fires both provider and board-level sinks', async () => {
     const providerEvents: unknown[] = [];
     const boardEvents: unknown[] = [];
     const user = userEvent.setup();
@@ -203,7 +241,49 @@ describe('board store', () => {
       </DreamerProvider>
     );
     await user.click(screen.getByRole('button', { name: /Zoology/i }));
-    // M3 scope: events flow through the provider sink; Board-level sink is plumbed in M4
-    expect(providerEvents.length + boardEvents.length).toBeGreaterThan(0);
+    expect(providerEvents).toEqual([{ type: 'select', nodeId: 'branches', ref: 'branches/zoology', label: 'Zoology' }]);
+    expect(boardEvents).toEqual(providerEvents); // both sinks receive the same event
+  });
+
+  test('multi-select choices accumulate selections across re-renders', async () => {
+    const events: unknown[] = [];
+    const user = userEvent.setup();
+    const reply: Reply = {
+      v: 1,
+      ops: [
+        {
+          op: 'append',
+          blocks: [
+            {
+              id: 'quiz',
+              type: 'choices',
+              intent: 'answer',
+              multi: true,
+              layout: 'list',
+              items: [{ id: 'a', label: 'Iron' }, { id: 'b', label: 'Oxygen' }, { id: 'c', label: 'Carbon' }],
+            },
+          ],
+        },
+      ],
+    };
+    const registry = createRegistry();
+    const store = createBoardStore();
+    store.applyFinal(reply);
+    // A host that re-renders on every event (like the playground does).
+    function Host(): ReactNode {
+      const [, force] = useState(0);
+      return (
+        <DreamerProvider registry={registry} onEvent={() => force((n) => n + 1)}>
+          <Board store={store} onEvent={(e) => events.push(e)} />
+        </DreamerProvider>
+      );
+    }
+    render(<Host />);
+    await user.click(screen.getByRole('button', { name: /Iron/i }));
+    await user.click(screen.getByRole('button', { name: /Oxygen/i }));
+    await user.click(screen.getByRole('button', { name: /Carbon/i }));
+    const answerEvents = events.filter((e) => (e as { type: string }).type === 'answer');
+    expect(answerEvents[answerEvents.length - 1]).toEqual({ type: 'answer', nodeId: 'quiz', value: ['a', 'b', 'c'] });
+    expect(answerEvents[answerEvents.length - 2]).toEqual({ type: 'answer', nodeId: 'quiz', value: ['a', 'b'] });
   });
 });

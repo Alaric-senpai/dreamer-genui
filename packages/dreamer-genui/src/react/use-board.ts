@@ -1,9 +1,16 @@
 import { useMemo, useRef, useSyncExternalStore } from 'react';
 import { BoardResolver } from '../core/resolver';
-import { EventBus } from '../core/events';
 import type { BoardState, LibraryError, ResolvedOp } from '../core/types';
 import type { UIEvent } from '../schema/events';
 import type { Reply } from '../schema/envelope';
+
+/** Structural bus surface exposed by the store — a buffering proxy fits this
+ * without matching `EventBus`'s private internals. */
+export interface EventSink<T> {
+  subscribe(fn: (event: T) => void): () => void;
+  emit(event: T): void;
+  readonly size: number;
+}
 
 /**
  * React-facing wrapper around the headless BoardResolver.
@@ -22,9 +29,9 @@ export interface BoardStore {
   back(): BoardState;
   reset(): void;
   /** UIEvents emitted by rendered components (focus/select/answer/action). */
-  readonly events: EventBus<UIEvent>;
-  /** Library errors (validation, unknown type...). */
-  readonly errors: EventBus<LibraryError>;
+  readonly events: EventSink<UIEvent>;
+  /** Library errors (validation, unknown type...). Buffers pre-mount errors. */
+  readonly errors: EventSink<LibraryError>;
 }
 
 export function createBoardStore(resolver: BoardResolver = new BoardResolver()): BoardStore {
@@ -36,6 +43,27 @@ export function createBoardStore(resolver: BoardResolver = new BoardResolver()):
     for (const fn of listeners) fn();
   };
 
+  // Errors can be emitted before <Board> mounts and subscribes (hosts often
+  // apply ops first). Buffer them until the first subscriber, then live.
+  const pendingErrors: LibraryError[] = [];
+  let errorsBuffered = true;
+  resolver.errors.subscribe((err) => {
+    if (errorsBuffered) pendingErrors.push(err);
+  });
+  const errors = {
+    subscribe(fn: (err: LibraryError) => void): () => void {
+      if (errorsBuffered) {
+        errorsBuffered = false;
+        for (const err of pendingErrors.splice(0)) fn(err);
+      }
+      return resolver.errors.subscribe(fn);
+    },
+    emit: (err: LibraryError): void => resolver.errors.emit(err),
+    get size(): number {
+      return resolver.errors.size;
+    },
+  };
+
   const store: BoardStore = {
     getState: () => resolver.getState(),
     subscribe(fn) {
@@ -44,7 +72,7 @@ export function createBoardStore(resolver: BoardResolver = new BoardResolver()):
     },
     getVersion: () => version,
     events: resolver.events,
-    errors: resolver.errors,
+    errors,
     applyOps(reply) {
       const result = resolver.applyOps(reply);
       notify();
