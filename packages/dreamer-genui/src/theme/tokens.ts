@@ -1,9 +1,10 @@
 /**
- * Theme tokens: CSS custom properties. A theme is a flat map of
- * `--dgui-*` variable names to values; applied on a wrapper element's
- * inline style so hosts can also override single tokens from CSS.
+ * Engine-side CSS custom-property map. A theme preset is a flat map of
+ * `--dg-*` variable names to values; applied on the board root so hosts
+ * can override single tokens from CSS. (The tutor-facing `ThemeTokens`
+ * spec lives in schema/theme.ts.)
  */
-export type ThemeTokens = Record<string, string>;
+export type CssTokens = Record<string, string>;
 
 /** Token keys every theme must define. */
 export const TOKEN_KEYS = [
@@ -34,7 +35,7 @@ export const TOKEN_KEYS = [
 ] as const;
 
 /** Light theme (default). */
-export const lightTheme: ThemeTokens = {
+export const lightTheme: CssTokens = {
   '--dgui-color-bg': '#ffffff',
   '--dgui-color-fg': '#1a1d21',
   '--dgui-color-accent': '#2563eb',
@@ -58,7 +59,7 @@ export const lightTheme: ThemeTokens = {
 };
 
 /** Dark theme. */
-export const darkTheme: ThemeTokens = {
+export const darkTheme: CssTokens = {
   ...lightTheme,
   '--dgui-color-bg': '#0f1115',
   '--dgui-color-fg': '#e5e7eb',
@@ -75,7 +76,7 @@ export const darkTheme: ThemeTokens = {
 export type ThemeName = 'light' | 'dark';
 
 /** Resolve a theme by name, with per-token overrides applied on top. */
-export function resolveTheme(name: ThemeName, overrides?: ThemeTokens): ThemeTokens {
+export function resolveTheme(name: ThemeName, overrides?: CssTokens): CssTokens {
   const base = name === 'dark' ? darkTheme : lightTheme;
   return overrides ? { ...base, ...overrides } : { ...base };
 }

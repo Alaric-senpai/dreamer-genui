@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Registry } from '../core/registry';
 import type { LibraryError } from '../core/types';
 import type { UIEvent } from '../schema/events';
-import type { ThemeName, ThemeTokens } from '../theme/tokens';
+import type { ThemeName, CssTokens } from '../theme/tokens';
 import { resolveTheme } from '../theme/tokens';
 import { MotionProvider } from './motion/animated';
 import { BoardEmitContext } from './emit-context';
@@ -23,7 +23,7 @@ export const defaultStrings: UIStrings = {
 
 export interface DreamerContextValue {
   registry: Registry;
-  theme: ThemeTokens;
+  theme: CssTokens;
   /** Host-facing event sink. */
   onEvent?: (event: UIEvent) => void;
   /** Host-facing error sink. */
@@ -34,9 +34,9 @@ export interface DreamerContextValue {
 const DreamerContext = createContext<DreamerContextValue | null>(null);
 export interface DreamerProviderProps {
   registry: Registry;
-  theme?: ThemeName | ThemeTokens;
+  theme?: ThemeName | CssTokens;
   /** Per-token overrides on top of a named preset. */
-  themeOverrides?: ThemeTokens;
+  themeOverrides?: CssTokens;
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
   strings?: Partial<UIStrings>;

@@ -8,6 +8,8 @@ export const ErrorCodeSchema = z.enum([
   'bad-target',
   'depth-exceeded',
   'version-mismatch',
+  'theme-rejected',
+  'cue-cycle',
 ]);
 
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;

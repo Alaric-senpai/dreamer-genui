@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MotionFieldsSchema } from './motion';
+import { MotionFieldsSchema, EnterSchema } from './motion';
 
 // --- Figure kinds ---
 
@@ -28,6 +28,7 @@ const DiagramFigureSchema = z.object({
     label: z.string(),
     icon: z.string().optional(),
     note: z.string().optional(),
+    enter: EnterSchema.optional(),
   })),
   edges: z.array(z.object({
     from: z.string(),

@@ -16,7 +16,9 @@ export type NodeBase = z.infer<typeof NodeBaseSchema>;
 // Block variants (all defined before the recursive union)
 export const TextBlockSchema = NodeBaseSchema.extend({
   type: z.literal('text'),
-  variant: z.enum(['body', 'definition', 'heading', 'note']),
+  // `hero` is a large screen-owning statement, `kicker` a lead-in label,
+  // `quote` a styled quotation — used sparingly (prompt guide guidance).
+  variant: z.enum(['body', 'definition', 'heading', 'note', 'hero', 'kicker', 'quote']),
   content: z.array(InlineSchema),
 });
 
@@ -41,6 +43,8 @@ export const ChoicesBlockSchema = NodeBaseSchema.extend({
 
 export const StepsItemSchema = z.object({
   id: z.string(), title: z.string(), content: z.array(InlineSchema),
+  /** Each step may carry its own enter/trigger (§6.4). */
+  enter: EnterSchema.optional(),
 });
 export const StepsBlockSchema = NodeBaseSchema.extend({
   type: z.literal('steps'),

@@ -1,0 +1,30 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "summary",
+          "type": "text",
+          "variant": "definition",
+          "content": ["Diffusion spreads particles themselves; water is what moves in osmosis."],
+          "alt": "Diffusion summary text."
+        }
+      ]
+    },
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "wrap-up-card",
+          "type": "callout",
+          "tone": "info",
+          "title": "Key difference",
+          "content": ["Osmosis is diffusion of water."],
+          "enter": { "effect": "rise", "trigger": { "on": "cue", "id": "wrap-up" } }
+        }
+      ]
+    }
+  ]
+}

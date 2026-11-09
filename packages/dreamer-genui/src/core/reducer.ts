@@ -111,6 +111,11 @@ export function boardReducer(state: BoardState, op: Op): BoardState {
     case 'replace': return applyReplace(state, op);
     case 'update': return applyUpdate(state, op);
     case 'remove': return applyRemove(state, op);
+    // theme reduction lands with the theme resolver (M2); camera is
+    // presentation-only and never part of board state.
+    case 'theme':
+    case 'camera':
+      return state;
   }
 }
 

@@ -23,7 +23,7 @@ import '@testing-library/jest-dom/vitest';
 afterEach(cleanup);
 
 const FIXTURE = JSON.parse(
-  readFileSync(join(process.cwd(), 'fixtures/define-biology.json'), 'utf8')
+  readFileSync(join(process.cwd(), 'fixtures/define-term.json'), 'utf8')
 ) as Reply;
 
 function setup(reply: Reply = FIXTURE, onEvent?: (e: unknown) => void) {

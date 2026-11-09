@@ -106,5 +106,12 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
       }
       return { valid: true, op };
     }
+
+    // theme/camera ops are presentation-level (§6.8/§6.10); validity comes
+    // from the schema parse above. Theme policy enforcement (allowlists,
+    // contrast) lives in the theme resolver (M2 core).
+    case 'theme':
+    case 'camera':
+      return { valid: true, op };
   }
 }

@@ -1,0 +1,39 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "war-kicker",
+          "type": "text",
+          "variant": "kicker",
+          "content": ["A chapter of history"],
+          "enter": { "effect": "wipe", "order": 1 }
+        },
+        {
+          "id": "war-hero",
+          "type": "text",
+          "variant": "hero",
+          "content": ["The Long Drought"],
+          "enter": { "effect": "slam", "split": "chars", "order": 2 }
+        },
+        {
+          "id": "war-lede",
+          "type": "text",
+          "variant": "body",
+          "content": ["For years, the rains failed and the rivers thinned."],
+          "enter": { "effect": "typewriter", "order": 3 }
+        }
+      ]
+    },
+    {
+      "op": "theme",
+      "theme": {
+        "mood": "solemn",
+        "ambience": { "preset": "fog", "intensity": 0.6 },
+        "transition": { "duration": 900, "ease": "smooth" }
+      }
+    }
+  ]
+}

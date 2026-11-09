@@ -11,11 +11,16 @@ function loadFixture(name: string) {
 }
 
 const VALID = [
-  'define-biology.json',
-  'attach-botany.json',
+  'define-term.json',
+  'attach-explainer.json',
   'replace-new-topic.json',
+  'cued-narration.json',
+  'cue-before-node.json',
+  'theme-mood-shift.json',
+  'replace-with-theme.json',
+  'camera-moves.json',
   'diagram-radial.json',
-  'labeled-cell.json',
+  'labeled-art.json',
   'chart-bar.json',
   'math-chem.json',
   'lottie-basic.json',
@@ -23,9 +28,12 @@ const VALID = [
 ];
 
 const INVALID = [
-  'invalid-duplicate-id.json',      // duplicate node id (detected at board reducer, not schema)
+  'invalid-duplicate-id.json',        // duplicate node id (detected at board reducer)
   'invalid-unknown-type.json',        // unknown block type
   'invalid-depth-exceeded.json',      // attach depth exceeded
+  'invalid-cue-cycle.json',           // mutual `after` trigger cycle (cue engine, M2)
+  'invalid-disallowed-mood.json',     // unregistered mood (theme policy, M2)
+  'invalid-unreadable-palette.json',  // dark ink on dark bg (contrast guardrail, M2)
 ];
 
 describe('Valid fixtures parse correctly', () => {

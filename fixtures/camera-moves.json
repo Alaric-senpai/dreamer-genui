@@ -1,0 +1,32 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "hero-claim",
+          "type": "text",
+          "variant": "hero",
+          "content": ["Water is strange"],
+          "enter": { "effect": "slam", "split": "chars", "order": 1 }
+        },
+        {
+          "id": "evidence-list",
+          "type": "choices",
+          "prompt": ["Pick an oddity to explore"],
+          "layout": "list",
+          "intent": "navigate",
+          "items": [
+            { "id": "ice-floats", "label": "Ice floats on water", "ref": "oddities/ice" },
+            { "id": "high-heat", "label": "It absorbs a lot of heat before boiling", "ref": "oddities/heat" },
+            { "id": "universal-solvent", "label": "It dissolves almost anything", "ref": "oddities/solvent" }
+          ],
+          "enter": { "effect": "stagger", "trigger": { "on": "cue", "id": "evidence" }, "order": 2 }
+        }
+      ]
+    },
+    { "op": "camera", "to": "hero-claim", "zoom": 1.35, "duration": 1200, "ease": "snappy" },
+    { "op": "camera", "to": "overview" }
+  ]
+}

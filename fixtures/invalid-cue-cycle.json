@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "cycle-a",
+          "type": "text",
+          "variant": "body",
+          "content": ["Waits for node B"],
+          "enter": { "effect": "reveal", "trigger": { "on": "after", "node": "cycle-b" } }
+        },
+        {
+          "id": "cycle-b",
+          "type": "text",
+          "variant": "body",
+          "content": ["Waits for node A"],
+          "enter": { "effect": "reveal", "trigger": { "on": "after", "node": "cycle-a" } }
+        }
+      ]
+    }
+  ]
+}

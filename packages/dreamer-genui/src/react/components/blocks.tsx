@@ -6,7 +6,12 @@ import { useEmitEvent } from '../provider';
 
 // --- Text ---
 
+// Provisional tags for the new variants; the screen-owning `hero` layout and
+// the kinetic typography engine land with the M3 renderer work.
 const TEXT_VARIANTS: Record<TextBlock['variant'], ElementType> = {
+  hero: 'h1',
+  kicker: 'p',
+  quote: 'blockquote',
   heading: 'h3',
   definition: 'p',
   body: 'p',

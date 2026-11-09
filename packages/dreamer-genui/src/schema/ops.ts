@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { BlockSchema } from './blocks';
 import type { Block } from './blocks';
 import { NodeIdSchema } from './common';
-import { MotionFieldsSchema } from './motion';
+import { EaseNameSchema } from './motion';
+import { ThemeSpecSchema } from './theme';
+import type { ThemeSpec } from './theme';
 
 // Op: append
 export const AppendOpSchema = z.object({
@@ -23,6 +25,8 @@ export const AttachOpSchema = z.object({
     annotate: z.enum(['circle', 'underline', 'box', 'highlight', 'bracket', 'none']).optional(),
   }).optional(),
   mode: z.enum(['inline', 'drawer', 'spotlight']).optional().default('inline'),
+  /** Optional theme scoped to the detour; reverts on `return`. */
+  theme: ThemeSpecSchema.optional(),
 });
 export type AttachOp = z.infer<typeof AttachOpSchema>;
 
@@ -31,6 +35,8 @@ export const ReplaceOpSchema = z.object({
   op: z.literal('replace'),
   blocks: z.array(BlockSchema),
   title: z.string().optional(),
+  /** New board theme; `back()` restores the previous board's theme. */
+  theme: ThemeSpecSchema.optional(),
 });
 export type ReplaceOp = z.infer<typeof ReplaceOpSchema>;
 
@@ -49,6 +55,26 @@ export const RemoveOpSchema = z.object({
 });
 export type RemoveOp = z.infer<typeof RemoveOpSchema>;
 
+// Op: theme — tutor-driven mood/theme change (§6.8).
+export const ThemeOpSchema = z.object({
+  op: z.literal('theme'),
+  theme: ThemeSpecSchema,
+  scope: z.enum(['board', 'detour']).optional().default('board'),
+});
+export type ThemeOp = z.infer<typeof ThemeOpSchema>;
+
+// Op: camera — explicit virtual-camera move (§6.10). Presentation-only:
+// validated here, executed by the renderer, not reduced into board state.
+export const CameraOpSchema = z.object({
+  op: z.literal('camera'),
+  to: z.union([z.literal('overview'), z.string().min(1)]),
+  zoom: z.number().min(0.5).max(2).optional(),
+  duration: z.number().min(0).max(10_000).optional(),
+  ease: EaseNameSchema.optional(),
+});
+export type CameraOp = z.infer<typeof CameraOpSchema>;
+export type CameraTarget = z.infer<typeof CameraOpSchema>['to'];
+
 // All ops discriminated union
 export const OpSchema = z.discriminatedUnion('op', [
   AppendOpSchema,
@@ -56,5 +82,7 @@ export const OpSchema = z.discriminatedUnion('op', [
   ReplaceOpSchema,
   UpdateOpSchema,
   RemoveOpSchema,
+  ThemeOpSchema,
+  CameraOpSchema,
 ]);
 export type Op = z.infer<typeof OpSchema>;

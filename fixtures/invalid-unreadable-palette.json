@@ -1,0 +1,14 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "theme",
+      "theme": {
+        "tokens": {
+          "color": { "bg": "#0c0c10", "surface": "#101018", "ink": "#171720", "accent": "#1a1a26", "muted": "#101018" }
+        },
+        "transition": { "duration": 400 }
+      }
+    }
+  ]
+}

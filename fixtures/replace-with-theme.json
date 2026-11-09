@@ -1,0 +1,31 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "replace",
+      "title": "Water cycles with weather",
+      "theme": {
+        "mood": "playful",
+        "surface": "paper",
+        "ambience": "dust",
+        "intensity": 0.8
+      },
+      "blocks": [
+        {
+          "id": "cycle-kicker",
+          "type": "text",
+          "variant": "kicker",
+          "content": ["Next topic"],
+          "enter": { "effect": "wipe", "order": 1 }
+        },
+        {
+          "id": "cycle-hero",
+          "type": "text",
+          "variant": "hero",
+          "content": ["Where rain comes from"],
+          "enter": { "effect": "slam", "split": "words", "order": 2 }
+        }
+      ]
+    }
+  ]
+}

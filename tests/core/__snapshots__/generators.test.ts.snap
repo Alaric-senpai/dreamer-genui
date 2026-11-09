@@ -14,13 +14,15 @@ Reply format: { "v": 1, "ops": [...] }
 - **replace**: Start a new board. The old board is saved in history (max 50). Use 'title' to name the new topic.
 - **update**: Merge props into an existing node (props are merged into the block).
 - **remove**: Delete a node from the board.
+- **theme**: Shift the board's mood or tokens mid-lesson ({ "op": "theme", "theme": { "mood": "…" }, "scope": "board" | "detour" }). Moods must be registered names; full theme guidance is documented separately. Use sparingly — only when the emotional register genuinely changes.
+- **camera**: Ask for a virtual-camera move to a node ref or "overview" ({ "op": "camera", "to": "some-node", "zoom": 1.4 }). Presentation-level; the host may honour or ignore it.
 
 Node ids must be unique across the board (including attached detour blocks).
 
 
 ## Inline Marks
 
-- **highlight** (text, color?): highlight text with color token (accent|info|success|warn|danger|muted).
+- **highlight** (text, color?): highlight text with color token (accent|info|success|warn|danger|muted|ink).
 - **emphasis** (text): italic/bold emphasis.
 - **term** (text, definition): term with inline definition tooltip.
 - **focusable** (text, ref): clickable text that emits a 'focus' UIEvent with ref.
@@ -29,7 +31,11 @@ Node ids must be unique across the board (including attached detour blocks).
 
 ## Motion
 
-Use 'enter.effect' on blocks: reveal|rise|pop|sweep|draw|stagger|none. Set 'order' to group animations (same order = simultaneous). 'delay' and 'duration' are in ms. 'emphasis' (pulse|underline|glow) plays after enter. 'exit' (fade|shrink|none).
+Use 'enter.effect' on blocks: reveal|rise|pop|sweep|draw|stagger|none, plus text/kinetic effects typewriter|words|chars|slam|wipe|scribble|zoom|count-up|morph. Enter effects that split text accept 'split' (words|chars|lines). Set 'order' to group animations (same order = simultaneous). 'delay' and 'duration' are in ms. 'emphasis' (pulse|underline|glow|shake|bounce|wobble) plays after enter. 'exit' (fade|shrink|wipe-out|none).
+
+Enter triggers (§6.2): by default nodes enter as soon as they arrive ('start'). Optionally set 'enter.trigger' to gate entrance — { "on": "cue", "id": "beat-2" } waits for the host to fire that cue, { "on": "after", "node": "id" } waits for another node, { "on": "event", "node": "ref", "event": "focus" | "select" | "answer" } waits for a student interaction. Marks (highlight/emphasis/term/focusable/annotate/math) may also carry 'enter' with a trigger — e.g. circle a phrase exactly when it is being discussed.
+
+Text variants: 'hero' (large screen-owning statement — a few words), 'kicker' (small lead-in label), 'quote' (styled quotation). Use hero/kicker sparingly: one per screen at most.
 
 Reduced motion: all effects fall back to instant/unanimated. Always show all content even without animation.
 

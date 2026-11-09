@@ -12,4 +12,4 @@ export { renderInline } from './components/inline';
 export { NodeView, FallbackView } from './components/block-renderer';
 export { TextBlockView, ChoicesView, CalloutView, StepsView, GroupView } from './components/blocks';
 export { lightTheme, darkTheme, resolveTheme, TOKEN_KEYS } from '../theme/tokens';
-export type { ThemeTokens, ThemeName } from '../theme/tokens';
+export type { CssTokens, ThemeName } from '../theme/tokens';

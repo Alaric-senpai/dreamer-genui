@@ -180,3 +180,16 @@ Verification: `pnpm test` → **160/160 passing**; `tsc --noEmit` clean; build e
 - `apps/playground/`: Next 16.4 playground (fixture picker incl. invalid fixtures, live board, event/error logs, light/dark switch) — `next build` passes.
 - Tests: `tests/react/board.test.tsx` (13 tests). **Total: 173/173 passing; `tsc --noEmit` clean; `pnpm --filter dreamer-genui build` emits `dist/react/index.js` (esm/cjs/dts); `grep` confirms zero React imports in `schema/` and `core/`.**
 
+---
+
+## Brief update: AGENTS.md v2 (M0)
+
+**Naming ruling (M0).** The package remains **version 1**; the brief's depth additions (triggers, cue engine, theme/mood system, camera, ambience, kinetic text) are executed under the ordinary milestone names M0–M7 with no version bump and no `v2-`-prefixed artifacts. "AGENTS.md v2" appears only where it names the brief document itself.
+
+**GSAP licence check (§14, required before motion work).** Webflow acquired GreenSock (Oct 2024); since 30 Apr 2025 GSAP is 100% free for everyone, including all previously-paid plugins, under the GSAP Standard License. That license excludes use in a competing visual/no-code animation-builder product. `dreamer-genui` is not such a product; the playground is a developer demo, not a visual authoring tool. Result: **cleared to add GSAP as a lazy dependency** (deferred to M5 per plan). — Cost if wrong: re-evaluate if dreamer-genui ever ships a visual timeline editor.
+
+**Reviewer round 1 (old-brief M3) — all findings fixed, committed at `9831104`.** Majors: ChoicesView selection now component state (multi-select accumulates); resolver error bus bridges to host sinks via `Board` (pre-mount errors buffered and replayed to the first subscriber); live announcer keyed on newest node *id* (announces `replace`, richer text: marks/labels/alt). Minors: emission errors in effects not render; figure `alt` surfaced in fallback; term Space preventDefault; provider context memoized; playground loads a fixture on mount; fixtures de-duplicated (playground imports the repo `fixtures/`); `exit` documented as AnimatePresence-gated (M4).
+
+**Protocol migration policy for the updated brief.** The protocol is migrated in place (breaking to internal wiring, since there are no external consumers yet): `--dgui-*` token prefix renames to `--dg-*`; fixtures adopt the new names (`define-biology`→`define-term`, `attach-botany`→`attach-explainer`, new cue/theme/camera fixtures); the `theme` op reduces state (board or detour scope) while the `camera` op is presentation-only (validated, emits no state change beyond a clock/resolver surface). Every effect/easing/tempo value moves to a central presets table so the v3 reference pass can retune quickly.
+
+**User host edit noted (not agent-authored).** `apps/playground/app/layout.tsx` + `apps/playground/fonts/` (Montserrat + JetBrains Mono variable fonts, local) are the host font identity — flagged into the M3 theming work. The file currently has a comma-operator type error and is corrected during M3, not before.

@@ -7,8 +7,12 @@ import type { LibraryError } from 'dreamer-genui/core';
 
 // Fixtures import from the repo's canonical fixtures/ directory (the one the
 // test suite uses too — no duplicated copies).
-import defineBiology from '../../../fixtures/define-biology.json';
-import attachBotany from '../../../fixtures/attach-botany.json';
+import defineTerm from '../../../fixtures/define-term.json';
+import attachExplainer from '../../../fixtures/attach-explainer.json';
+import cuedNarration from '../../../fixtures/cued-narration.json';
+import themeMoodShift from '../../../fixtures/theme-mood-shift.json';
+import replaceWithTheme from '../../../fixtures/replace-with-theme.json';
+import cameraMoves from '../../../fixtures/camera-moves.json';
 import replaceNewTopic from '../../../fixtures/replace-new-topic.json';
 import streamingPartial from '../../../fixtures/streaming-partial.json';
 import mathChem from '../../../fixtures/math-chem.json';
@@ -16,10 +20,17 @@ import chartBar from '../../../fixtures/chart-bar.json';
 import invalidDuplicate from '../../../fixtures/invalid-duplicate-id.json';
 import invalidUnknownType from '../../../fixtures/invalid-unknown-type.json';
 import invalidDepth from '../../../fixtures/invalid-depth-exceeded.json';
+import invalidCueCycle from '../../../fixtures/invalid-cue-cycle.json';
+import invalidDisallowedMood from '../../../fixtures/invalid-disallowed-mood.json';
+import invalidUnreadablePalette from '../../../fixtures/invalid-unreadable-palette.json';
 
 const FIXTURES: Record<string, Reply> = {
-  'define-biology': defineBiology as Reply,
-  'attach-botany': attachBotany as Reply,
+  'define-term': defineTerm as Reply,
+  'attach-explainer': attachExplainer as Reply,
+  'cued-narration': cuedNarration as Reply,
+  'theme-mood-shift': themeMoodShift as Reply,
+  'replace-with-theme': replaceWithTheme as Reply,
+  'camera-moves': cameraMoves as Reply,
   'replace-new-topic': replaceNewTopic as Reply,
   'streaming-partial': streamingPartial as Reply,
   'math-chem': mathChem as Reply,
@@ -27,24 +38,27 @@ const FIXTURES: Record<string, Reply> = {
   'invalid-duplicate-id': invalidDuplicate as Reply,
   'invalid-unknown-type': invalidUnknownType as Reply,
   'invalid-depth-exceeded': invalidDepth as Reply,
+  'invalid-cue-cycle': invalidCueCycle as Reply,
+  'invalid-disallowed-mood': invalidDisallowedMood as Reply,
+  'invalid-unreadable-palette': invalidUnreadablePalette as Reply,
 };
 
 const registry = createRegistry();
 
 export default function Home() {
-  const [fixtureName, setFixtureName] = useState<string>('define-biology');
+  const [fixtureName, setFixtureName] = useState<string>('define-term');
   const [theme, setTheme] = useState<ThemeName>('light');
   const [events, setEvents] = useState<UIEvent[]>([]);
   const [errors, setErrors] = useState<LibraryError[]>([]);
   const board = useBoard();
   const loadedRef = useRef(false);
 
-  // Initial load: render define-biology with zero clicks (idempotent across StrictMode).
+  // Initial load: render define-term with zero clicks (idempotent across StrictMode).
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
     board.reset();
-    board.applyFinal(FIXTURES['define-biology']);
+    board.applyFinal(FIXTURES['define-term']);
   }, [board]);
 
   function loadFixture(name: string): void {

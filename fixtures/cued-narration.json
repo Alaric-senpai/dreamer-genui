@@ -1,0 +1,53 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "beat-heading",
+          "type": "text",
+          "variant": "heading",
+          "content": ["What is osmosis?"],
+          "enter": { "effect": "words", "split": "words", "trigger": { "on": "cue", "id": "beat-1" }, "order": 1 }
+        },
+        {
+          "id": "beat-definition",
+          "type": "text",
+          "variant": "definition",
+          "content": [
+            "Osmosis moves water across a ",
+            { "mark": "emphasis", "text": "semipermeable membrane" },
+            " — from a region of low solute concentration to high concentration."
+          ],
+          "enter": { "effect": "typewriter", "trigger": { "on": "cue", "id": "beat-2" } },
+          "alt": "Osmosis definition text."
+        },
+        {
+          "id": "beat-diagram",
+          "type": "steps",
+          "reveal": "sequential",
+          "items": [
+            { "id": "osm-step-1", "title": "Membrane", "content": ["Water molecules gather at the membrane."], "enter": { "effect": "wipe", "trigger": { "on": "cue", "id": "beat-3" } } },
+            { "id": "osm-step-2", "title": "Flow", "content": ["Water flows toward the higher solute concentration."], "enter": { "effect": "wipe", "trigger": { "on": "cue", "id": "beat-3" }, "order": 2 } },
+            { "id": "osm-step-3", "title": "Balance", "content": ["Flow slows as concentrations equalise."], "enter": { "effect": "wipe", "trigger": { "on": "after", "node": "osm-step-2" } } }
+          ],
+          "enter": { "effect": "stagger", "order": 3 }
+        },
+        {
+          "id": "beat-question",
+          "type": "choices",
+          "prompt": ["In osmosis, water moves toward…"],
+          "layout": "chips",
+          "intent": "navigate",
+          "items": [
+            { "id": "toward-solute", "label": "Higher solute concentration", "ref": "osm-factors/solute", "icon": "arrow-up" },
+            { "id": "toward-solvent", "label": "Lower solute concentration", "ref": "osm-factors/solvent", "icon": "arrow-down" },
+            { "id": "neither", "label": "Neither — it is random", "ref": "osm-factors/random", "icon": "shuffle" }
+          ],
+          "enter": { "effect": "pop", "trigger": { "on": "cue", "id": "beat-4" }, "order": 4 }
+        }
+      ]
+    }
+  ]
+}
