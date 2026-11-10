@@ -68,7 +68,7 @@ function LiveAnnouncer({ state, entry }: { state: BoardState; entry: EntryPlan }
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      className="dgui-live-region"
+      className="dg-live-region"
       style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}
     >
       {message}
@@ -96,25 +96,26 @@ export interface BoardProps {
 export function Board({ store, pacing, onEvent, onError, classNames }: BoardProps): ReactNode {
   useBoardVersion(store);
   const state = store.getState();
-  const { scheme, onEvent: providerOnEvent, onError: providerOnError } = useDreamer();
+  const { onEvent: providerOnEvent, onError: providerOnError } = useDreamer();
   const { theme } = state as { theme?: import('../core/theme').ResolvedTheme };
 
   const effectivePacing = pacing ?? defaultPacing(state);
   const entry = computeEntryPlan(state, effectivePacing);
 
-  // ---- theme variables (engine-resolved; library defaults < resolved board theme) ----
+  // ---- theme variables (§6.8 precedence: library defaults live in the base
+  // stylesheet's var() fallbacks < host CSS < resolved board theme, so the
+  // inline style only ever carries the RESOLVED theme tokens + transition knobs) ----
   const style = useMemo<CSSProperties>(() => {
-    const vars: CssTokens = { ...resolveTheme(scheme), ...(theme ? tokensToVars(theme.tokens) : {}) };
-    // Theme-transition knobs (§6.8: tween, never a cut) — consumed by the M3d
+    if (!theme) return {};
+    const vars: CssTokens = tokensToVars(theme.tokens);
+    // Theme-transition knobs (§6.8: tween, never a cut) — consumed by the base
     // stylesheet; reduced motion shortens to near-instant via the media query there.
-    if (theme) {
-      vars['--dg-theme-duration'] = `${theme.transition.duration}ms`;
-      vars['--dg-theme-ease'] = EASE_NAMES.has(theme.transition.ease) ? theme.transition.ease : 'smooth';
-    }
+    vars['--dg-theme-duration'] = `${theme.transition.duration}ms`;
+    vars['--dg-theme-ease'] = EASE_NAMES.has(theme.transition.ease) ? theme.transition.ease : 'smooth';
     const css: Record<string, string> = {};
     for (const [k, v] of Object.entries(vars)) css[k] = v;
     return css as CSSProperties;
-  }, [scheme, theme]);
+  }, [theme]);
 
   const entered = new Set(entry.entered);
   const orderedIds = Object.keys(state.nodes).filter((id) => entered.has(id));
@@ -156,21 +157,21 @@ export function Board({ store, pacing, onEvent, onError, classNames }: BoardProp
     <TempoContext.Provider value={tempo}>
     <BoardEmitContext.Provider value={emit}>
       <section
-        className={`dgui-board${classNames?.root ? ` ${classNames.root}` : ''}`}
+        className={`dg-board${classNames?.root ? ` ${classNames.root}` : ''}`}
         aria-label={state.title ?? 'Blackboard'}
         data-dg-mood={theme?.mood ?? undefined}
         data-dg-surface={theme?.surface ?? undefined}
         style={style}
       >
         <LiveAnnouncer state={state} entry={entry} />
-        <div className={`dgui-board-content${classNames?.content ? ` ${classNames.content}` : ''}`}>
-          {state.title && <h2 className="dgui-board-title">{state.title}</h2>}
+        <div className={`dg-board-content${classNames?.content ? ` ${classNames.content}` : ''}`}>
+          {state.title && <h2 className="dg-board-title">{state.title}</h2>}
           {orderedIds.map((id, i) => {
             const node = state.nodes[id];
             return node ? <NodeView key={id} node={node} docIndex={i} /> : null;
           })}
           {detour && (
-            <div className="dgui-detour" data-dg-detour="">
+            <div className="dg-detour" data-dg-detour="">
               {detour.blocks.map((block, i) => (
                 <NodeView key={block.id} node={asNode(block as never)} docIndex={i} />
               ))}

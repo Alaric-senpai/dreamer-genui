@@ -14,16 +14,16 @@ export function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
   switch (mark.mark) {
     case 'highlight':
       return (
-        <mark className="dgui-mark-highlight" data-color={mark.color ?? 'accent'}>
+        <mark className="dg-mark-highlight" data-color={mark.color ?? 'accent'}>
           {markText(mark.text)}
         </mark>
       );
     case 'emphasis':
-      return <em className="dgui-mark-emphasis">{markText(mark.text)}</em>;
+      return <em className="dg-mark-emphasis">{markText(mark.text)}</em>;
     case 'term':
       return (
         <span
-          className="dgui-mark-term"
+          className="dg-mark-term"
           role="button"
           tabIndex={0}
           title={mark.definition}
@@ -42,7 +42,7 @@ export function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
       );
     case 'focusable':
       return (
-        <button type="button" className="dgui-mark-focusable" onClick={() => emit({ type: 'focus', nodeId: mark.ref, label: markText(mark.text) })}>
+        <button type="button" className="dg-mark-focusable" onClick={() => emit({ type: 'focus', nodeId: mark.ref, label: markText(mark.text) })}>
           {markText(mark.text)}
         </button>
       );
@@ -53,14 +53,14 @@ export function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
       else if (mark.kind === 'box') style.border = '2px solid var(--dg-color-accent)';
       else style.textDecoration = 'underline'; // circle/bracket get SVG strokes in M5
       return (
-        <span className={`dgui-mark-annotate dgui-annotate-${mark.kind}`} data-color={mark.color} style={style}>
+        <span className={`dg-mark-annotate dg-annotate-${mark.kind}`} data-color={mark.color} style={style}>
           {markText(mark.text)}
         </span>
       );
     }
     case 'math':
       // KaTeX rendering lands in M6; plain text keeps content visible and safe.
-      return <code className="dgui-mark-math" data-tex={mark.tex}>{mark.tex}</code>;
+      return <code className="dg-mark-math" data-tex={mark.tex}>{mark.tex}</code>;
   }
 }
 

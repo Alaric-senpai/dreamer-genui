@@ -34,7 +34,7 @@ function setup(reply: ReplyLike = cuedReply(), props?: { pacing?: 'cued' | 'auto
       <Board store={store} {...props} />
     </DreamerProvider>
   );
-  const content = ui.container.querySelector('.dgui-board-content') as HTMLElement;
+  const content = ui.container.querySelector('.dg-board-content') as HTMLElement;
   return { store, content, ...ui };
 }
 
@@ -61,7 +61,7 @@ describe('not mounted until triggered (§6.3)', () => {
         <Board store={store} />
       </DreamerProvider>
     );
-    const content = ui.container.querySelector('.dgui-board-content') as HTMLElement;
+    const content = ui.container.querySelector('.dg-board-content') as HTMLElement;
     act(() => store.applyFinal({
       v: 1,
       ops: [{ op: 'append', blocks: [text('crawler', { effect: 'words', trigger: { on: 'cue', id: 'late-beat' } })] }],
@@ -144,7 +144,7 @@ describe('not mounted until triggered (§6.3)', () => {
         ops: [{ op: 'attach', to: 'target', blocks: [text('detour-1')] }],
       })
     );
-    const detourEl = container.querySelector('.dgui-detour') as HTMLElement;
+    const detourEl = container.querySelector('.dg-detour') as HTMLElement;
     expect(detourEl).not.toBeNull();
     expect(within(detourEl).queryByText('detour-1')).toBeInTheDocument();
   });
@@ -153,7 +153,7 @@ describe('not mounted until triggered (§6.3)', () => {
 describe('theme on the board root (§6.8 render side)', () => {
   test('a theme op sets --dg-* variables and data-dg-mood on the board section', () => {
     const { store, container } = setup({ v: 1, ops: [{ op: 'append', blocks: [text('plain')] }] });
-    const section = () => container.querySelector('section.dgui-board') as HTMLElement;
+    const section = () => container.querySelector('section.dg-board') as HTMLElement;
     const before = section().style.getPropertyValue('--dg-motion-speed');
     act(() =>
       store.applyFinal({
@@ -177,11 +177,11 @@ describe('theme on the board root (§6.8 render side)', () => {
     expect(section().style.getPropertyValue('--dg-theme-ease')).toBe('snappy');
   });
 
-  test('no theme op → engine default vars (light) with no mood attribute', () => {
+  test('no theme op → no inline theme vars (library defaults live in the stylesheet fallbacks, §6.8 precedence)', () => {
     const { container } = setup({ v: 1, ops: [{ op: 'append', blocks: [text('plain')] }] });
-    const section = container.querySelector('section.dgui-board') as HTMLElement;
+    const section = container.querySelector('section.dg-board') as HTMLElement;
     expect(section.getAttribute('data-dg-mood')).toBeNull();
-    expect(section.style.getPropertyValue('--dg-color-bg')).toBeTruthy();
-    expect(section.style.getPropertyValue('--dg-motion-speed')).toBe('1');
+    // host CSS must be able to sit above library defaults: no inline default map
+    expect(section.style.getPropertyValue('--dg-color-bg')).toBe('');
   });
 });

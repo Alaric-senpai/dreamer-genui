@@ -142,7 +142,7 @@ describe('reduced motion', () => {
       expect(screen.getByText(/Biology is the study of/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Microbiology/i })).toBeInTheDocument();
       // ...and the node wrappers are plain divs — no inline animation styles
-      const wrappers = Array.from(container.querySelectorAll('.dgui-node'));
+      const wrappers = Array.from(container.querySelectorAll('.dg-node'));
       expect(wrappers).toHaveLength(2);
       for (const el of wrappers) {
         expect(el.getAttribute('style')).toBeNull();

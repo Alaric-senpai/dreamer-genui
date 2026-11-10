@@ -10,10 +10,14 @@
     "./schema": "./dist/schema/index.js",
     "./schema/*": "./dist/schema/*.js",
     "./core": "./dist/core/index.js",
-    "./react": "./dist/react/index.js"
+    "./react": "./dist/react/index.js",
+    "./styles.css": "./styles/base.css",
+    "./tailwind.css": "./styles/tailwind.css",
+    "./tailwind-preset": "./styles/tailwind-preset.cjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "styles"
   ],
   "scripts": {
     "build": "tsup",

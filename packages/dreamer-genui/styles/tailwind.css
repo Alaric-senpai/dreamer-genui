@@ -1,0 +1,36 @@
+/*
+ * dreamer-genui Tailwind v4 bridge (§7.6).
+ *
+ * Import this AFTER the host's Tailwind import. It maps the library's
+ * `--dg-*` variables into Tailwind theme values (and back), so the board
+ * adopts the host's global Tailwind configuration automatically — the host
+ * does NOT need to add the library to `@source`. Hosts can remap any token.
+ *
+ * Layering: `@theme inline` publishes host Tailwind tokens as CSS variables;
+ * the board's base stylesheet consumes `--dg-*` with inline fallbacks, so a
+ * host that defines `--dg-color-bg` (e.g. through `@theme` or plain CSS)
+ * overrides the library defaults without touching inline styles.
+ * The resolved board theme (tutor op) lands as inline styles and wins over
+ * both — the §6.8 precedence chain.
+ */
+@import 'tailwindcss';
+
+/* Library tokens published to Tailwind's theme scope (use as utilities:
+ * bg-board-bg, text-board-ink, font-board-display, rounded-board-md, ...). */
+@theme inline {
+  --color-board-bg: var(--dg-color-bg, #f7f7f5);
+  --color-board-surface: var(--dg-color-surface, #ffffff);
+  --color-board-ink: var(--dg-color-ink, #1f1f1d);
+  --color-board-muted: var(--dg-color-muted, #565650);
+  --color-board-accent: var(--dg-color-accent, #2e5dc4);
+  --color-board-info: var(--dg-color-info, #2563eb);
+  --color-board-success: var(--dg-color-success, #15803d);
+  --color-board-warn: var(--dg-color-warn, #b45309);
+  --color-board-danger: var(--dg-color-danger, #b91c1c);
+  --font-board-display: var(--dg-font-display, system-ui, -apple-system, sans-serif);
+  --font-board-body: var(--dg-font-body, system-ui, -apple-system, sans-serif);
+  --font-board-mono: var(--dg-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  --radius-board-sm: var(--dg-radius-sm, 4px);
+  --radius-board-md: var(--dg-radius-md, 8px);
+  --radius-board-lg: var(--dg-radius-lg, 16px);
+}

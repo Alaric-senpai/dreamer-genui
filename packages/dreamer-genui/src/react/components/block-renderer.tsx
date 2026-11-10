@@ -15,7 +15,7 @@ export function FallbackView({ node }: { node: Node }): ReactNode {
   const block = node.block as { alt?: string; figure?: { alt?: string } };
   const text = node.altText ?? block.alt ?? block.figure?.alt ?? `(unable to render "${node.id}")`;
   return (
-    <div className="dgui-fallback" data-node-id={node.id}>
+    <div className="dg-fallback" data-node-id={node.id}>
       {text}
     </div>
   );
@@ -109,7 +109,7 @@ export function NodeView({ node, docIndex, nested = false }: NodeViewProps): Rea
       exit={block.exit}
       docIndex={docIndex}
       data-node-id={node.id}
-      className={`dgui-node dgui-node-${node.state}`}
+      className={`dg-node dg-node-${node.state}`}
     >
       <DefaultBlockView node={node} nested={nested} />
     </Animated>

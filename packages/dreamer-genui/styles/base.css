@@ -1,0 +1,265 @@
+/*
+ * dreamer-genui base stylesheet (§7.6).
+ *
+ * Plain CSS in `@layer dreamer-genui`, at deliberately low specificity, so
+ * host utilities and overrides always win. Every colour/shape/motion value
+ * is a `--dg-*` variable with its DEFAULT inline as the var() fallback —
+ * the library defaults live here (not on the board's inline style), so
+ * host CSS/Tailwind variables can override them (§6.8 precedence:
+ * library defaults < host CSS < resolved board theme).
+ * Tone/surface specifics are data-* hooks; tutors never write CSS.
+ */
+
+/* fine-grained var use: --dg-texture-* reserved for M4 ambience/surface skins */
+@layer dreamer-genui;
+
+@layer dreamer-genui {
+  /* ---------- board root ---------- */
+  .dg-board {
+    position: relative;
+    background-color: var(--dg-color-bg, #f7f7f5);
+    color: var(--dg-color-ink, #1f1f1d);
+    font-family: var(--dg-font-body, system-ui, -apple-system, sans-serif);
+    font-size: var(--dg-text-body, 1.05rem);
+    line-height: var(--dg-line-height, 1.55);
+    min-height: 100%;
+    /* theme changes tween (§6.8), never a hard cut; knobs come from the resolved theme op */
+    transition:
+      background-color var(--dg-theme-duration, 800ms) var(--dg-theme-ease, ease),
+      color var(--dg-theme-duration, 800ms) var(--dg-theme-ease, ease),
+      border-color var(--dg-theme-duration, 800ms) var(--dg-theme-ease, ease);
+  }
+
+  .dg-board-content {
+    padding: calc(1.25rem * var(--dg-space-scale, 1));
+    display: flex;
+    flex-direction: column;
+    gap: calc(1.1rem * var(--dg-space-scale, 1));
+    max-width: 42rem;
+    margin-inline: auto;
+  }
+
+  .dg-board-title {
+    font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
+    font-size: var(--dg-text-heading, clamp(1.7rem, 5.5vw, 2.4rem));
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+
+  /* ---------- text variants (§9: big scale contrast, no card stacking) ---------- */
+  .dg-text {
+    margin: 0;
+    font-family: var(--dg-font-body, system-ui, -apple-system, sans-serif);
+  }
+  .dg-text-hero {
+    font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
+    font-size: var(--dg-text-hero, clamp(2.5rem, 9vw, 4.5rem));
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+  .dg-text-heading {
+    font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
+    font-size: var(--dg-text-heading, clamp(1.7rem, 5.5vw, 2.4rem));
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  .dg-text-kicker {
+    font-size: var(--dg-text-kicker, 0.8rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--dg-color-muted, #565650);
+  }
+  .dg-text-quote {
+    font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
+    font-size: var(--dg-text-heading, clamp(1.7rem, 5.5vw, 2.4rem));
+    font-style: italic;
+    font-weight: 500;
+    border-left: 3px solid var(--dg-color-accent, #2e5dc4);
+    padding-left: 0.75em;
+  }
+  .dg-text-definition {
+    border-left: 2px solid var(--dg-color-border, #e2e2dc);
+    padding-left: 0.75em;
+  }
+  .dg-text-note {
+    font-size: var(--dg-text-small, 0.875rem);
+    color: var(--dg-color-muted, #565650);
+  }
+
+  /* ---------- node shells ---------- */
+  .dg-node {
+    /* entrance transforms are all motion-library driven; shell stays still */
+    min-width: 0;
+  }
+
+  /* ---------- inline marks ---------- */
+  .dg-mark-highlight {
+    background: linear-gradient(transparent 12%, var(--dg-mark-color, var(--dg-color-accent, #2e5dc4)) 12%, var(--dg-mark-color, var(--dg-color-accent, #2e5dc4)) 92%, transparent 92%);
+    padding: 0.05em 0.12em;
+    border-radius: var(--dg-radius-sm, 4px);
+  }
+  .dg-mark-highlight[data-color='info'] { --dg-mark-color: var(--dg-color-info, #2563eb); }
+  .dg-mark-highlight[data-color='success'] { --dg-mark-color: var(--dg-color-success, #15803d); }
+  .dg-mark-highlight[data-color='warn'] { --dg-mark-color: var(--dg-color-warn, #b45309); }
+  .dg-mark-highlight[data-color='danger'] { --dg-mark-color: var(--dg-color-danger, #b91c1c); }
+  .dg-mark-highlight[data-color='muted'] { --dg-mark-color: var(--dg-color-muted, #565650); }
+  .dg-mark-emphasis { font-style: italic; }
+
+  .dg-mark-term {
+    cursor: help;
+    border-bottom: 2px dotted var(--dg-color-accent, #2e5dc4);
+  }
+  .dg-mark-focusable {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--dg-color-accent, #2e5dc4);
+    text-underline-offset: 0.2em;
+  }
+  .dg-mark-math,
+  code.dg-mark-math {
+    font-family: var(--dg-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 0.92em;
+    background: var(--dg-color-surface, #ffffff);
+    border: 1px solid var(--dg-color-border, #e2e2dc);
+    border-radius: var(--dg-radius-sm, 4px);
+    padding: 0.1em 0.3em;
+  }
+
+  /* ---------- choices ---------- */
+  .dg-choices {
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.5rem * var(--dg-space-scale, 1));
+    align-items: stretch;
+  }
+  .dg-choices-prompt { margin: 0 0 0.25rem; }
+  .dg-choices-chips { flex-direction: row; flex-wrap: wrap; }
+  .dg-choices-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+
+  .dg-choice {
+    appearance: none;
+    background: none;
+    border: 1.5px solid var(--dg-color-border, #e2e2dc);
+    border-radius: var(--dg-radius-md, 8px);
+    padding: 0.55em 0.9em;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    transition: border-color var(--dg-theme-duration, 800ms) var(--dg-theme-ease, ease), background-color 160ms ease;
+  }
+  .dg-choice:hover { border-color: var(--dg-color-accent, #2e5dc4); }
+  .dg-choice:focus-visible {
+    outline: 2px solid var(--dg-color-accent, #2e5dc4);
+    outline-offset: 2px;
+  }
+  .dg-choice-selected {
+    border-color: var(--dg-color-accent, #2e5dc4);
+    background: color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 12%, transparent);
+  }
+  .dg-choice-label { font-weight: 600; }
+  .dg-choice-caption { font-size: var(--dg-text-small, 0.875rem); color: var(--dg-color-muted, #565650); }
+  .dg-choice-icon { margin-right: 0.35em; }
+
+  /* ---------- callout ---------- */
+  .dg-callout {
+    border-left: 3px solid var(--dg-callout-color, var(--dg-color-info, #2563eb));
+    background: color-mix(in oklab, var(--dg-callout-color, var(--dg-color-info, #2563eb)) 8%, transparent);
+    border-radius: 0 var(--dg-radius-md, 8px) var(--dg-radius-md, 8px) 0;
+    padding: 0.7em 1em;
+  }
+  .dg-callout[data-tone-category='success'] { color: inherit; }
+  .dg-callout-success { --dg-callout-color: var(--dg-color-success, #15803d); }
+  .dg-callout-warn { --dg-callout-color: var(--dg-color-warn, #b45309); }
+  .dg-callout-danger { --dg-callout-color: var(--dg-color-danger, #b91c1c); }
+  .dg-callout-info { --dg-callout-color: var(--dg-color-info, #2563eb); }
+  .dg-callout-title { display: block; margin-bottom: 0.2em; }
+
+  /* ---------- steps ---------- */
+  .dg-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.65em; }
+  .dg-step { display: flex; gap: 0.7em; align-items: baseline; }
+  .dg-step-number {
+    flex: none;
+    font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
+    font-weight: 700;
+    color: var(--dg-color-accent, #2e5dc4);
+  }
+  .dg-step-title { font-weight: 600; }
+  .dg-step-content { margin-top: 0.15em; }
+
+  /* ---------- group ---------- */
+  .dg-group-stack { display: flex; flex-direction: column; gap: calc(0.75rem * var(--dg-space-scale, 1)); }
+  .dg-group-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: calc(0.75rem * var(--dg-space-scale, 1)); align-items: baseline; }
+  .dg-group-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: calc(0.75rem * var(--dg-space-scale, 1)); }
+
+  /* ---------- detour ---------- */
+  .dg-detour { position: relative; }
+
+  /* ---------- emphasis classes (driver-produced; keyframes stay transform/opacity) ---------- */
+  .dg-emphasis-pulse { animation: dg-pulse 700ms var(--dg--ease-smooth, ease) 1; }
+  .dg-emphasis-underline {
+    text-decoration: underline;
+    text-decoration-color: var(--dg-color-accent, #2e5dc4);
+    text-decoration-thickness: 0.14em;
+    text-underline-offset: 0.18em;
+  }
+  .dg-emphasis-glow { animation: dg-pulse 900ms ease-in-out infinite alternate; }
+  .dg-emphasis-shake { animation: dg-shake 420ms ease-in-out 1; }
+  .dg-emphasis-bounce { animation: dg-bounce 600ms cubic-bezier(0.34, 1.56, 0.64, 1) infinite; }
+  .dg-emphasis-wobble { animation: dg-wobble 700ms ease-in-out infinite; }
+
+  @keyframes dg-pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.055); }
+  }
+  @keyframes dg-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3%); }
+    60% { transform: translateX(3%); }
+    80% { transform: translateX(-1.5%); }
+  }
+  @keyframes dg-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14%); }
+  }
+  @keyframes dg-wobble {
+    0%, 100% { transform: rotate(0deg); }
+    30% { transform: rotate(-1.6deg); }
+    70% { transform: rotate(1.6deg); }
+  }
+
+  /* ---------- surfaces (port of surface data-* hooks; tokens still win) ---------- */
+  [data-dg-surface='chalkboard'] {
+    background-image: radial-gradient(ellipse 120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.22) 100%);
+  }
+  [data-dg-surface='paper'] {
+    background-image: radial-gradient(ellipse 100% 80% at 50% 0%, rgba(255, 253, 244, 0.35), transparent 60%);
+  }
+
+  /* ---------- reduced motion (§7.7): calm and instant, content identical ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    .dg-board {
+      --dg-theme-duration: 1ms;
+    }
+    .dg-board *,
+    .dg-board {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
+  }
+}

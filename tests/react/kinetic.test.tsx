@@ -93,8 +93,8 @@ describe('splitting effects — words / chars / slam (§9.1)', () => {
   test('marks never split — a highlight mark renders whole through MarkRenderer', () => {
     const mark = { mark: 'highlight', text: ['highlighted phrase'] } as Inline;
     const { container } = renderKinetic(['look at the ', mark, ' now'], 'words');
-    expect(container.querySelector('mark.dgui-mark-highlight')).toBeInTheDocument();
-    expect(container.querySelector('mark.dgui-mark-highlight')!.textContent).toBe('highlighted phrase');
+    expect(container.querySelector('mark.dg-mark-highlight')).toBeInTheDocument();
+    expect(container.querySelector('mark.dg-mark-highlight')!.textContent).toBe('highlighted phrase');
     // aria-label announces plain strings (the mark's own text is visible in the DOM tree)
     expect(ariaLabel(container)).toBe('look at the  now');
   });

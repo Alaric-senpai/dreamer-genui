@@ -32,21 +32,21 @@ export function TextBlockView({ block }: { block: TextBlock }): ReactNode {
   if (!block.enter) {
     // §9.2: kinetic by default — every variant has an appropriate entrance.
     return (
-      <Tag className={`dgui-text dgui-text-${block.variant}`} data-node-id={block.id}>
+      <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id}>
         <KineticText content={block.content} effect={DEFAULT_TEXT_ENTER[block.variant] ?? 'words'} />
       </Tag>
     );
   }
   if (isKineticEffect(effect)) {
     return (
-      <Tag className={`dgui-text dgui-text-${block.variant}`} data-node-id={block.id}>
+      <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id}>
         <KineticText content={block.content} effect={effect} split={block.enter.split === 'chars' ? 'chars' : block.enter.split === 'words' ? 'words' : undefined} />
       </Tag>
     );
   }
   // Container-level effect: the Animated wrapper in NodeView animates; render text plainly.
   return (
-    <Tag className={`dgui-text dgui-text-${block.variant}`} data-node-id={block.id}>
+    <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id}>
       {renderInline(block.content)}
     </Tag>
   );
@@ -75,20 +75,20 @@ export function ChoicesView({ block }: { block: ChoicesBlock }): ReactNode {
   }
 
   return (
-    <div className={`dgui-choices dgui-choices-${block.layout}`} role="group" data-node-id={block.id}>
-      {block.prompt && <p className="dgui-choices-prompt">{renderInline(block.prompt)}</p>}
+    <div className={`dg-choices dg-choices-${block.layout}`} role="group" data-node-id={block.id}>
+      {block.prompt && <p className="dg-choices-prompt">{renderInline(block.prompt)}</p>}
       {block.items.map((item: ChoicesBlock['items'][number]) => (
         <button
           key={item.id}
           type="button"
-          className={`dgui-choice${selected.has(item.id) ? ' dgui-choice-selected' : ''}`}
+          className={`dg-choice${selected.has(item.id) ? ' dg-choice-selected' : ''}`}
           data-ref={item.ref ?? item.id}
           aria-pressed={block.multi ? selected.has(item.id) : undefined}
           onClick={() => fire(item)}
         >
-          {item.icon && <span className="dgui-choice-icon" aria-hidden="true">{item.icon}</span>}
-          <span className="dgui-choice-label">{item.label}</span>
-          {item.caption && <span className="dgui-choice-caption">{item.caption}</span>}
+          {item.icon && <span className="dg-choice-icon" aria-hidden="true">{item.icon}</span>}
+          <span className="dg-choice-label">{item.label}</span>
+          {item.caption && <span className="dg-choice-caption">{item.caption}</span>}
         </button>
       ))}
     </div>
@@ -99,9 +99,9 @@ export function ChoicesView({ block }: { block: ChoicesBlock }): ReactNode {
 
 export function CalloutView({ block }: { block: CalloutBlock }): ReactNode {
   return (
-    <aside className={`dgui-callout dgui-callout-${block.tone}`} role="note" data-node-id={block.id}>
-      {block.title && <strong className="dgui-callout-title">{block.title}</strong>}
-      <div className="dgui-callout-content">{renderInline(block.content)}</div>
+    <aside className={`dg-callout dg-callout-${block.tone}`} role="note" data-node-id={block.id}>
+      {block.title && <strong className="dg-callout-title">{block.title}</strong>}
+      <div className="dg-callout-content">{renderInline(block.content)}</div>
     </aside>
   );
 }
@@ -110,13 +110,13 @@ export function CalloutView({ block }: { block: CalloutBlock }): ReactNode {
 
 export function StepsView({ block }: { block: StepsBlock }): ReactNode {
   return (
-    <ol className={`dgui-steps dgui-steps-${block.reveal}`} data-node-id={block.id}>
+    <ol className={`dg-steps dg-steps-${block.reveal}`} data-node-id={block.id}>
       {block.items.map((item: StepsBlock['items'][number], i: number) => (
-        <li key={item.id} className="dgui-step">
-          <span className="dgui-step-number" aria-hidden="true">{i + 1}</span>
+        <li key={item.id} className="dg-step">
+          <span className="dg-step-number" aria-hidden="true">{i + 1}</span>
           <div>
-            <strong className="dgui-step-title">{item.title}</strong>
-            <div className="dgui-step-content">{renderInline(item.content)}</div>
+            <strong className="dg-step-title">{item.title}</strong>
+            <div className="dg-step-content">{renderInline(item.content)}</div>
           </div>
         </li>
       ))}
@@ -128,7 +128,7 @@ export function StepsView({ block }: { block: StepsBlock }): ReactNode {
 
 export function GroupView({ block, children }: { block: GroupBlock; children: ReactNode }): ReactNode {
   return (
-    <div className={`dgui-group dgui-group-${block.layout}`} data-node-id={block.id}>
+    <div className={`dg-group dg-group-${block.layout}`} data-node-id={block.id}>
       {children}
     </div>
   );
