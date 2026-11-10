@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { UIEvent } from '../schema/events';
 import type { BoardState, LibraryError, Node } from '../core/types';
 import type { BoardStore } from './use-board';
 import { useBoardVersion } from './use-board';
 import { useDreamer } from './provider';
 import { BoardEmitContext } from './emit-context';
+import { computeEntryPlan, defaultPacing, type EntryPlan, type Pacing } from '../core/cues';
+import { resolveTheme, tokensToVars, type CssTokens } from '../theme/tokens';
 import { NodeView } from './components/block-renderer';
+
+/** Bridge a schema block into the renderer's plain-Node shape for detours/groups. */
+function asNode(block: { id: string; alt?: string } & Record<string, unknown>): Node {
+  return { id: block.id, block: block as Node['block'], state: 'complete', altText: block.alt };
+}
 
 /** Keys whose values carry announcement-worthy text (strings, inline marks,
  * choice labels, step titles, alt fallbacks). Deliberately excludes ids/types. */
@@ -33,27 +40,24 @@ function nodeText(node: Node): string {
   return parts.join(' ');
 }
 
-function LiveAnnouncer({ state }: { state: BoardState }): ReactNode {
-  const nodes = Object.values(state.nodes);
-  const last = nodes[nodes.length - 1];
-  const lastId = last !== undefined ? last.id : null;
-  const [message, setMessage] = useState('');
+/** Live region announces the newest *entered* node (§7.7: unentered nodes stay silent). */
+function LiveAnnouncer({ state, entry }: { state: BoardState; entry: EntryPlan }): ReactNode {
   const announcedRef = useRef<string | null>(null);
-  // Latest state without re-subscribing the effect per render (synced in an
-  // effect that runs before the announcement effect, declaration order).
-  const stateRef = useRef<BoardState>(state);
+  const [message, setMessage] = useState('');
+  const latest = useRef({ state, entry });
   useEffect(() => {
-    stateRef.current = state;
+    latest.current = { state, entry };
   });
 
-  // Announce whenever the newest node id changes — covers append AND replace
-  // (replace lowers the node count, so a count-based check would stay silent).
+  // Announce the last newly-entered node id in document order — covers append,
+  // replace (node count can drop) and cue-gated entrances.
+  const lastEnteredId = entry.entered[entry.entered.length - 1];
   useEffect(() => {
-    if (lastId === null || lastId === announcedRef.current) return;
-    announcedRef.current = lastId;
-    const node = stateRef.current.nodes[lastId];
-    setMessage(node ? nodeText(node) : lastId);
-  }, [lastId]);
+    if (lastEnteredId === undefined || lastEnteredId === announcedRef.current) return;
+    announcedRef.current = lastEnteredId;
+    const node = latest.current.state.nodes[lastEnteredId];
+    setMessage(node ? nodeText(node) : lastEnteredId);
+  }, [lastEnteredId]);
 
   return (
     <div
@@ -70,22 +74,41 @@ function LiveAnnouncer({ state }: { state: BoardState }): ReactNode {
 
 export interface BoardProps {
   store: BoardStore;
+  /** "cued" | "auto"; defaults to cued once any node uses a cue trigger, else auto (§6.3). */
+  pacing?: Pacing;
   /** Optional board-level sinks. Both provider-level and board-level sinks fire. */
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
+  /** Slot overrides (Tailwind strings welcome; merged with the library classes). */
+  classNames?: { root?: string; content?: string };
 }
 
 /**
- * The classroom blackboard: renders the current board state in insertion
- * order, with enter animations sequenced by `enter.order`, a polite live
- * region for board changes, and resolver errors/interaction events bridged
- * to the provider and board-level sinks.
+ * The classroom blackboard (M3a): renders only the nodes whose entry gate has
+ * opened (not mounted until triggered, §6.3), the open detour inline, and the
+ * engine-resolved theme as `--dg-*` variables scoped to the board root (§6.8).
+ * Enter animation sequencing is the motion layer (M3b+).
  */
-export function Board({ store, onEvent, onError }: BoardProps): ReactNode {
+export function Board({ store, pacing, onEvent, onError, classNames }: BoardProps): ReactNode {
   useBoardVersion(store);
   const state = store.getState();
-  const { theme, onEvent: providerOnEvent, onError: providerOnError } = useDreamer();
-  const nodes = Object.values(state.nodes);
+  const { scheme, onEvent: providerOnEvent, onError: providerOnError } = useDreamer();
+  const { theme } = state as { theme?: import('../core/theme').ResolvedTheme };
+
+  const effectivePacing = pacing ?? defaultPacing(state);
+  const entry = computeEntryPlan(state, effectivePacing);
+
+  // ---- theme variables (engine-resolved; library defaults < resolved board theme) ----
+  const style = useMemo<CSSProperties>(() => {
+    const vars: CssTokens = { ...resolveTheme(scheme), ...(theme ? tokensToVars(theme.tokens) : {}) };
+    const css: Record<string, string> = {};
+    for (const [k, v] of Object.entries(vars)) css[k] = v;
+    return css as CSSProperties;
+  }, [scheme, theme]);
+
+  const entered = new Set(entry.entered);
+  const orderedIds = Object.keys(state.nodes).filter((id) => entered.has(id));
+  const detour = state.detours[state.detours.length - 1];
 
   // Interactive components emit onto the board's events bus; the bridge
   // below forwards every bus event to both the provider and board sinks.
@@ -99,8 +122,8 @@ export function Board({ store, onEvent, onError }: BoardProps): ReactNode {
   });
 
   // Bridge the resolver buses to the host-facing sinks: engine errors
-  // (duplicate-id, unknown-type, depth-exceeded...) must reach onError (§6.8),
-  // and rendered components' events reach onEvent.
+  // (duplicate-id, unknown-type...) must reach onError (§6.12), and rendered
+  // components' events reach onEvent.
   useEffect(() => {
     const offEvent: () => void = store.events.subscribe((event) => {
       sinksRef.current.providerOnEvent?.(event);
@@ -119,16 +142,26 @@ export function Board({ store, onEvent, onError }: BoardProps): ReactNode {
   return (
     <BoardEmitContext.Provider value={emit}>
       <section
-        className="dgui-board"
+        className={`dgui-board${classNames?.root ? ` ${classNames.root}` : ''}`}
         aria-label={state.title ?? 'Blackboard'}
-        style={{ background: theme['--dgui-color-bg'], color: theme['--dgui-color-fg'], fontFamily: theme['--dgui-font-family'] }}
+        data-dg-mood={theme?.mood ?? undefined}
+        data-dg-surface={theme?.surface ?? undefined}
+        style={style}
       >
-        {state.title && <h2 className="dgui-board-title">{state.title}</h2>}
-        <LiveAnnouncer state={state} />
-        <div className="dgui-board-content">
-          {nodes.map((node, i) => (
-            <NodeView key={node.id} node={node} docIndex={i} />
-          ))}
+        <LiveAnnouncer state={state} entry={entry} />
+        <div className={`dgui-board-content${classNames?.content ? ` ${classNames.content}` : ''}`}>
+          {state.title && <h2 className="dgui-board-title">{state.title}</h2>}
+          {orderedIds.map((id, i) => {
+            const node = state.nodes[id];
+            return node ? <NodeView key={id} node={node} docIndex={i} /> : null;
+          })}
+          {detour && (
+            <div className="dgui-detour" data-dg-detour="">
+              {detour.blocks.map((block, i) => (
+                <NodeView key={block.id} node={asNode(block as never)} docIndex={i} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </BoardEmitContext.Provider>

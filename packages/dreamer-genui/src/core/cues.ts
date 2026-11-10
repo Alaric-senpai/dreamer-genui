@@ -22,6 +22,19 @@ import type { UIEvent } from '../schema/events';
 
 export type Pacing = 'cued' | 'auto';
 
+/**
+ * Board pacing when the host does not set one explicitly (§6.3):
+ * "cued" once any node uses a cue trigger, "auto" otherwise.
+ */
+export function defaultPacing(state: BoardState): Pacing {
+  for (const node of Object.values(state.nodes)) {
+    const trigger = (node.block as { enter?: { trigger?: { on?: string } } }).enter?.trigger;
+    if (trigger && trigger.on === 'cue') return 'cued';
+  }
+  return 'auto';
+}
+
+
 export interface EntryPlan {
   entered: string[];
   pending: string[];

@@ -11,7 +11,7 @@ import { computeEntryPlan, fireCue, flushAll, seekTo, signalEvent, newlyEntered,
 
 import type { Op } from '../schema/ops';
 
-interface ResolverOptions {
+export interface ResolverOptions {
   /** Registry used to resolve block types. Defaults to a fresh built-ins registry. */
   registry?: Registry;
   /** Called for errors (validation, unknown type...). Also routed to errorBus. */

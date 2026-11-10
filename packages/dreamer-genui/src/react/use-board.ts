@@ -1,5 +1,5 @@
 import { useMemo, useRef, useSyncExternalStore } from 'react';
-import { BoardResolver, type ReplyLike } from '../core/resolver';
+import { BoardResolver, type ResolverOptions, type ReplyLike } from '../core/resolver';
 import type { BoardState, LibraryError, ResolvedOp } from '../core/types';
 import type { UIEvent } from '../schema/events';
 import type { Reply } from '../schema/envelope';
@@ -46,7 +46,19 @@ export interface BoardStore {
   readonly errors: EventSink<LibraryError>;
 }
 
-export function createBoardStore(resolver: BoardResolver = new BoardResolver()): BoardStore {
+export interface CreateBoardStoreOptions extends ResolverOptions {
+  /** Pre-built resolver instead of the default one (overrides the other options). */
+  resolver?: BoardResolver;
+}
+
+/**
+ * Create a board store around a BoardResolver. Configuration (registry,
+ * onError, theme policy/allowlists/baseline) lives here — at engine level —
+ * because ops may be applied before React ever renders (streaming, SSR data).
+ * The provider stays presentation-level; see DECISIONS.md M3 ruling.
+ */
+export function createBoardStore(options: CreateBoardStoreOptions | BoardResolver = {}): BoardStore {
+  const resolver = options instanceof BoardResolver ? options : (options.resolver ?? new BoardResolver(options));
   const listeners = new Set<() => void>();
   let version = 0;
 

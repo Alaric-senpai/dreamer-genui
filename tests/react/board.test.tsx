@@ -201,19 +201,18 @@ describe('themes', () => {
     for (const key of Object.keys(light)) {
       expect(dark[key]).toBeDefined();
     }
-    expect(dark['--dgui-color-bg']).not.toBe(light['--dgui-color-bg']);
+    expect(dark['--dg-color-bg']).not.toBe(light['--dg-color-bg']);
   });
 
-  test('DreamerProvider applies theme tokens as CSS variables on its root', () => {
+  test('DreamerProvider resolves the colour scheme and renders children', () => {
     const registry = createRegistry();
     const { container } = render(
-      <DreamerProvider registry={registry} theme="dark">
-        <div>child</div>
+      <DreamerProvider registry={registry} colorScheme="auto">
+        <div data-testid="child">child</div>
       </DreamerProvider>
     );
-    const root = container.firstElementChild as HTMLElement;
-    expect(root.getAttribute('data-dreamer-root')).toBe('');
-    expect(root.style.getPropertyValue('--dgui-color-bg')).toBe('#0f1115');
+    expect(screen.getByTestId('child')).toBeInTheDocument();
+    // Board-level variable application is covered in board-gating.test.tsx (§6.8).
   });
 });
 

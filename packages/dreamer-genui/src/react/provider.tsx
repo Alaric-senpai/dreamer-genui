@@ -1,10 +1,8 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import type { Registry } from '../core/registry';
 import type { LibraryError } from '../core/types';
 import type { UIEvent } from '../schema/events';
-import type { ThemeName, CssTokens } from '../theme/tokens';
-import { resolveTheme } from '../theme/tokens';
 import { MotionProvider } from './motion/animated';
 import { BoardEmitContext } from './emit-context';
 
@@ -21,51 +19,74 @@ export const defaultStrings: UIStrings = {
   hint: 'Hint',
 };
 
+export type ColorScheme = 'auto' | 'light' | 'dark';
+
 export interface DreamerContextValue {
   registry: Registry;
-  theme: CssTokens;
-  /** Host-facing event sink. */
-  onEvent?: (event: UIEvent) => void;
-  /** Host-facing error sink. */
-  onError?: (err: LibraryError) => void;
+  /** 'auto' resolves via the OS colour scheme (media query, SSR-safe default light). */
+  colorScheme: ColorScheme;
+  scheme: 'light' | 'dark';
   strings: UIStrings;
+  /** Host-facing sinks for events emitted outside any <Board>. */
+  onEvent?: (event: UIEvent) => void;
+  onError?: (err: LibraryError) => void;
 }
 
 const DreamerContext = createContext<DreamerContextValue | null>(null);
+
 export interface DreamerProviderProps {
   registry: Registry;
-  theme?: ThemeName | CssTokens;
-  /** Per-token overrides on top of a named preset. */
-  themeOverrides?: CssTokens;
+  /** Engine-level configuration (theme policy/allowlists/baseline, registry, error sink)
+   *  is passed at store creation: `createBoardStore({ registry, theme: {...} })` — ops
+   *  can arrive before React renders, so policy must exist before mount. This provider
+   *  owns the *presentation* layer only. See DECISIONS.md, M3 ruling. */
+  colorScheme?: ColorScheme;
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
   strings?: Partial<UIStrings>;
   children: ReactNode;
 }
 
+function useMediaScheme(auto: boolean): 'light' | 'dark' {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (!auto || typeof window === 'undefined' || !window.matchMedia) return () => {};
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      mq.addEventListener('change', onStoreChange);
+      return () => mq.removeEventListener('change', onStoreChange);
+    },
+    () => {
+      if (!auto) return 'light';
+      if (typeof window === 'undefined' || !window.matchMedia) return 'light';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    },
+    () => 'light' as const
+  );
+}
+
 /**
- * Root provider: carries the registry, active theme tokens (as CSS custom
- * properties on a wrapper div), and the host-facing event/error sinks.
+ * Presentation-level root (§10): carries the registry, the colour-scheme
+ * preference and the host-facing event/error sinks. It applies no theme of
+ * its own — the resolved board theme flows from the store's state (engine
+ * resolver, M2) onto the `<Board>` root as `--dg-*` variables.
  */
-export function DreamerProvider({ registry, theme = 'light', themeOverrides, onEvent, onError, strings, children }: DreamerProviderProps) {
-  const tokens = typeof theme === 'string' ? resolveTheme(theme, themeOverrides) : { ...resolveTheme('light'), ...theme };
-  // Memoized so consumers do not re-render on unrelated provider re-renders.
+export function DreamerProvider({ registry, colorScheme = 'light', onEvent, onError, strings, children }: DreamerProviderProps) {
+  const scheme = useMediaScheme(colorScheme === 'auto');
   const value = useMemo<DreamerContextValue>(
     () => ({
       registry,
-      theme: tokens,
+      colorScheme,
+      scheme,
       onEvent,
       onError,
       strings: { ...defaultStrings, ...strings },
     }),
-    [registry, tokens, onEvent, onError, strings]
+    [registry, colorScheme, scheme, onEvent, onError, strings]
   );
   return (
-    <div style={tokens as React.CSSProperties} data-dreamer-root="">
-      <DreamerContext.Provider value={value}>
-        <MotionProvider>{children}</MotionProvider>
-      </DreamerContext.Provider>
-    </div>
+    <DreamerContext.Provider value={value}>
+      <MotionProvider>{children}</MotionProvider>
+    </DreamerContext.Provider>
   );
 }
 
