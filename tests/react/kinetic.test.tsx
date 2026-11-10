@@ -190,6 +190,21 @@ describe('whole-run effects', () => {
     expect(container.querySelector('.dg-sr-only')!.textContent).toBe('typing this out');
   });
 
+  test('typewriter renders a non-interactive mark once its slot is typed (animated, marks inline)', () => {
+    stubRafForTimers();
+    const mark = { mark: 'highlight', text: ['best'] } as Inline;
+    const { container } = renderKinetic(['the ', mark, ' part'], 'typewriter');
+    // sr-only copy announces the full final text; the animated run types
+    expect(container.querySelector('.dg-sr-only')!.textContent).toBe('the best part');
+    // before the mark's slot: not rendered yet
+    advanceClock(20); // ~3 chars of 'the '
+    expect(container.querySelector('mark')).toBeNull();
+    // once typed past its slot: the whole mark appears inline, unsplitted
+    advanceClock(400);
+    expect(container.querySelector('mark.dg-mark-highlight')!.textContent).toBe('best');
+    expect(container.querySelector('mark.dg-mark-highlight')!.closest('[aria-hidden]')!.tagName).not.toBe('MARK');
+  });
+
   test('scribble draws its stroke next to intact content (only the decorative svg is hidden)', () => {
     const { container } = renderKinetic(['underlined point'], 'scribble');
     expect(container.querySelector('svg')).toBeInTheDocument();

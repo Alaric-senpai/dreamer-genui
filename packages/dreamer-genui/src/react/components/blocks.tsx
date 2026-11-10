@@ -29,24 +29,26 @@ function isKineticEffect(effect: EnterEffect | undefined): effect is KineticEffe
 export function TextBlockView({ block }: { block: TextBlock }): ReactNode {
   const Tag = TEXT_VARIANTS[block.variant];
   const effect = block.enter?.effect;
+  // data-dg-variant is the styling hook for variant-specific host CSS (§7.6).
+  const variantHook = { 'data-dg-variant': block.variant } as const;
   if (!block.enter) {
     // §9.2: kinetic by default — every variant has an appropriate entrance.
     return (
-      <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id}>
+      <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id} {...variantHook}>
         <KineticText content={block.content} effect={DEFAULT_TEXT_ENTER[block.variant] ?? 'words'} />
       </Tag>
     );
   }
   if (isKineticEffect(effect)) {
     return (
-      <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id}>
+      <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id} {...variantHook}>
         <KineticText content={block.content} effect={effect} split={block.enter.split === 'chars' ? 'chars' : block.enter.split === 'words' ? 'words' : undefined} />
       </Tag>
     );
   }
   // Container-level effect: the Animated wrapper in NodeView animates; render text plainly.
   return (
-    <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id}>
+    <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id} {...variantHook}>
       {renderInline(block.content)}
     </Tag>
   );

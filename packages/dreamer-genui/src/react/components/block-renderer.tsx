@@ -109,6 +109,9 @@ export function NodeView({ node, docIndex, nested = false }: NodeViewProps): Rea
       exit={block.exit}
       docIndex={docIndex}
       data-node-id={node.id}
+      // data-dg-state is the §7.6 hook host CSS keys off (entering/visible/dimmed
+      // treatments; receding/dimmed styling itself lands in M4)
+      data-dg-state={node.state}
       className={`dg-node dg-node-${node.state}`}
     >
       <DefaultBlockView node={node} nested={nested} />

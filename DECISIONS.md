@@ -268,3 +268,13 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 - `inlineLabel` joins array mark text with a space, matching `MarkRenderer.markText` (round-2 join mismatch).
 - The Tailwind v4 bridge **replaces** the host's `@import 'tailwindcss'` (it does not re-import Tailwind) — documented in the bridge header; the playground wiring (M3f) must adopt this semantics.
 - Emphasis keyframes consume `var(--dg-motion-ease)` (typo `--dg--ease-smooth` removed); their durations deliberately mirror `EMPHASIS_PRESETS` and are retuned together at the reference pass. `.dg-live-region` is a reserved hook (its hiding is inline-styled). Real screen-reader verification of the whole kinetic surface is still due at the §9.4 showreel gate.
+
+## M3 — rulings (batch 5: M3e default-component polish)
+
+**`data-dg-state` on node shells.** `NodeView` emits `data-dg-state="<node.state>"` (`loading | complete | error`) next to the existing `dg-node dg-node-<state>` class — the §7.6 hook host CSS keys off for entering/visible/dimmed treatments. Receding/dimmed *styling* is the M4 pass; the hook is prepared now so M4 adds no markup churn.
+
+**`data-dg-variant` on text blocks.** All three `TextBlockView` dispatch branches (kinetic default, explicit kinetic, container-level) emit `data-dg-variant="<variant>"` on the text tag, alongside `dg-text dg-text-<variant>`.
+
+**Screen-owning hero (§9.2), M3e scope.** The hero variant breaks out of the reading column (`width: 100%`), claims vertical space (`min-height: min(55vh, 30rem)`, centered via flex column), and steps up the type floor to `clamp(2.75rem, 11vw, 5.25rem)` — the hero is a scene of its own. True focus ownership (everything else visibly receding while the hero stands) is the M4 receding pass; hosts retune via `--dg-text-hero` or `[data-dg-variant='hero']`. `hero` still rides its `DEFAULT_TEXT_ENTER` kinetic default (slam) through the compliant round-2 announcement structure.
+
+**Typewriter + marks pinned.** Non-interactive marks render whole via `MarkRenderer` once their slot is typed (animated run; sr-only copy carries the full final text) — the round-2 informational note is now a test pin.
