@@ -26,13 +26,18 @@ export const TriggerSchema = z.discriminatedUnion('on', [
 ]);
 export type Trigger = z.infer<typeof TriggerSchema>;
 
+// Enter effects (§6.7). Named preset — exported so generators/capabilities
+// derive from the same enum instead of duplicating the list.
+export const EnterEffectsSchema = z.enum([
+  'reveal', 'rise', 'pop', 'sweep', 'draw', 'stagger', 'none',
+  'typewriter', 'words', 'chars', 'slam', 'wipe', 'scribble',
+  'zoom', 'count-up', 'morph',
+]);
+export type EnterEffect = z.infer<typeof EnterEffectsSchema>;
+
 // Enter animation, with trigger (cue-based entrance) and text splitting
 export const EnterSchema = z.object({
-  effect: z.enum([
-    'reveal', 'rise', 'pop', 'sweep', 'draw', 'stagger', 'none',
-    'typewriter', 'words', 'chars', 'slam', 'wipe', 'scribble',
-    'zoom', 'count-up', 'morph',
-  ]),
+  effect: EnterEffectsSchema,
   order: z.number().optional(),
   delay: z.number().optional(),
   duration: z.number().optional(),

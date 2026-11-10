@@ -58,7 +58,10 @@ describe('serializeBoard', () => {
 
   test('includes history count', () => {
     const state = createBoard('b1');
-    state.history = [{ id: 'h1', nodes: {} }, { id: 'h2', nodes: {} }];
+    state.history = [
+      { id: 'h1', nodes: {}, firedCues: [], firedEvents: {}, flushed: false },
+      { id: 'h2', nodes: {}, firedCues: [], firedEvents: {}, flushed: false },
+    ];
     const out = serializeBoard(state);
     expect(out).toContain('History: 2');
   });

@@ -19,6 +19,6 @@ export type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp, ThemeOp, Ca
 export type { Block, NodeBase } from './blocks';
 export type { Inline, Mark } from './inline';
 export type { Figure } from './figures';
-export type { Enter, Emphasis, Exit, ColorToken, MotionFields, Trigger, EaseName } from './motion';
+export type { Enter, EnterEffect, Emphasis, Exit, ColorToken, MotionFields, Trigger, EaseName } from './motion';
 export type { ThemeSpec, ThemeTokens, AmbienceSpec } from './theme';
 export type { UIEvent } from './events';

@@ -50,10 +50,28 @@ Reduced motion: all effects fall back to instant/unanimated. Always show all con
 
 When streaming partial replies: include 'after' in append ops to maintain order. Partial blocks are resolved once complete. Never emit duplicate node ids on the same board.
 
+## Pacing — write the board like narration
+
+Write on the board only what you are currently talking about: one idea per beat. Attach a cue to each beat's entrance so it appears as it is spoken, e.g. "enter": { "effect": "words", "trigger": { "on": "cue", "id": "beat-3" } }. Keep cue ids stable and increasing within a lesson (beat-1, beat-2, …) — the host fires each cue as the narration reaches it, and content is NOT shown until its trigger fires. An 'after' chain pairs one entrance onto another; do not create loops.
+
 ## Events
 
 The library emits: focus, select, answer, action (return|continue|hint|custom).
 The host app handles correctness, grading, and routing.
+
+
+## Mood & Theme
+
+Change the board's mood only when the emotional register of the lesson genuinely changes — prefer "mood" over raw "tokens", and never request unreadable colour combinations.
+
+Registered moods (use the name exactly as listed):
+- **calm**: Clear and steady default register for standard explanations.
+- **solemn**: Quiet, heavy register for grave or serious subject matter.
+- **playful**: Bright, springy register for light topics and celebration.
+- **eerie**: Strained, flickering register for spooky or unsettling passages.
+Ambience presets: grain|vignette|dust|embers|fog|stars|flicker.
+Surfaces: flat|chalkboard|paper.
+Raw "tokens" may be unavailable depending on host policy; if a theme request is rejected, simply continue without it.
 
 
 ## Block Types

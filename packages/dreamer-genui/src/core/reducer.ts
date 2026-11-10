@@ -1,6 +1,7 @@
 import type { BoardState, BoardSnapshot, Node } from './types';
-import type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp } from '../schema/ops';
+import type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp, ThemeOp, CameraOp } from '../schema/ops';
 import type { Block } from '../schema/blocks';
+import type { ResolvedTheme } from './theme';
 
 const MAX_HISTORY = 50;
 
@@ -9,7 +10,7 @@ function makeNode(block: Block): Node {
 }
 
 function snapshot(state: BoardState): BoardSnapshot {
-  return { id: state.id, title: state.title, nodes: { ...state.nodes } };
+  return { id: state.id, title: state.title, nodes: { ...state.nodes }, theme: state.theme, firedCues: [...state.firedCues], firedEvents: { ...state.firedEvents }, flushed: state.flushed };
 }
 
 // --- Apply helpers ---
@@ -68,7 +69,19 @@ function applyReplace(state: BoardState, op: ReplaceOp): BoardState {
   for (const block of op.blocks) {
     newNodes[block.id] = makeNode(block);
   }
-  const replaced: BoardState = { ...state, nodes: newNodes, history, detours: [] };
+  // Fresh board: cue/event/flush state resets (§6.3); `replace.theme` is
+  // applied by the resolver after the reducer (policy resolution is not
+  // the reducer's business); history and detours carry over as snapshot/empty.
+  const replaced: BoardState = {
+    ...state,
+    nodes: newNodes,
+    history,
+    detours: [],
+    firedCues: [],
+    firedEvents: {},
+    flushed: false,
+    theme: undefined,
+  };
   if (op.title !== undefined) replaced.title = op.title;
   return replaced;
 }
@@ -111,12 +124,29 @@ export function boardReducer(state: BoardState, op: Op): BoardState {
     case 'replace': return applyReplace(state, op);
     case 'update': return applyUpdate(state, op);
     case 'remove': return applyRemove(state, op);
-    // theme reduction lands with the theme resolver (M2); camera is
-    // presentation-only and never part of board state.
+    // `theme` is reduced via applyResolvedTheme (below) AFTER policy
+    // resolution in the resolver — the schema-level op alone is not enough
+    // state to apply. `camera` is presentation-only: validated, never reduced.
     case 'theme':
     case 'camera':
       return state;
   }
+}
+
+/**
+ * Apply a RESOLVED theme (already through policy/contrast in core/theme.ts).
+ * scope "board" replaces the board theme; scope "detour" attaches it to the
+ * open detour and reverts naturally when the detour closes.
+ */
+export function applyResolvedTheme(state: BoardState, theme: ResolvedTheme, scope: 'board' | 'detour' = 'board'): BoardState {
+  if (scope === 'detour' && state.detours.length > 0) {
+    const detours = state.detours.slice();
+    const top = detours.pop()!;
+    detours.push({ ...top, theme });
+    return { ...state, detours };
+  }
+  if (scope === 'detour') return state; // no open detour: nothing to scope onto
+  return { ...state, theme };
 }
 
 /** Pop the most recent history snapshot and restore as current state. */
@@ -130,6 +160,10 @@ export function back(state: BoardState): BoardState {
     nodes: last.nodes,
     history: state.history.slice(0, -1),
     detours: [], // back clears detours
+    theme: last.theme,
+    firedCues: last.firedCues,
+    firedEvents: last.firedEvents,
+    flushed: last.flushed,
   };
 }
 
@@ -141,5 +175,9 @@ export function createBoard(id?: string): BoardState {
     nodes: {},
     history: [],
     detours: [],
+    theme: undefined,
+    firedCues: [],
+    firedEvents: {},
+    flushed: false,
   };
 }

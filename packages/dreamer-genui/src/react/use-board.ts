@@ -1,5 +1,5 @@
 import { useMemo, useRef, useSyncExternalStore } from 'react';
-import { BoardResolver } from '../core/resolver';
+import { BoardResolver, type ReplyLike } from '../core/resolver';
 import type { BoardState, LibraryError, ResolvedOp } from '../core/types';
 import type { UIEvent } from '../schema/events';
 import type { Reply } from '../schema/envelope';
@@ -23,11 +23,23 @@ export interface BoardStore {
   subscribe(fn: () => void): () => void;
   /** Snapshot for useSyncExternalStore — a monotonically increasing version. */
   getVersion(): number;
-  applyOps(reply: Reply): ResolvedOp[];
-  applyPartial(reply: Reply): ResolvedOp[];
-  applyFinal(reply: Reply): ResolvedOp[];
+  applyOps(reply: ReplyLike): ResolvedOp[];
+  applyPartial(reply: ReplyLike): ResolvedOp[];
+  applyFinal(reply: ReplyLike): ResolvedOp[];
   back(): BoardState;
   reset(): void;
+  /** Fire a narration cue (§6.3). Nodes waiting on it enter. */
+  cue(cueId: string): void;
+  /** Skip control: every pending node enters immediately. */
+  flush(): void;
+  /** Fire every cue up to and including cueId, instantly. */
+  seek(cueId: string): void;
+  /** Cue bus: onCue notifications (host sync, §6.3). */
+  readonly cueBus: EventSink<string>;
+  /** Enter bus: onEnter notifications as entry gates open. */
+  readonly enterBus: EventSink<string>;
+  /** Theme-change bus: emits the resolved theme on theme changes (§6.8). */
+  readonly themeChangeBus: EventSink<import('../core/theme').ResolvedTheme>;
   /** UIEvents emitted by rendered components (focus/select/answer/action). */
   readonly events: EventSink<UIEvent>;
   /** Library errors (validation, unknown type...). Buffers pre-mount errors. */
@@ -97,6 +109,21 @@ export function createBoardStore(resolver: BoardResolver = new BoardResolver()):
       resolver.reset();
       notify();
     },
+    cue(cueId) {
+      resolver.cue(cueId);
+      notify();
+    },
+    flush() {
+      resolver.flush();
+      notify();
+    },
+    seek(cueId) {
+      resolver.seek(cueId);
+      notify();
+    },
+    cueBus: resolver.cueBus,
+    enterBus: resolver.enterBus,
+    themeChangeBus: resolver.themeChangeBus,
   };
   return store;
 }

@@ -193,3 +193,19 @@ Verification: `pnpm test` → **160/160 passing**; `tsc --noEmit` clean; build e
 **Protocol migration policy for the updated brief.** The protocol is migrated in place (breaking to internal wiring, since there are no external consumers yet): `--dgui-*` token prefix renames to `--dg-*`; fixtures adopt the new names (`define-biology`→`define-term`, `attach-botany`→`attach-explainer`, new cue/theme/camera fixtures); the `theme` op reduces state (board or detour scope) while the `camera` op is presentation-only (validated, emits no state change beyond a clock/resolver surface). Every effect/easing/tempo value moves to a central presets table so the v3 reference pass can retune quickly.
 
 **User host edit noted (not agent-authored).** `apps/playground/app/layout.tsx` + `apps/playground/fonts/` (Montserrat + JetBrains Mono variable fonts, local) are the host font identity — flagged into the M3 theming work. The file currently has a comma-operator type error and is corrected during M3, not before.
+
+## M2 core — rulings
+
+**Entry gates are derived, not stored (cue engine).** Nodes stay payload-only; "entered" is a pure projection (`core/cues.ts: computeEntryPlan(state, pacing)`) over `firedCues`/`firedEvents`/`flushed` + triggers. The resolver diffs entry plans after every state change and emits `onEnter` on the enter bus. Mark-level triggers are renderer timing (M3 kinetic text), not board gates.
+
+**`after`-cycle handling.** Detected in the validator at op-arrival, among the op's own blocks (chains into existing state cannot cycle). Cyclic triggers are rewritten to `start`; the op still applies; a `cue-cycle` `LibraryError` is emitted on the error bus and carried on the `ResolvedOp` as a non-fatal warning on an `applied` result.
+
+**Theme pipeline layering.** The pure reducer never sees a raw `ThemeSpec`: the resolver runs `createThemeResolver` (policy → mood → tokens → contrast) and applies the resulting `ResolvedTheme` via `applyResolvedTheme`. `scope:"detour"` themes live on the Detour record (revert when the detour closes); board theme resets on `replace` and is restored with cues/events/flush flags through history snapshots via `back()`.
+
+**Theme policy semantics.** `none` rejects whole requests; `moods` permits mood/intensity/ambience/surface/transition and warns (`theme-rejected`) while stripping `tokens`; `moods+tokens` applies tokens (still sanitised: parsed colours hex/hsl/oklch only, CSS-unsafe font strings dropped, numbers clamped, WCAG AA enforced). Rejections are per-piece: a valid mood survives an invalid ambience name. Precedence: library defaults < host baseline < mood (blended by `intensity`) < spec tokens.
+
+**Contrast guardrail.** Roles `ink`/`muted` at 4.5:1, accent family at 3:1, checked against both `bg` and `surface`; adjusted colours re-emit as `rgb(r g b)` and hosts are notified via `onThemeAdjusted`/adjusted roles. Shipped example presets (`calm`, `solemn`, `playful`, `eerie`) ship AA-passing (tested); `playful.warn` was darkened from `#d9971e` to `#b97400` to meet 3:1 on white.
+
+**Op typing and apply signatures.** Op types stay `z.infer` (defaults baked); `applyOps/applyPartial/applyFinal` accept `ReplyLike { v?, ops: readonly unknown[] }` — parse-time Zod baking keeps the wire permissive for hosts and tests.
+
+**Registry-aware JSON Schema.** `registryToJsonSchema(registry)` rebuilds the reply envelope with mood/ambience/surface enums from registry entries, so a schema-constrained tutor can only name registered presets.

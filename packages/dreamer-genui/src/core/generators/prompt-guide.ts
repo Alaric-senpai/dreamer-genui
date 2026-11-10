@@ -55,10 +55,34 @@ Reduced motion: all effects fall back to instant/unanimated. Always show all con
 
 When streaming partial replies: include 'after' in append ops to maintain order. Partial blocks are resolved once complete. Never emit duplicate node ids on the same board.
 
+## Pacing — write the board like narration
+
+Write on the board only what you are currently talking about: one idea per beat. Attach a cue to each beat's entrance so it appears as it is spoken, e.g. "enter": { "effect": "words", "trigger": { "on": "cue", "id": "beat-3" } }. Keep cue ids stable and increasing within a lesson (beat-1, beat-2, …) — the host fires each cue as the narration reaches it, and content is NOT shown until its trigger fires. An 'after' chain pairs one entrance onto another; do not create loops.
+
 ## Events
 
 The library emits: focus, select, answer, action (return|continue|hint|custom).
 The host app handles correctness, grading, and routing.`;
+
+/** Registry-aware mood/ambience/surface section (§6.8): moods listed WITH their descriptions. */
+function themeGuide(registry: Registry): string {
+  const moods = registry.listMoods();
+  const lines: string[] = ['## Mood & Theme', ''];
+  lines.push('Change the board\'s mood only when the emotional register of the lesson genuinely changes — prefer "mood" over raw "tokens", and never request unreadable colour combinations.');
+  lines.push('');
+  if (moods.length) {
+    lines.push('Registered moods (use the name exactly as listed):');
+    for (const m of moods) lines.push(`- **${m.name}**: ${m.description}`);
+  } else {
+    lines.push('No moods are registered on this host; do not send theme ops.');
+  }
+  const ambience = registry.listAmbience();
+  if (ambience.length) lines.push(`Ambience presets: ${ambience.map(a => a.name).join('|')}.`);
+  const surfaces = registry.listSurfaces();
+  if (surfaces.length) lines.push(`Surfaces: ${surfaces.map(s => s.name).join('|')}.`);
+  lines.push('Raw "tokens" may be unavailable depending on host policy; if a theme request is rejected, simply continue without it.');
+  return lines.join('\n');
+}
 
 const WORKED_EXAMPLES = `
 ## Worked Examples
@@ -105,6 +129,7 @@ export function getSystemPromptGuide(registry: Registry, options?: PromptGuideOp
 
   if (!excluded.has('ops')) parts.push(OPS_GUIDE, '\n');
   if (!excluded.has('protocol')) parts.push(PROTOCOL_GUIDE, '\n');
+  if (!excluded.has('theme')) parts.push(themeGuide(registry), '\n');
 
   // Registry-aware block-type snippets
   const include = options?.include?.length ? options.include : undefined;

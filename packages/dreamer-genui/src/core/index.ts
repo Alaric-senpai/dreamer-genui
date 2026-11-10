@@ -12,4 +12,6 @@ export * from './registry';
 export * from './validator';
 export * from './reducer';
 export * from './resolver';
+export * from './cues';
+export * from './theme';
 export * from './generators';
