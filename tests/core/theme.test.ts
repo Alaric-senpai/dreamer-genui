@@ -136,7 +136,7 @@ describe('theme op through the resolver', () => {
     // A board-level theme set BEFORE the attach survives.
   });
 
-  test('detour-scoped theme reverts to the board theme when the detour closes', () => {
+  test('board theme set before an attach survives a detour-scoped theme', () => {
     const r = new BoardResolver();
     r.applyOps({ v: 1, ops: [{ op: 'append', blocks: [textBlock('a')] }] });
     r.applyOps({ v: 1, ops: [{ op: 'theme', theme: { mood: 'calm' } }] });
