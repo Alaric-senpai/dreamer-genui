@@ -7,6 +7,7 @@ import {
   createReducedMotionDriver,
   type MotionDriver,
 } from './driver';
+import { useTempo } from './tempo';
 
 /** Internal context carrying the active MotionDriver (respects reduced motion). */
 const MotionDriverContext = createContext<MotionDriver | null>(null);
@@ -42,10 +43,24 @@ export interface AnimatedProps extends Omit<ComponentPropsWithoutRef<'div'>, 'on
  */
 export function Animated({ enter, emphasis, exit, docIndex, children, className, ...rest }: AnimatedProps) {
   const driver = useMotionDriver();
+  const tempo = useTempo();
   const anim = driver.enter(enter, docIndex);
   const emphasisCls = driver.emphasis(emphasis)?.className;
   const exitSpec = driver.exit(exit);
   const cls = [className, emphasisCls].filter(Boolean).join(' ') || undefined;
+
+  // Scene tempo (theme `motion.speed`, §6.8): stretches durations and the
+  // order-sequenced delays together so slower moods feel weightier end-to-end.
+  const transition = useMemo(() => {
+    if (!anim?.transition) return undefined;
+    const speed = tempo > 0 ? tempo : 1;
+    const scale = 1 / speed;
+    return {
+      duration: anim.transition.duration !== undefined ? anim.transition.duration * scale : undefined,
+      delay: anim.transition.delay !== undefined ? anim.transition.delay * scale : undefined,
+      ease: anim.transition.ease,
+    };
+  }, [anim?.transition, tempo]);
 
   if (!anim) {
     return (
@@ -60,7 +75,7 @@ export function Animated({ enter, emphasis, exit, docIndex, children, className,
       initial={anim.initial}
       animate={anim.animate}
       exit={exitSpec?.exit ?? anim.exit}
-      transition={anim.transition}
+      transition={transition ?? anim.transition}
       {...rest}
     >
       {children}

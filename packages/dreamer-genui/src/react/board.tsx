@@ -8,6 +8,7 @@ import { useDreamer } from './provider';
 import { BoardEmitContext } from './emit-context';
 import { computeEntryPlan, defaultPacing, type EntryPlan, type Pacing } from '../core/cues';
 import { resolveTheme, tokensToVars, type CssTokens } from '../theme/tokens';
+import { TempoContext } from './motion/tempo';
 import { NodeView } from './components/block-renderer';
 
 /** Bridge a schema block into the renderer's plain-Node shape for detours/groups. */
@@ -139,7 +140,14 @@ export function Board({ store, pacing, onEvent, onError, classNames }: BoardProp
     };
   }, [store]);
 
+  // ---- scene tempo (§6.8 motion.speed; every timing in the motion layer scales by it) ----
+  const tempo = useMemo(() => {
+    const speed = theme?.tokens.motion?.speed;
+    return typeof speed === 'number' && speed > 0 ? speed : 1;
+  }, [theme]);
+
   return (
+    <TempoContext.Provider value={tempo}>
     <BoardEmitContext.Provider value={emit}>
       <section
         className={`dgui-board${classNames?.root ? ` ${classNames.root}` : ''}`}
@@ -165,5 +173,6 @@ export function Board({ store, pacing, onEvent, onError, classNames }: BoardProp
         </div>
       </section>
     </BoardEmitContext.Provider>
+    </TempoContext.Provider>
   );
 }

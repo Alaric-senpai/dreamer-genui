@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { ElementType, ReactNode } from 'react';
 import type { Block, TextBlock, ChoicesBlock, CalloutBlock, StepsBlock, GroupBlock } from '../../schema/blocks';
+import type { EnterEffect } from '../../schema/motion';
+import { DEFAULT_TEXT_ENTER, KINETIC_PRESETS, type KineticEffect } from '../../motion/presets';
+import { KineticText } from '../kinetic/KineticText';
 import { renderInline } from './inline';
 import { useEmitEvent } from '../provider';
 
@@ -18,8 +21,30 @@ const TEXT_VARIANTS: Record<TextBlock['variant'], ElementType> = {
   note: 'aside',
 };
 
+/** True when the text engine itself owns the entrance (container must stay static). */
+function isKineticEffect(effect: EnterEffect | undefined): effect is KineticEffect {
+  return effect !== undefined && effect in KINETIC_PRESETS;
+}
+
 export function TextBlockView({ block }: { block: TextBlock }): ReactNode {
   const Tag = TEXT_VARIANTS[block.variant];
+  const effect = block.enter?.effect;
+  if (!block.enter) {
+    // §9.2: kinetic by default — every variant has an appropriate entrance.
+    return (
+      <Tag className={`dgui-text dgui-text-${block.variant}`} data-node-id={block.id}>
+        <KineticText content={block.content} effect={DEFAULT_TEXT_ENTER[block.variant] ?? 'words'} />
+      </Tag>
+    );
+  }
+  if (isKineticEffect(effect)) {
+    return (
+      <Tag className={`dgui-text dgui-text-${block.variant}`} data-node-id={block.id}>
+        <KineticText content={block.content} effect={effect} split={block.enter.split === 'chars' ? 'chars' : block.enter.split === 'words' ? 'words' : undefined} />
+      </Tag>
+    );
+  }
+  // Container-level effect: the Animated wrapper in NodeView animates; render text plainly.
   return (
     <Tag className={`dgui-text dgui-text-${block.variant}`} data-node-id={block.id}>
       {renderInline(block.content)}

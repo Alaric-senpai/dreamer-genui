@@ -9,7 +9,7 @@ function markText(t: string | string[] | undefined): string {
 }
 
 /** Render a single mark. Unknown marks degrade to plain text (never crash). */
-function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
+export function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
   const emit = useEmitEvent();
   switch (mark.mark) {
     case 'highlight':
@@ -47,10 +47,10 @@ function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
         </button>
       );
     case 'annotate': {
-      const style: CSSProperties = { textDecorationColor: 'var(--dgui-color-accent)' };
+      const style: CSSProperties = { textDecorationColor: 'var(--dg-color-accent)' };
       if (mark.kind === 'underline') style.textDecoration = 'underline';
       else if (mark.kind === 'strike') style.textDecoration = 'line-through';
-      else if (mark.kind === 'box') style.border = '2px solid var(--dgui-color-accent)';
+      else if (mark.kind === 'box') style.border = '2px solid var(--dg-color-accent)';
       else style.textDecoration = 'underline'; // circle/bracket get SVG strokes in M5
       return (
         <span className={`dgui-mark-annotate dgui-annotate-${mark.kind}`} data-color={mark.color} style={style}>
