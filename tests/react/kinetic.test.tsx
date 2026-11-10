@@ -95,8 +95,44 @@ describe('splitting effects — words / chars / slam (§9.1)', () => {
     const { container } = renderKinetic(['look at the ', mark, ' now'], 'words');
     expect(container.querySelector('mark.dg-mark-highlight')).toBeInTheDocument();
     expect(container.querySelector('mark.dg-mark-highlight')!.textContent).toBe('highlighted phrase');
-    // aria-label announces plain strings (the mark's own text is visible in the DOM tree)
-    expect(ariaLabel(container)).toBe('look at the  now');
+    // the label carries the FULL meta text (mark text included) — no double-space artifact
+    expect(ariaLabel(container)).toBe('look at the highlighted phrase now');
+    // the mark renders LIVE at its position, outside every aria-hidden wrapper
+    expect(container.querySelector('mark.dg-mark-highlight')!.closest('[aria-hidden]')).toBeNull();
+  });
+
+  test('interactive marks stay in the accessibility tree through split runs (term/focusable)', () => {
+    const term = { mark: 'term', text: 'photosynthesis', definition: 'how plants make food' } as Inline;
+    const focusable = { mark: 'focusable', text: ['the diagram'], ref: 'diag-1' } as Inline;
+    const { container } = renderKinetic(['learn ', term, ' via ', focusable], 'words');
+    // neither interactive mark may sit under an aria-hidden wrapper
+    for (const el of container.querySelectorAll('[role="button"], button')) {
+      expect(el.closest('[aria-hidden]'), el.textContent ?? '').toBeNull();
+    }
+    // the label joins the mark meta text around the live strings; the term's
+    // own aria-label adds its definition when focused via MarkRenderer
+    expect(ariaLabel(container)).toBe('learn photosynthesis via the diagram');
+  });
+
+  test('whole-run effects degrade to a static render when content holds interactive marks', () => {
+    const term = { mark: 'term', text: 'mitosis', definition: 'cell division' } as Inline;
+    for (const effect of ['typewriter', 'wipe'] as const) {
+      const { container, unmount } = renderKinetic(['about ', term], effect);
+      // no hidden/altered run: exact content, no aria-label duplication, live term
+      expect(container.querySelector('[aria-hidden]'), effect).toBeNull();
+      expect(container.firstElementChild!.getAttribute('aria-label'), effect).toBeNull();
+      expect(container.querySelector('[role="button"]')!.closest('[aria-hidden]'), effect).toBeNull();
+      unmount();
+    }
+  });
+
+  test('scribble keeps the full content live — only the decorative stroke is hidden', () => {
+    const focusable = { mark: 'focusable', text: ['the cell'], ref: 'cell-1' } as Inline;
+    const { container } = renderKinetic(['watch ', focusable], 'scribble');
+    expect(container.querySelector('button.dg-mark-focusable')).toBeInTheDocument();
+    expect(container.querySelector('[aria-hidden]')!.tagName).toBe('svg');
+    expect(container.querySelector('button.dg-mark-focusable')!.closest('[aria-hidden]')).toBeNull();
+    expect(container.firstElementChild!.getAttribute('aria-label')).toBeNull();
   });
 
   test('slam gives each word an animated unit (no plain whole-text render)', () => {

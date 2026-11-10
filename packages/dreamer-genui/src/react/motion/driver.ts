@@ -43,13 +43,13 @@ export interface MotionDriver {
 /** Effects the kinetic text engine owns (container must stay static). */
 const KINETIC_EFFECTS: ReadonlySet<string> = new Set(Object.keys(KINETIC_PRESETS) as KineticEffect[]);
 
-function baseTransition(enter: Enter | undefined, docIndex: number, preset: (typeof ENTER_PRESETS)[EnterEffect], reduced: boolean): MotionAnimation['transition'] {
+function baseTransition(enter: Enter | undefined, docIndex: number, preset: (typeof ENTER_PRESETS)[EnterEffect]): MotionAnimation['transition'] {
   const ms = enter?.duration ?? preset.duration;
   const delay = enter?.delay !== undefined ? enter.delay : (enter?.order ?? docIndex) * ORDER_STEP_MS;
   return {
     duration: ms / 1000,
     delay: delay / 1000,
-    ease: reduced ? EASE.linear : EASE[preset.ease],
+    ease: EASE[preset.ease],
   };
 }
 
@@ -82,7 +82,7 @@ export function createMotionDriver(): MotionDriver {
     return {
       initial: containerInitial(effect),
       animate: { opacity: 1, ...(effect === 'rise' || effect === 'pop' || effect === 'sweep' ? { y: 0, x: 0, scale: 1 } : {}), ...(effect === 'zoom' ? { scale: 1 } : {}) },
-      transition: baseTransition(enter, docIndex, preset, false),
+      transition: baseTransition(enter, docIndex, preset),
     };
   }
 

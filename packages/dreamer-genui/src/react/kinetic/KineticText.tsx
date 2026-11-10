@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { m, useReducedMotion } from 'motion/react';
 import type { Inline, Mark } from '../../schema/inline';
 import type { EnterEffect } from '../../schema/motion';
-import { KINETIC_PRESETS, EASE, applyTempo, type KineticEffect } from '../../motion/presets';
+import { KINETIC_PRESETS, EASE, applyTempo, REDUCED_FADE_MS, type KineticEffect } from '../../motion/presets';
 import { splitIntoParts, type SplitMode, type SplitPart } from './split';
 import { renderInline, MarkRenderer } from '../components/inline';
 import { useTempo } from '../motion/tempo';
@@ -29,15 +29,42 @@ function flatten(content: Inline[]): Segment[] {
   return content.map((part) => (typeof part === 'string' ? { text: part } : { mark: part })) as Segment[];
 }
 
-function plainText(content: Inline[]): string {
-  return content.map((p) => (typeof p === 'string' ? p : '')).join('');
+/** The announced text of an inline part — strings as-is, marks by their meta text. */
+function inlineLabel(inline: Inline): string {
+  if (typeof inline === 'string') return inline;
+  const mark = inline as Mark & { text?: unknown };
+  if (mark.mark === 'math') return String((mark as { tex?: string }).tex ?? '');
+  if (typeof mark.text === 'string') return mark.text;
+  if (Array.isArray(mark.text)) return mark.text.map(inlineLabel).join('');
+  return '';
+}
+
+/** The full, well-formed accessible text for a run (mark meta text included). */
+function metaText(content: Inline[]): string {
+  return content.map(inlineLabel).join('');
+}
+
+/** Marks that expose focus (term role=button, focusable button). */
+function isInteractiveMark(mark: Mark): boolean {
+  return mark.mark === 'term' || mark.mark === 'focusable';
+}
+
+function hasInteractiveMark(content: Inline[]): boolean {
+  return flatten(content).some((seg) => seg.mark !== undefined && isInteractiveMark(seg.mark));
 }
 
 function textLength(content: Inline[]): number {
   return content.reduce((n, p) => n + (typeof p === 'string' ? p.length : 0), 0);
 }
 
-/** Splitting entrance: words, chars or slam — one animated unit per word/char. */
+/**
+ * Accessible split-run structure (review round 1): unit spans live under a
+ * per-SEGMENT aria-hidden wrapper so visible words/letters are hidden from
+ * assistive tech, while marks render LIVE at their position — a `term`
+ * (role=button) or `focusable` (button) inside animated text stays in the
+ * accessibility tree and focusable. The wrapper's aria-label carries the
+ * complete meta text so splitting never fragments the announcement.
+ */
 function SplitRun({
   content,
   effect,
@@ -53,52 +80,52 @@ function SplitRun({
 }): ReactNode {
   const preset = KINETIC[effect];
   const mode = split ?? preset.split;
-  const segments = flatten(content);
-  const out: ReactNode[] = [];
   let unitIndex = 0;
-  for (const [i, seg] of segments.entries()) {
-    if (seg.text !== undefined) {
-      const parts: SplitPart[] = splitIntoParts(seg.text, mode);
-      for (const part of parts) {
-        if (part.kind === 'space') {
-          out.push(<span key={`s${i}-${unitIndex++}`}>{part.text}</span>);
-          continue;
-        }
-        const delay = applyTempo(preset.stagger, tempo) * unitIndex;
-        const duration = applyTempo(preset.duration, tempo) / 1000;
-        const initial =
-          effect === 'slam' ? { opacity: 0, scale: 1.9, y: -12 } : { opacity: 0, y: mode === 'chars' ? 10 : 18 };
-        const animate = effect === 'slam' ? { opacity: 1, scale: 1, y: 0 } : { opacity: 1, y: 0 };
-        out.push(
-          <m.span
-            key={`u${i}-${unitIndex++}`}
-            style={{ display: 'inline-block', willChange: 'transform, opacity' }}
-            initial={initial}
-            animate={animate}
-            transition={{ duration, delay: delay / 1000, ease: EASE[preset.ease] }}
-          >
-            {part.text}
-          </m.span>
-        );
-      }
-    } else if (seg.mark) {
-      out.push(<MarkRenderer key={`m${i}`} mark={seg.mark} />);
+  const segments = flatten(content).map((seg, i) => {
+    if (seg.text === undefined && seg.mark) {
+      return <MarkRenderer key={`m${i}`} mark={seg.mark} />;
     }
-  }
-  const full = plainText(content);
+    const parts: SplitPart[] = splitIntoParts(seg.text!, mode);
+    const units = parts.map((part, j) => {
+      if (part.kind === 'space') {
+        unitIndex += 1;
+        return <span key={`s${i}-${j}`}>{part.text}</span>;
+      }
+      const delay = applyTempo(preset.stagger, tempo) * unitIndex++;
+      const duration = applyTempo(preset.duration, tempo) / 1000;
+      const initial =
+        effect === 'slam' ? { opacity: 0, scale: 1.9, y: -12 } : { opacity: 0, y: mode === 'chars' ? 10 : 18 };
+      const animate = effect === 'slam' ? { opacity: 1, scale: 1, y: 0 } : { opacity: 1, y: 0 };
+      return (
+        <m.span
+          key={`u${i}-${j}`}
+          style={{ display: 'inline-block', willChange: 'transform, opacity' }}
+          initial={initial}
+          animate={animate}
+          transition={{ duration, delay: delay / 1000, ease: EASE[preset.ease] }}
+        >
+          {part.text}
+        </m.span>
+      );
+    });
+    return (
+      <span aria-hidden="true" key={`t${i}`}>
+        {units}
+      </span>
+    );
+  });
   return (
-    <span className={className} aria-label={full}>
-      <span aria-hidden="true">{out}</span>
+    <span className={className} aria-label={metaText(content)}>
+      {segments}
     </span>
   );
 }
 
-/** Whole-run clip sweep (kicker wipes, hero slams alternate). */
+/** Whole-run clip sweep (§9.1). Callers guarantee no interactive marks. */
 function WipeRun({ content, effect, tempo, className }: { content: Inline[]; effect: KineticEffect; tempo: number; className?: string | undefined }): ReactNode {
   const preset = KINETIC[effect];
-  const full = plainText(content);
   return (
-    <span className={className} aria-label={full}>
+    <span className={className} aria-label={metaText(content)}>
       <m.span
         aria-hidden="true"
         style={{ display: 'inline-block', willChange: 'clip-path' }}
@@ -121,22 +148,18 @@ function TypewriterRun({ content, effect, tempo, className }: { content: Inline[
   useEffect(() => {
     let raf = 0;
     const start = performance.now();
+    let latest = 0;
     const tick = (now: number): void => {
       const n = Math.min(total, Math.floor((now - start) / perChar));
-      setCountSafe(n);
-      if (n < total) raf = requestAnimationFrame(tick);
-    };
-    let latest = 0;
-    const setCountSafe = (n: number): void => {
       if (n !== latest) {
         latest = n;
         setTyped(n);
       }
+      if (n < total) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [total, perChar]);
-  const full = plainText(content);
   const segments = flatten(content);
   let consumed = 0;
   const pieces: ReactNode[] = [];
@@ -150,7 +173,7 @@ function TypewriterRun({ content, effect, tempo, className }: { content: Inline[
     }
   }
   return (
-    <span className={className} aria-label={full}>
+    <span className={className} aria-label={metaText(content)}>
       <span aria-hidden="true">{pieces}</span>
     </span>
   );
@@ -159,12 +182,12 @@ function TypewriterRun({ content, effect, tempo, className }: { content: Inline[
 /** rAF number tween (count-up): cubic ease-out over the preset duration. */
 function CountUpRun({ content, effect, tempo, className }: { content: Inline[]; effect: KineticEffect; tempo: number; className?: string | undefined }): ReactNode {
   const preset = KINETIC[effect];
-  const full = plainText(content);
+  const full = content.map((p) => (typeof p === 'string' ? p : '')).join('');
   const match = /-?\d+(?:\.\d+)?/.exec(full);
   const target = match ? parseFloat(match[0]) : null;
   const start = match ? match.index : 0;
   const decimals = match ? (match[0].split('.')[1] ?? '').length : 0;
-  const [value, setValue] = useState(target === null ? 0 : 0);
+  const [value, setValue] = useState(0);
   useEffect(() => {
     if (target === null) return;
     const duration = applyTempo(preset.duration, tempo);
@@ -178,22 +201,7 @@ function CountUpRun({ content, effect, tempo, className }: { content: Inline[]; 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [target, tempo, preset.duration]);
-  if (target === null) {
-    // nothing numeric to count — rise in instead
-    return (
-      <span className={className} aria-label={full}>
-        <m.span
-          aria-hidden="true"
-          style={{ display: 'inline-block' }}
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: applyTempo(KINETIC.words.duration, tempo) / 1000, ease: EASE.smooth }}
-        >
-          {renderInline(content)}
-        </m.span>
-      </span>
-    );
-  }
+  if (target === null) return null; // unreachable: dispatcher routes no-number content to the rise fallback
   const shown = (value / 10 ** decimals).toFixed(decimals);
   const pieces: ReactNode[] = [
     <span key="pre">{full.slice(0, start)}</span>,
@@ -201,7 +209,7 @@ function CountUpRun({ content, effect, tempo, className }: { content: Inline[]; 
     <span key="post">{full.slice(start + fullMatchEnd(match))}</span>,
   ];
   return (
-    <span className={className} aria-label={full}>
+    <span className={className} aria-label={metaText(content)}>
       <span aria-hidden="true">{pieces}</span>
     </span>
   );
@@ -211,19 +219,18 @@ function fullMatchEnd(match: RegExpExecArray | null): number {
   return match ? match[0].length : 0;
 }
 
-/** Wavy underline drawing itself in (refined with hand-drawn primitives in M5). */
+/** Wavy underline drawing itself in (refined with hand-drawn primitives in M5). Content is fully visible — no hidden copy needed. */
 function ScribbleRun({ content, effect, tempo, className }: { content: Inline[]; effect: KineticEffect; tempo: number; className?: string | undefined }): ReactNode {
   const preset = KINETIC[effect];
-  const full = plainText(content);
   return (
-    <span className={className} aria-label={full}>
-      <span aria-hidden="true" style={{ position: 'relative', display: 'inline-block' }}>
-        {renderInline(content)}
-        <svg
-          style={{ position: 'absolute', left: '-4%', bottom: '-0.35em', width: '108%', height: '0.5em', overflow: 'visible' }}
-          viewBox="0 0 200 20"
-          preserveAspectRatio="none"
-        >
+    <span className={className} style={{ position: 'relative', display: 'inline-block' }}>
+      {renderInline(content)}
+      <svg
+        aria-hidden="true"
+        style={{ position: 'absolute', left: '-4%', bottom: '-0.35em', width: '108%', height: '0.5em', overflow: 'visible' }}
+        viewBox="0 0 200 20"
+        preserveAspectRatio="none"
+      >
           <m.path
             d="M2 12 Q 30 4 58 11 T 118 10 T 196 13"
             fill="none"
@@ -236,7 +243,6 @@ function ScribbleRun({ content, effect, tempo, className }: { content: Inline[];
             transition={{ duration: applyTempo(preset.duration, tempo) / 1000, ease: EASE.smooth }}
           />
         </svg>
-      </span>
     </span>
   );
 }
@@ -244,12 +250,13 @@ function ScribbleRun({ content, effect, tempo, className }: { content: Inline[];
 /**
  * Kinetic text engine (§9.1): words/chars/slam per-unit entrances, typewriter,
  * wipe, count-up and the scribble stroke — plain DOM, no GSAP. Marks render
- * through the standard renderer and are never split (mark-level sweeps land
- * with styling in M3e).
+ * through the standard renderer and are never split; interactive marks
+ * (term/focusable) stay inside the accessibility tree, so runs containing
+ * them fall back to a static render for whole-run effects (review ruling).
  *
  * Reduced motion (§9.3): 'instant' presets step straight to the final visual;
- * 'fade' presets apply one short fade. Content is never gated by animation —
- * the full text is always announced via aria-label and present in the DOM.
+ * 'fade' presets apply one short REDUCED_FADE_MS fade. Content is never
+ * gated by animation.
  */
 export function KineticText({
   content,
@@ -274,7 +281,7 @@ export function KineticText({
     if (preset.reducedMotion === 'fade') {
       return (
         <span className={className}>
-          <m.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+          <m.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: REDUCED_FADE_MS / 1000 }}>
             {renderInline(content)}
           </m.span>
         </span>
@@ -286,13 +293,26 @@ export function KineticText({
   if (preset.split === 'words' || preset.split === 'chars') {
     return <SplitRun content={content} effect={effect} split={split} tempo={tempo} className={className} />;
   }
+
+  if (effect !== 'scribble' && hasInteractiveMark(content)) {
+    // Whole-run effects that swap/clip/hide text would hide an interactive
+    // mark's semantics; content-first: render statically, marks live.
+    return <span className={className}>{renderInline(content)}</span>;
+  }
+
   switch (effect) {
     case 'wipe':
       return <WipeRun content={content} effect={effect} tempo={tempo} className={className} />;
     case 'typewriter':
       return <TypewriterRun content={content} effect={effect} tempo={tempo} className={className} />;
-    case 'count-up':
+    case 'count-up': {
+      const plain = content.map((p) => (typeof p === 'string' ? p : '')).join('');
+      if (!/-?\d+(?:\.\d+)?/.test(plain)) {
+        // nothing numeric to count — render plainly (the rise is a container entrance)
+        return <span className={className}>{renderInline(content)}</span>;
+      }
       return <CountUpRun content={content} effect={effect} tempo={tempo} className={className} />;
+    }
     case 'scribble':
       return <ScribbleRun content={content} effect={effect} tempo={tempo} className={className} />;
     default:

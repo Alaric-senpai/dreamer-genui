@@ -25,6 +25,9 @@ export function applyTempo(ms: number, speed: number): number {
   return ms / s;
 }
 
+/** The one short fade used when a preset's reduced-motion behavior is 'fade' (§9.3). */
+export const REDUCED_FADE_MS = 150;
+
 /** Gap between consecutive order steps for sequenced container entrances (§9.1: beats, not pages). */
 export const ORDER_STEP_MS = 120;
 

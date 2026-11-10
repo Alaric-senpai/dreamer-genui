@@ -53,6 +53,14 @@ describe('not mounted until triggered (§6.3)', () => {
     expect(within(content).queryByText('beat-1')).toBeNull();
   });
 
+  test('unentered content is never announced by the live region (polite region entered-only)', () => {
+    const { store } = setup();
+    const status = screen.getByRole('status');
+    expect(within(status).queryByText('beat-1')).toBeNull();
+    act(() => store.cue('beat-1'));
+    expect(within(status).queryByText('beat-1')).toBeInTheDocument();
+  });
+
   test('cue fired before arrival: the late node mounts immediately (race, §6.3)', () => {
     const store = createBoardStore({ registry: createRegistry() });
     store.cue('late-beat');
