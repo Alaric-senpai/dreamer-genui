@@ -165,6 +165,16 @@ describe('theme on the board root (§6.8 render side)', () => {
     expect(section().style.getPropertyValue('--dg-color-bg')).toBeTruthy();
     const after = section().style.getPropertyValue('--dg-motion-speed');
     expect(after).not.toBe(before); // eerie's tempo landed
+    // §6.8: theme change carries its transition knobs for the stylesheet to tween by
+    expect(section().style.getPropertyValue('--dg-theme-duration')).toBe('800ms'); // default
+    act(() =>
+      store.applyFinal({
+        v: 1,
+        ops: [{ op: 'theme', theme: { transition: { duration: 300, ease: 'snappy' } } }],
+      })
+    );
+    expect(section().style.getPropertyValue('--dg-theme-duration')).toBe('300ms');
+    expect(section().style.getPropertyValue('--dg-theme-ease')).toBe('snappy');
   });
 
   test('no theme op → engine default vars (light) with no mood attribute', () => {

@@ -8,8 +8,11 @@ import { useDreamer } from './provider';
 import { BoardEmitContext } from './emit-context';
 import { computeEntryPlan, defaultPacing, type EntryPlan, type Pacing } from '../core/cues';
 import { resolveTheme, tokensToVars, type CssTokens } from '../theme/tokens';
-import { TempoContext } from './motion/tempo';
+import { TempoContext, tempoOf } from './motion/tempo';
 import { NodeView } from './components/block-renderer';
+
+/** Valid EaseName values for theme-transition variables (render-side allowlist for the var). */
+const EASE_NAMES = new Set(['smooth', 'snappy', 'overshoot', 'anticipate', 'linear']);
 
 /** Bridge a schema block into the renderer's plain-Node shape for detours/groups. */
 function asNode(block: { id: string; alt?: string } & Record<string, unknown>): Node {
@@ -102,6 +105,12 @@ export function Board({ store, pacing, onEvent, onError, classNames }: BoardProp
   // ---- theme variables (engine-resolved; library defaults < resolved board theme) ----
   const style = useMemo<CSSProperties>(() => {
     const vars: CssTokens = { ...resolveTheme(scheme), ...(theme ? tokensToVars(theme.tokens) : {}) };
+    // Theme-transition knobs (§6.8: tween, never a cut) — consumed by the M3d
+    // stylesheet; reduced motion shortens to near-instant via the media query there.
+    if (theme) {
+      vars['--dg-theme-duration'] = `${theme.transition.duration}ms`;
+      vars['--dg-theme-ease'] = EASE_NAMES.has(theme.transition.ease) ? theme.transition.ease : 'smooth';
+    }
     const css: Record<string, string> = {};
     for (const [k, v] of Object.entries(vars)) css[k] = v;
     return css as CSSProperties;
@@ -141,10 +150,7 @@ export function Board({ store, pacing, onEvent, onError, classNames }: BoardProp
   }, [store]);
 
   // ---- scene tempo (§6.8 motion.speed; every timing in the motion layer scales by it) ----
-  const tempo = useMemo(() => {
-    const speed = theme?.tokens.motion?.speed;
-    return typeof speed === 'number' && speed > 0 ? speed : 1;
-  }, [theme]);
+  const tempo = useMemo(() => tempoOf(theme), [theme]);
 
   return (
     <TempoContext.Provider value={tempo}>

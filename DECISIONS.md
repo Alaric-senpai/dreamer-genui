@@ -243,3 +243,9 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 **Reduced motion.** Every kinetic preset declares `reducedMotion: 'instant' | 'fade'`. 'instant' renders the plain, complete text (no splitting, no animation mounts); 'fade' applies a single 150 ms fade to the whole run. Content is never gated by animation — DOM text is complete and the wrapper `aria-label` always carries the full content (§9.3).
 
 **Emphasis presentation.** The driver's `emphasis()` returns `{ className: 'dg-emphasis-<effect>', preset }`; visual treatment (CSS keyframes/class styling) lands with the M3d stylesheet, so the M3b contract is testable but the look is not yet styled.
+
+## M3 — rulings (batch 3: theme visuals)
+
+**Theme-transition knobs are variables, not JS tweens.** The resolved theme's `transition` (M2 resolver default 800 ms / 'smooth') is published on the board root as `--dg-theme-duration` / `--dg-theme-ease`; the M3d stylesheet consumes them (`transition: background-color …, color …, border-color …`) so theme changes tween without a JSON-custom-property tween loop, and a `prefers-reduced-motion` media query shortens them to near-instant. The ease value is allowlisted render-side against the five protocol names (defence in depth; the resolver already validates).
+
+**Tempo helper.** `tempoOf(theme?)` is the single derivation of scene tempo (1 for unset/invalid); `<Board>` consumes it for `TempoContext`. Mood presets ship via `EXAMPLE_MOODS` (data, not code — registered by default in the registry, overridable), surfaces via `EXAMPLE_SURFACES` as `data-dg-surface` style hooks until the M3d stylesheet gives them texture/body treatments.

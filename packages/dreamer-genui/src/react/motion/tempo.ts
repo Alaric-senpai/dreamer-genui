@@ -11,3 +11,9 @@ export const TempoContext = createContext(1);
 export function useTempo(): number {
   return useContext(TempoContext);
 }
+
+/** The scene tempo a resolved theme implies (1 when unset/invalid). */
+export function tempoOf(theme: { tokens?: { motion?: { speed?: number } } } | undefined | null): number {
+  const speed = theme?.tokens?.motion?.speed;
+  return typeof speed === 'number' && speed > 0 ? speed : 1;
+}
