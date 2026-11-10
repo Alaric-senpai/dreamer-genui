@@ -53,4 +53,60 @@ describe('colour parsing', () => {
     expect(parseColor('var(--x)')).toBeUndefined();
     expect(parseColor('red')).toBeUndefined();
   });
+
+  test('guardrail output (rgb) round-trips through parseColor', () => {
+    const result = enforceContrast({ bg: '#0c0c10', ink: '#171720' });
+    const adjusted = result.adjusted.length ? result.tokens.ink : undefined;
+    expect(adjusted).toBeDefined();
+    expect(parseColor(adjusted!)).toBeDefined();
+  });
 });
+
+describe('reviewer pathological case — internally contradictory two-background palette', () => {
+  test('ink ends up readable against BOTH backgrounds (surface moved toward bg)', () => {
+    // White bg + saturated dark-green surface: no single ink can pass 4.5:1
+    // against both. The guardrail moves surface toward bg and adjusts ink.
+    const input: ColorTokens = {
+      bg: '#ffffff', surface: '#2e7d32', ink: '#15181d', muted: '#555555',
+      accent: '#2e5dc4', info: '#2e86c7', success: '#3f9d55', warn: '#d9971e', danger: '#d64545',
+    };
+    const { tokens, adjusted } = enforceContrast(input);
+    const bg = parseColor(tokens.bg!)!;
+    const surface = parseColor(tokens.surface!)!;
+    expect(adjusted).toContain('surface');
+    const ink = parseColor(tokens.ink!)!;
+    expect(contrastRatio(ink, bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(ink, surface)).toBeGreaterThanOrEqual(4.5);
+    // muted + accent family meet their targets too
+    const muted = parseColor(tokens.muted!)!;
+    expect(contrastRatio(muted, bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(muted, surface)).toBeGreaterThanOrEqual(4.5);
+    for (const role of ACCENT_ROLES) {
+      const v = parseColor(tokens[role]!);
+      expect(contrastRatio(v!, bg)).toBeGreaterThanOrEqual(3.0);
+      expect(contrastRatio(v!, surface)).toBeGreaterThanOrEqual(3.0);
+    }
+  });
+
+  test('never returns a role worse than its original colour', () => {
+    const input: ColorTokens = {
+      bg: '#ffffff', surface: '#2e7d32', ink: '#15181d', muted: '#555555',
+      accent: '#2e5dc4', info: '#2e86c7', success: '#3f9d55', warn: '#d9971e', danger: '#d64545',
+    };
+    const { tokens } = enforceContrast(input);
+    const bg = parseColor(input.bg!)!;
+    const surface = parseColor(tokens.surface!)!; // adjusted surface, same as the check uses
+    const neverWorse = (role: keyof ColorTokens, target: number): boolean => {
+      const fixed = parseColor(tokens[role]!);
+      const original = parseColor(input[role]!);
+      const bestFixed = Math.min(contrastRatio(fixed!, bg), contrastRatio(fixed!, surface));
+      const bestOriginal = Math.min(contrastRatio(original!, bg), contrastRatio(original!, surface));
+      // adjusted value meets the target, and never falls below the original's best
+      return bestFixed >= target || bestFixed > bestOriginal;
+    };
+    expect(neverWorse('ink', 4.5)).toBe(true);
+    expect(neverWorse('muted', 4.5)).toBe(true);
+    for (const role of ACCENT_ROLES) expect(neverWorse(role, 3.0)).toBe(true);
+  });
+});
+

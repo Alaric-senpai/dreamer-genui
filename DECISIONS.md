@@ -209,3 +209,13 @@ Verification: `pnpm test` → **160/160 passing**; `tsc --noEmit` clean; build e
 **Op typing and apply signatures.** Op types stay `z.infer` (defaults baked); `applyOps/applyPartial/applyFinal` accept `ReplyLike { v?, ops: readonly unknown[] }` — parse-time Zod baking keeps the wire permissive for hosts and tests.
 
 **Registry-aware JSON Schema.** `registryToJsonSchema(registry)` rebuilds the reply envelope with mood/ambience/surface enums from registry entries, so a schema-constrained tutor can only name registered presets.
+
+### M2 review round 1 — fix rulings
+
+The independent reviewer (see `review-m2.md`) returned **fix-first** with three majors; all fixed and re-verified:
+
+1. **`attach.theme` is detour-scoped (§6.1).** A `theme` object carried on an `attach` op applies only to the open detour record (reverts on return), never the board. `theme` ops keep their own `scope`; `replace` themes the new board. Pinned by tests.
+2. **Contrast guardrail rewritten for two-background correctness.** Text roles are adjusted against ALL backgrounds (smallest passing step in both white/black directions; a "best improvement" fallback so a role is never made worse than its original). When no ink adjustment can satisfy both `bg` and `surface` (internally contradictory palette), `surface` moves toward `bg` in steps until ink passes — verified on the reviewer's pathological case (white bg + dark-green surface). Also fixed a double `/255` in `relativeLuminance` that had flattened all ratios to ~1.0.
+3. **Product string removed.** JSON Schema top-level name `JifunzeReply` → `DreamerGenuiReply`; packages/ keeps zero product references (grep-checked).
+
+Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `color.ts` so guardrail output round-trips through the theme resolver; shipped example presets re-verified as needing zero adjustment (with luminance math correct, `playful.warn` needed darkening to `#b97400` to hold 3:1 on white).

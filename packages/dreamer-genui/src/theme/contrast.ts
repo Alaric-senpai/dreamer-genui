@@ -1,5 +1,5 @@
 import type { ColorTokens } from '../schema/theme';
-import { contrastRatio, isLight, mix, parseColor, RGB } from './color';
+import { contrastRatio, mix, parseColor, RGB } from './color';
 
 /**
  * Contrast guardrail (§6.8): the resolver enforces minimum text contrast
@@ -29,56 +29,98 @@ export function enforceContrast(color: ColorTokens): ContrastResult {
   const adjusted: string[] = [];
   const bg = parseColorValue(color.bg);
   const surface = parseColorValue(color.surface);
-  const backgrounds: RGB[] = [];
-  if (bg) backgrounds.push(bg);
-  if (surface) backgrounds.push(surface);
-  if (backgrounds.length === 0) return { tokens: out, adjusted };
+  if (!bg) return { tokens: out, adjusted };
 
-  const ensure = (name: string, target: number): void => {
+  let backgrounds: RGB[] = surface ? [bg, surface] : [bg];
+
+  const bestScore = (c: RGB): number =>
+    Math.min(...backgrounds.map(B => contrastRatio(c, B)));
+  const originalScore = (name: string): number => {
+    const c = parseColorValue(color[name as keyof ColorTokens]);
+    return c ? bestScore(c) : Infinity;
+  };
+  const passes = (c: RGB, target: number): boolean => bestScore(c) >= target;
+
+  /**
+   * Adjust a TEXT role for readability against ALL backgrounds: try both
+   * directions (toward white / toward black), take the smallest step that
+   * passes, otherwise the best achievable improvement. Never returns a
+   * colour worse than the original for that role.
+   */
+  const adjustText = (c: RGB, target: number): RGB | undefined => {
+    let bestRgb: RGB | undefined;
+    let bestRatio = bestScore(c);
+    for (let i = 1; i <= 12; i++) {
+      const t = i / 12;
+      for (const dir of [WHITE, BLACK]) {
+        const cand = mix(c, dir, t);
+        const score = bestScore(cand);
+        if (score >= target) return cand;
+        if (score > bestRatio) {
+          bestRatio = score;
+          bestRgb = cand;
+        }
+      }
+    }
+    return bestRgb;
+  };
+
+  /**
+   * Phase 1 — ink. If no ink adjustment can satisfy BOTH bg and surface, the
+   * palette is internally contradictory (e.g. white bg + saturated dark-green
+   * surface); move surface toward bg until ink passes, then proceed.
+   */
+  const ink = parseColorValue(color.ink);
+  if (ink) {
+    let ok = passes(ink, BODY_TARGET);
+    const fixed = ok ? undefined : adjustText(ink, BODY_TARGET);
+    if (fixed) {
+      ok = passes(fixed, BODY_TARGET);
+      if (ok) applyTextFix('ink', fixed);
+    }
+    if (!ok && surface && backgrounds.length > 1) {
+      for (let t = 0.1; t <= 1.0001 && !ok; t += 0.1) {
+        const candidate = mix(surface, bg, t);
+        backgrounds = [bg, candidate];
+        const fixed2 = adjustText(parseColorValue(color.ink)!, BODY_TARGET);
+        if (fixed2 && passes(fixed2, BODY_TARGET)) {
+          out.surface = `rgb(${Math.round(candidate.r)} ${Math.round(candidate.g)} ${Math.round(candidate.b)})`;
+          adjusted.push('surface');
+          applyTextFix('ink', fixed2);
+          ok = true;
+        }
+      }
+    }
+    if (!ok && fixed) applyTextFix('ink', fixed);
+  }
+
+  // Phase 2 — the remaining roles, text-adjust only (never worse than original).
+  adjustRole('muted', BODY_TARGET);
+  for (const role of ACCENT_ROLES) adjustRole(role, ACCENT_TARGET);
+
+  return { tokens: out, adjusted };
+
+  // --- helpers ---
+
+  function adjustRole(name: string, target: number): void {
     const original = parseColorValue(color[name as keyof ColorTokens]);
     if (!original) return;
-    if (passes(original, backgrounds, target)) return;
-    const fixed = adjustToTarget(original, backgrounds, target);
-    if (fixed) {
+    if (passes(original, target)) return;
+    const fixed = adjustText(original, target);
+    if (!fixed) return;
+    // only accept an improvement (the fallback path may not reach target)
+    if (bestScore(fixed) > originalScore(name)) {
       out[name as keyof ColorTokens] = `rgb(${Math.round(fixed.r)} ${Math.round(fixed.g)} ${Math.round(fixed.b)})`;
       adjusted.push(name);
     }
-  };
-
-  ensure('ink', BODY_TARGET);
-  ensure('muted', BODY_TARGET);
-  for (const role of ACCENT_ROLES) {
-    ensure(role, ACCENT_TARGET);
   }
 
-  return { tokens: out, adjusted };
+  function applyTextFix(name: string, fixed: RGB): void {
+    out[name as keyof ColorTokens] = `rgb(${Math.round(fixed.r)} ${Math.round(fixed.g)} ${Math.round(fixed.b)})`;
+    if (!adjusted.includes(name)) adjusted.push(name);
+  }
 }
 
 function parseColorValue(v: string | undefined): RGB | undefined {
   return v ? parseColor(v) : undefined;
-}
-
-function passes(c: RGB, backgrounds: RGB[], target: number): boolean {
-  return backgrounds.every(bg => contrastRatio(c, bg) >= target);
-}
-
-/**
- * Move the text colour away from the background until it reaches the target:
- * mix toward white on dark backgrounds, toward black on light ones.
- * 20 steps; the last step is the pure opposite so the guardrail always
- * terminates at a readable value.
- */
-function adjustToTarget(c: RGB, backgrounds: RGB[], target: number): RGB | undefined {
-  const darkestBg = backgrounds.reduce((a, b) => (lum(a) <= lum(b) ? a : b));
-  const targetColor = isLight(darkestBg) ? BLACK : WHITE;
-  for (let t = 0.08; t < 1; t += 0.08) {
-    const candidate = mix(c, targetColor, t);
-    if (passes(candidate, backgrounds, target)) return candidate;
-  }
-  return targetColor;
-}
-
-function lum(c: RGB): number {
-  // cheap luminance ordering; full math lives in color.ts
-  return (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
 }

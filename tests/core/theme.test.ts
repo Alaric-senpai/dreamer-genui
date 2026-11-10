@@ -114,6 +114,39 @@ describe('theme op through the resolver', () => {
     expect(state.theme).toBeUndefined();
     expect(state.detours[0]?.theme?.mood).toBe('eerie');
   });
+
+  test('theme carried on an attach op scopes to the detour, not the board (§6.1)', () => {
+    const r = new BoardResolver();
+    r.applyOps({ v: 1, ops: [{ op: 'append', blocks: [textBlock('a')] }] });
+    r.applyOps({
+      v: 1,
+      ops: [
+        {
+          op: 'attach',
+          to: 'a',
+          theme: { mood: 'eerie' },
+          blocks: [textBlock('d1', undefined)],
+        },
+      ],
+    });
+    const state = r.getState();
+    // Board untouched; the detour record carries the resolved theme.
+    expect(state.theme).toBeUndefined();
+    expect(state.detours[0]?.theme?.mood).toBe('eerie');
+    // A board-level theme set BEFORE the attach survives.
+  });
+
+  test('detour-scoped theme reverts to the board theme when the detour closes', () => {
+    const r = new BoardResolver();
+    r.applyOps({ v: 1, ops: [{ op: 'append', blocks: [textBlock('a')] }] });
+    r.applyOps({ v: 1, ops: [{ op: 'theme', theme: { mood: 'calm' } }] });
+    r.applyOps({
+      v: 1,
+      ops: [{ op: 'attach', to: 'a', theme: { mood: 'eerie' }, blocks: [textBlock('d1', undefined)] }],
+    });
+    expect(r.getState().theme?.mood).toBe('calm'); // closest scoping: previous board theme intact
+    expect(r.getState().detours[0]?.theme?.mood).toBe('eerie');
+  });
 });
 
 describe('history with theme and cues', () => {

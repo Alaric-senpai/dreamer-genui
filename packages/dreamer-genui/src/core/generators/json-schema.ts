@@ -53,5 +53,5 @@ export function registryToJsonSchema(registry: Registry): ReturnType<typeof zodT
   const opUnion = z.discriminatedUnion('op', ops as never);
 
   const Reply = z.object({ v: z.literal(1), ops: z.array(opUnion) });
-  return zodToJsonSchema(Reply, { name: 'JifunzeReply' } as never);
+  return zodToJsonSchema(Reply, { name: 'DreamerGenuiReply' } as never);
 }

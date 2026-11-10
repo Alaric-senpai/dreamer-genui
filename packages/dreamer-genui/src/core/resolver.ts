@@ -266,7 +266,12 @@ export class BoardResolver {
     }
     if (!resolution.theme) return undefined;
 
-    const scope = (op.op === 'theme' ? op.scope : undefined) ?? 'board';
+    // §6.1: theme on an `attach` op is scoped to the detour (reverts on
+    // return); theme ops carry their own scope; replace themes the new board.
+    const scope =
+      op.op === 'theme' ? ((op.scope ?? 'board') as 'board' | 'detour') :
+      op.op === 'attach' ? 'detour' :
+      'board';
     this.state = applyResolvedTheme(this.state, resolution.theme, scope);
     if (scope === 'board') this._themeChangeBus.emit(resolution.theme);
     return resolution.theme;

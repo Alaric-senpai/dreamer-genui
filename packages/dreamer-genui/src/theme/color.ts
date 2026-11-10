@@ -1,9 +1,11 @@
 /**
  * Colour parsing and contrast math for the theme resolver.
  *
- * Accepts the protocol colour formats only: hex, hsl(), oklch(). Anything
- * else (url(), gradients, var(), calc(), free-form CSS) is unparsable here
- * and therefore rejected upstream — model output can never interpolate raw
+ * Accepts the protocol colour formats only: hex, hsl(), oklch(), and the
+ * library's own `rgb(r g b)` / `rgba(r g b / a)` adjustments so guardrail
+ * output can be re-parsed on the next theme resolution. Numeric-only forms
+ * (no calc(), var(), gradients, url()) — anything else is unparsable here
+ * and therefore rejected upstream: model output can never interpolate raw
  * CSS into the board.
  */
 
@@ -18,9 +20,29 @@ export interface RGB {
 export function parseColor(input: string): RGB | undefined {
   const s = input.trim();
   if (s.startsWith('#')) return parseHex(s);
+  if (/^rgba?\(/i.test(s)) return parseRgb(s);
   if (/^hsla?\(/i.test(s)) return parseHsl(s);
   if (/^oklch\(/i.test(s)) return parseOklch(s);
   return undefined;
+}
+
+/** "rgb(20 24 32)", "rgb(20, 24, 32)", "rgba(20, 24, 32, 0.8)" — numeric channels only; alpha ignored. */
+function parseRgb(s: string): RGB | undefined {
+  const m = s.match(/^rgba?\(\s*([\d.]+)(%)?[, ]+([\d.]+)(%)?[, ]+([\d.]+)(%)?(?:\s*[,/]\s*[\d.]+%?)?\s*\)$/i);
+  if (!m) return undefined;
+  const ch = (raw: string, hasPercent: boolean): number => {
+    const v = Number(raw);
+    return hasPercent ? (clamp01(v / 100) * 255) : clamp255(v);
+  };
+  return {
+    r: ch(m[1]!, m[2] === '%'),
+    g: ch(m[3]!, m[4] === '%'),
+    b: ch(m[5]!, m[6] === '%'),
+  };
+}
+
+function clamp255(v: number): number {
+  return Math.min(255, Math.max(0, v));
 }
 
 function parseHex(s: string): RGB | undefined {
