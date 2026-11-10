@@ -22,9 +22,17 @@ function textBlock(partial: Partial<TextBlock>): TextBlock {
   } as TextBlock;
 }
 
-/** Animated kinetic units: spans inside the per-segment hidden wrappers. */
+/** Animated kinetic units: styled spans that are not the aria-hidden whole-run copies. */
 function kineticUnits(container: HTMLElement): number {
-  return container.querySelectorAll('span[aria-hidden] > span').length;
+  return [...container.querySelectorAll('span')].filter(
+    (s) => s.hasAttribute('style') && !s.hasAttribute('aria-hidden')
+  ).length;
+}
+
+/** Direct unit children of the kinetic run inside a rendered text block. */
+function runUnits(container: HTMLElement): string[] {
+  const run = container.querySelector('p[data-node-id="t1"]')!.firstElementChild as HTMLElement;
+  return [...run.children].map((c) => c.textContent);
 }
 
 function renderView(block: TextBlock) {
@@ -54,7 +62,7 @@ describe('TextBlockView dispatch (DECISIONS M3 batch-2 ruling)', () => {
       textBlock({ enter: { effect: 'words', split: 'chars' } })
     );
     // chars: every character is its own unit ('plain body sentence' has 17 chars + 2 spaces)
-    const units = [...container.querySelectorAll('span[aria-hidden] > span')].map((s) => s.textContent);
+    const units = runUnits(container);
     expect(units).toEqual([...'plain body sentence']);
   });
 
@@ -63,7 +71,8 @@ describe('TextBlockView dispatch (DECISIONS M3 batch-2 ruling)', () => {
       textBlock({ enter: { effect: 'words', split: 'lines' } })
     );
     // words engine, no explicit override → word units, not phrase-per-line
-    const styled = [...container.querySelectorAll('span[aria-hidden] > span')].filter((s) => s.hasAttribute('style'));
+    const run = container.querySelector('p[data-node-id="t1"]')!.firstElementChild as HTMLElement;
+    const styled = [...run.children].filter((s) => s.hasAttribute('style'));
     expect(styled.length).toBe(3);
   });
 

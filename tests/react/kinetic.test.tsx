@@ -26,15 +26,19 @@ function renderKinetic(content: Inline[], effect: string, split?: 'words' | 'cha
   );
 }
 
-/** All text inside the wrapper, in DOM order (used for split integrity). */
-function joinedText(container: HTMLElement): string {
-  return container.firstElementChild?.textContent ?? '';
+/** The run wrapper (KineticText's root element). */
+function run(container: HTMLElement): HTMLElement {
+  return container.firstElementChild as HTMLElement;
 }
 
-/** Full announced text = the aria-label the wrapper carries. */
-function ariaLabel(container: HTMLElement): string {
-  expect(container.firstElementChild).toHaveAttribute('aria-label');
-  return container.firstElementChild!.getAttribute('aria-label')!;
+/** All text inside the run, in DOM order (used for split integrity). */
+function joinedText(container: HTMLElement): string {
+  return run(container).textContent ?? '';
+}
+
+/** Text of the animated (aria-hidden) copy — typed/clip/count digits, excluding the sr-only announcement. */
+function animatedText(container: HTMLElement): string {
+  return run(container).querySelector('[aria-hidden]')?.textContent ?? '';
 }
 
 // rAF + performance.now driven by the fake-timer clock, so the rAF loops in
@@ -59,7 +63,7 @@ function advanceClock(ms: number): void {
 
 /** Animated unit spans (static space spans carry no style attribute). */
 function unitsIn(container: HTMLElement): HTMLElement[] {
-  return [...container.querySelectorAll('span[aria-hidden] > span')].filter(
+  return [...run(container).children].filter(
     (s): s is HTMLElement => s.hasAttribute('style')
   );
 }
@@ -73,7 +77,7 @@ describe('splitting effects — words / chars / slam (§9.1)', () => {
 
   test('chars splits letters and preserves every whitespace run', () => {
     const { container } = renderKinetic(['a  b!'], 'chars');
-    const all = [...container.querySelectorAll('span[aria-hidden] > span')].map((s) => s.textContent);
+    const all = [...run(container).children].map((s) => s.textContent);
     expect(all).toEqual(['a', ' ', ' ', 'b', '!']);
   });
 
@@ -84,20 +88,20 @@ describe('splitting effects — words / chars / slam (§9.1)', () => {
     }
   });
 
-  test('the wrapper aria-label carries the full text; units are hidden from AT', () => {
+  test('split runs are fully visible to AT — no hidden copy, no aria-label (naming a generic span is spec-prohibited)', () => {
     const { container } = renderKinetic(['hello there'], 'words');
-    expect(ariaLabel(container)).toBe('hello there');
-    expect(container.querySelector('span[aria-hidden]')).toBeInTheDocument();
+    expect(run(container).querySelector('[aria-label]')).toBeNull();
+    expect(run(container).querySelector('[aria-hidden]')).toBeNull();
+    expect(run(container).querySelector('.dg-sr-only')).toBeNull();
+    expect(joinedText(container)).toBe('hello there');
   });
 
-  test('marks never split — a highlight mark renders whole through MarkRenderer', () => {
+  test('marks never split — a highlight mark renders whole through MarkRenderer, live at its position', () => {
     const mark = { mark: 'highlight', text: ['highlighted phrase'] } as Inline;
     const { container } = renderKinetic(['look at the ', mark, ' now'], 'words');
     expect(container.querySelector('mark.dg-mark-highlight')).toBeInTheDocument();
     expect(container.querySelector('mark.dg-mark-highlight')!.textContent).toBe('highlighted phrase');
-    // the label carries the FULL meta text (mark text included) — no double-space artifact
-    expect(ariaLabel(container)).toBe('look at the highlighted phrase now');
-    // the mark renders LIVE at its position, outside every aria-hidden wrapper
+    // the mark is a live sibling — never inside an aria-hidden subtree
     expect(container.querySelector('mark.dg-mark-highlight')!.closest('[aria-hidden]')).toBeNull();
   });
 
@@ -109,30 +113,31 @@ describe('splitting effects — words / chars / slam (§9.1)', () => {
     for (const el of container.querySelectorAll('[role="button"], button')) {
       expect(el.closest('[aria-hidden]'), el.textContent ?? '').toBeNull();
     }
-    // the label joins the mark meta text around the live strings; the term's
-    // own aria-label adds its definition when focused via MarkRenderer
-    expect(ariaLabel(container)).toBe('learn photosynthesis via the diagram');
+    // no hidden/labelled copy at all — AT reads the live DOM in order
+    // (the term's own aria-label = its accessible name, which is correct)
+    expect(run(container).getAttribute('aria-label')).toBeNull();
+    expect(container.querySelector('[aria-hidden]')).toBeNull();
   });
 
   test('whole-run effects degrade to a static render when content holds interactive marks', () => {
     const term = { mark: 'term', text: 'mitosis', definition: 'cell division' } as Inline;
     for (const effect of ['typewriter', 'wipe'] as const) {
       const { container, unmount } = renderKinetic(['about ', term], effect);
-      // no hidden/altered run: exact content, no aria-label duplication, live term
+      // no hidden/altered run: exact content, no sr copy, live term
       expect(container.querySelector('[aria-hidden]'), effect).toBeNull();
-      expect(container.firstElementChild!.getAttribute('aria-label'), effect).toBeNull();
+      expect(container.querySelector('.dg-sr-only'), effect).toBeNull();
       expect(container.querySelector('[role="button"]')!.closest('[aria-hidden]'), effect).toBeNull();
       unmount();
     }
   });
 
-  test('scribble keeps the full content live — only the decorative stroke is hidden', () => {
-    const focusable = { mark: 'focusable', text: ['the cell'], ref: 'cell-1' } as Inline;
-    const { container } = renderKinetic(['watch ', focusable], 'scribble');
-    expect(container.querySelector('button.dg-mark-focusable')).toBeInTheDocument();
-    expect(container.querySelector('[aria-hidden]')!.tagName).toBe('svg');
-    expect(container.querySelector('button.dg-mark-focusable')!.closest('[aria-hidden]')).toBeNull();
-    expect(container.firstElementChild!.getAttribute('aria-label')).toBeNull();
+  test('count-up degrades to a static render when content carries ANY mark (its renderer shows string parts only)', () => {
+    const mark = { mark: 'highlight', text: ['299'] } as Inline;
+    const { container } = renderKinetic(['speed of light: ', mark], 'count-up');
+    expect(container.querySelector('[aria-hidden]')).toBeNull();
+    expect(container.querySelector('.dg-sr-only')).toBeNull();
+    expect(container.querySelector('mark.dg-mark-highlight')).toBeInTheDocument();
+    expect(joinedText(container)).toBe('speed of light: 299');
   });
 
   test('slam gives each word an animated unit (no plain whole-text render)', () => {
@@ -146,43 +151,49 @@ describe('splitting effects — words / chars / slam (§9.1)', () => {
 });
 
 describe('whole-run effects', () => {
-  test('wipe renders the full content inside a clip-path animated run', () => {
+  test('wipe: sr-only copy announces the full text; the animated run is aria-hidden', () => {
     const { container } = renderKinetic(['kicker text'], 'wipe');
-    expect(joinedText(container)).toBe('kicker text');
-    const run = container.querySelector('span[aria-hidden]');
-    expect(run).toBeInTheDocument();
-    expect(run!.textContent).toBe('kicker text');
+    expect(container.querySelector('.dg-sr-only')!.textContent).toBe('kicker text');
+    const hiddenRun = container.querySelector('[aria-hidden]');
+    expect(hiddenRun).toBeInTheDocument();
+    expect(hiddenRun!.textContent).toBe('kicker text');
   });
 
   test('count-up ends exactly on the source number', () => {
     stubRafForTimers();
     const { container } = renderKinetic(['speed of light: 299'], 'count-up');
-    // mid-animation it is below target; ends exactly at 299
+    // mid-animation it is below target; ends exactly at 299 (animated run text)
     advanceClock(160);
-    const mid = Number(/[0-9.]+/.exec(joinedText(container))?.[0] ?? 0);
+    const mid = Number(/[0-9.]+/.exec(animatedText(container))?.[0] ?? 0);
     expect(mid).toBeLessThan(299);
     advanceClock(1000);
-    expect(/[0-9.]+/.exec(joinedText(container))![0]).toBe('299');
+    expect(/[0-9.]+/.exec(animatedText(container))![0]).toBe('299');
+    // and the sr-only copy carries the final content
+    expect(container.querySelector('.dg-sr-only')!.textContent).toBe('speed of light: 299');
   });
 
-  test('count-up falls back to a rise when there is no number', () => {
+  test('count-up renders plainly when there is no number (static fallback, not a rise)', () => {
     const { container } = renderKinetic(['just words'], 'count-up');
     expect(joinedText(container)).toBe('just words');
+    expect(container.querySelector('[aria-hidden]')).toBeNull();
+    expect(container.querySelector('.dg-sr-only')).toBeNull();
   });
 
   test('typewriter starts empty and ends with the full text', () => {
     stubRafForTimers();
     const { container } = renderKinetic(['typing this out'], 'typewriter');
-    expect(joinedText(container)).toBe('');
+    expect(animatedText(container)).toBe('');
     advanceClock(26 * 8); // 8 chars
-    expect(joinedText(container)).toBe('typing t');
+    expect(animatedText(container)).toBe('typing t');
     advanceClock(400);
-    expect(joinedText(container)).toBe('typing this out');
+    expect(animatedText(container)).toBe('typing this out');
+    expect(container.querySelector('.dg-sr-only')!.textContent).toBe('typing this out');
   });
 
-  test('scribble draws its stroke next to intact content', () => {
+  test('scribble draws its stroke next to intact content (only the decorative svg is hidden)', () => {
     const { container } = renderKinetic(['underlined point'], 'scribble');
     expect(container.querySelector('svg')).toBeInTheDocument();
+    expect(container.querySelector('[aria-hidden]')!.tagName).toBe('svg');
     expect(joinedText(container)).toBe('underlined point');
   });
 });
@@ -192,7 +203,7 @@ describe('reduced motion (§9.3) — content never gated', () => {
     setReducedMotion(true);
     const { container } = renderKinetic(['slammed words'], 'slam');
     expect(joinedText(container)).toBe('slammed words');
-    expect(container.querySelectorAll('span[aria-hidden] > span').length).toBe(0);
+    expect(container.querySelector('[aria-hidden]')).toBeNull();
   });
 
   test("'fade' presets apply one short fade but show the full content immediately", () => {
@@ -204,6 +215,7 @@ describe('reduced motion (§9.3) — content never gated', () => {
   test('unknown/non-kinetic effects render plain inline content', () => {
     const { container } = renderKinetic(['plain content'], 'reveal');
     expect(joinedText(container)).toBe('plain content');
-    expect(container.firstElementChild!.getAttribute('aria-label')).toBeNull();
+    expect(container.querySelector('[aria-label]')).toBeNull();
+    expect(container.querySelector('[aria-hidden]')).toBeNull();
   });
 });

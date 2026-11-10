@@ -1,10 +1,13 @@
 /*
  * dreamer-genui Tailwind v4 bridge (§7.6).
  *
- * Import this AFTER the host's Tailwind import. It maps the library's
- * `--dg-*` variables into Tailwind theme values (and back), so the board
- * adopts the host's global Tailwind configuration automatically — the host
- * does NOT need to add the library to `@source`. Hosts can remap any token.
+ * Use this IN PLACE OF your `@import 'tailwindcss'` line (it must come after
+ * any other layering your setup needs but replaces the base import — the
+ * bridge does not re-import Tailwind itself, so a host importing Tailwind
+ * separately must skip the duplicate). It maps the library's `--dg-*`
+ * variables into Tailwind theme values (and back), so the board adopts the
+ * host's global Tailwind configuration automatically — the host does NOT
+ * need to add the library to `@source`. Hosts can remap any token.
  *
  * Layering: `@theme inline` publishes host Tailwind tokens as CSS variables;
  * the board's base stylesheet consumes `--dg-*` with inline fallbacks, so a
@@ -13,7 +16,6 @@
  * The resolved board theme (tutor op) lands as inline styles and wins over
  * both — the §6.8 precedence chain.
  */
-@import 'tailwindcss';
 
 /* Library tokens published to Tailwind's theme scope (use as utilities:
  * bg-board-bg, text-board-ink, font-board-display, rounded-board-md, ...). */

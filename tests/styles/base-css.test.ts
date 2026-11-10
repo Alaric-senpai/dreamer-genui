@@ -18,10 +18,13 @@ describe('base.css (§7.6 styling architecture)', () => {
   test('every colour role default equals the engine DEFAULT_VARS (cannot drift)', () => {
     for (const [key, value] of Object.entries(DEFAULT_VARS)) {
       if (!key.startsWith('--dg-color-')) continue;
-      const re = new RegExp(`var\\(${key},\\s*#([0-9a-fA-F]{3,6})\\)`);
-      const got = css.match(re)?.[1];
-      expect(got, `${key} fallback in base.css`).toBeDefined();
-      expect(got!.toLowerCase(), key).toBe(value.replace('#', '').toLowerCase());
+      const re = new RegExp(`var\\(${key},\\s*#([0-9a-fA-F]{3,6})\\)`, 'g');
+      // every occurrence must match — one drifted fallback among many is still drift
+      const fallbacks = [...css.matchAll(re)].map((m) => m[1] ?? '');
+      expect(fallbacks.length, `${key} fallbacks in base.css`).toBeGreaterThan(0);
+      for (const got of fallbacks) {
+        expect(got.toLowerCase(), key).toBe(value.replace('#', '').toLowerCase());
+      }
     }
   });
 

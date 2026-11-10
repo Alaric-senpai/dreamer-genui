@@ -35,11 +35,11 @@ function inlineLabel(inline: Inline): string {
   const mark = inline as Mark & { text?: unknown };
   if (mark.mark === 'math') return String((mark as { tex?: string }).tex ?? '');
   if (typeof mark.text === 'string') return mark.text;
-  if (Array.isArray(mark.text)) return mark.text.map(inlineLabel).join('');
+  if (Array.isArray(mark.text)) return mark.text.map(inlineLabel).join(' '); // matches MarkRenderer.markText
   return '';
 }
 
-/** The full, well-formed accessible text for a run (mark meta text included). */
+/** The full, well-formed text for a run's visually-hidden copy (mark meta text included). */
 function metaText(content: Inline[]): string {
   return content.map(inlineLabel).join('');
 }
@@ -53,17 +53,20 @@ function hasInteractiveMark(content: Inline[]): boolean {
   return flatten(content).some((seg) => seg.mark !== undefined && isInteractiveMark(seg.mark));
 }
 
+function hasAnyMark(content: Inline[]): boolean {
+  return flatten(content).some((seg) => seg.mark !== undefined);
+}
+
 function textLength(content: Inline[]): number {
   return content.reduce((n, p) => n + (typeof p === 'string' ? p.length : 0), 0);
 }
 
 /**
- * Accessible split-run structure (review round 1): unit spans live under a
- * per-SEGMENT aria-hidden wrapper so visible words/letters are hidden from
- * assistive tech, while marks render LIVE at their position — a `term`
- * (role=button) or `focusable` (button) inside animated text stays in the
- * accessibility tree and focusable. The wrapper's aria-label carries the
- * complete meta text so splitting never fragments the announcement.
+ * Accessible split-run structure (review round 2): split runs are FULLY
+ * visible to assistive technology — no hidden copy, no aria-label (naming a
+ * generic span is spec-prohibited). AT reads the unit spans and live marks
+ * in DOM order, so a term/focusable stays in the accessibility tree and no
+ * string-only run can ever announce nothing.
  */
 function SplitRun({
   content,
@@ -82,11 +85,11 @@ function SplitRun({
   const mode = split ?? preset.split;
   let unitIndex = 0;
   const segments = flatten(content).map((seg, i) => {
-    if (seg.text === undefined && seg.mark) {
+    if (seg.mark) {
       return <MarkRenderer key={`m${i}`} mark={seg.mark} />;
     }
     const parts: SplitPart[] = splitIntoParts(seg.text!, mode);
-    const units = parts.map((part, j) => {
+    return parts.map((part, j) => {
       if (part.kind === 'space') {
         unitIndex += 1;
         return <span key={`s${i}-${j}`}>{part.text}</span>;
@@ -108,24 +111,16 @@ function SplitRun({
         </m.span>
       );
     });
-    return (
-      <span aria-hidden="true" key={`t${i}`}>
-        {units}
-      </span>
-    );
   });
-  return (
-    <span className={className} aria-label={metaText(content)}>
-      {segments}
-    </span>
-  );
+  return <span className={className}>{segments}</span>;
 }
 
 /** Whole-run clip sweep (§9.1). Callers guarantee no interactive marks. */
 function WipeRun({ content, effect, tempo, className }: { content: Inline[]; effect: KineticEffect; tempo: number; className?: string | undefined }): ReactNode {
   const preset = KINETIC[effect];
   return (
-    <span className={className} aria-label={metaText(content)}>
+    <span className={className}>
+      <SrOnlyText text={metaText(content)} />
       <m.span
         aria-hidden="true"
         style={{ display: 'inline-block', willChange: 'clip-path' }}
@@ -173,7 +168,8 @@ function TypewriterRun({ content, effect, tempo, className }: { content: Inline[
     }
   }
   return (
-    <span className={className} aria-label={metaText(content)}>
+    <span className={className}>
+      <SrOnlyText text={metaText(content)} />
       <span aria-hidden="true">{pieces}</span>
     </span>
   );
@@ -209,7 +205,8 @@ function CountUpRun({ content, effect, tempo, className }: { content: Inline[]; 
     <span key="post">{full.slice(start + fullMatchEnd(match))}</span>,
   ];
   return (
-    <span className={className} aria-label={metaText(content)}>
+    <span className={className}>
+      <SrOnlyText text={metaText(content)} />
       <span aria-hidden="true">{pieces}</span>
     </span>
   );
@@ -217,6 +214,17 @@ function CountUpRun({ content, effect, tempo, className }: { content: Inline[]; 
 
 function fullMatchEnd(match: RegExpExecArray | null): number {
   return match ? match[0].length : 0;
+}
+
+/**
+ * Visually-hidden copy of the full run text — the spec-compliant
+ * announcement mechanism for whole-run effects that alter their visible
+ * text (typewriter typing, wipe clipping, count-up digits). The animated
+ * run carries aria-hidden; this copy carries the final content as a plain
+ * text node. Styling comes from `.dg-sr-only` in the base stylesheet.
+ */
+function SrOnlyText({ text }: { text: string }): ReactNode {
+  return <span className="dg-sr-only">{text}</span>;
 }
 
 /** Wavy underline drawing itself in (refined with hand-drawn primitives in M5). Content is fully visible — no hidden copy needed. */
@@ -250,9 +258,16 @@ function ScribbleRun({ content, effect, tempo, className }: { content: Inline[];
 /**
  * Kinetic text engine (§9.1): words/chars/slam per-unit entrances, typewriter,
  * wipe, count-up and the scribble stroke — plain DOM, no GSAP. Marks render
- * through the standard renderer and are never split; interactive marks
- * (term/focusable) stay inside the accessibility tree, so runs containing
- * them fall back to a static render for whole-run effects (review ruling).
+ * through the standard renderer and are never split.
+ *
+ * Accessibility (review round 2): split runs are fully visible to AT (no
+ * hidden copy — an aria-label on a generic span is spec-prohibited, which
+ * would let string-only runs announce nothing). Whole-run effects that alter
+ * their visible text (typewriter/wipe/count-up) hide the animated run behind
+ * aria-hidden and announce a visually-hidden `.dg-sr-only` copy of the final
+ * text; runs carrying an interactive mark (term/focusable) degrade to a
+ * static render, and count-up degrades on ANY mark (its renderer shows
+ * string parts only).
  *
  * Reduced motion (§9.3): 'instant' presets step straight to the final visual;
  * 'fade' presets apply one short REDUCED_FADE_MS fade. Content is never
@@ -306,6 +321,11 @@ export function KineticText({
     case 'typewriter':
       return <TypewriterRun content={content} effect={effect} tempo={tempo} className={className} />;
     case 'count-up': {
+      if (hasAnyMark(content)) {
+        // CountUpRun renders string parts only — a mark would vanish visually
+        // while the sr-only copy announced it. Content-first: static render.
+        return <span className={className}>{renderInline(content)}</span>;
+      }
       const plain = content.map((p) => (typeof p === 'string' ? p : '')).join('');
       if (!/-?\d+(?:\.\d+)?/.test(plain)) {
         // nothing numeric to count — render plainly (the rise is a container entrance)
