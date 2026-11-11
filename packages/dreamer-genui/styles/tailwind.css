@@ -1,24 +1,46 @@
 /*
  * dreamer-genui Tailwind v4 bridge (§7.6).
  *
- * Use this IN PLACE OF your `@import 'tailwindcss'` line (it must come after
- * any other layering your setup needs but replaces the base import — the
- * bridge does not re-import Tailwind itself, so a host importing Tailwind
- * separately must skip the duplicate). It maps the library's `--dg-*`
- * variables into Tailwind theme values (and back), so the board adopts the
- * host's global Tailwind configuration automatically — the host does NOT
- * need to add the library to `@source`. Hosts can remap any token.
+ * Import this AFTER the host's `@import 'tailwindcss'` (the bridge does not
+ * import Tailwind itself, so no duplication). It works in both directions:
  *
- * Layering: `@theme inline` publishes host Tailwind tokens as CSS variables;
- * the board's base stylesheet consumes `--dg-*` with inline fallbacks, so a
- * host that defines `--dg-color-bg` (e.g. through `@theme` or plain CSS)
- * overrides the library defaults without touching inline styles.
- * The resolved board theme (tutor op) lands as inline styles and wins over
- * both — the §6.8 precedence chain.
+ *  1. ADOPTION — the board consumes the host's global Tailwind theme
+ *     automatically (`:root` block below): host colour/font/radius variables
+ *     map onto `--dg-*` with the library defaults as final fallbacks. No
+ *     `@source` or config change is needed for the board to adopt the host
+ *     theme.
+ *  2. PUBLICATION — `@theme inline` exposes board tokens as Tailwind theme
+ *     values, so host utilities can use them directly (bg-board-bg,
+ *     text-board-ink, font-board-display, rounded-board-md, ...). Hosts can
+ *     remap any token.
+ *
+ * Precedence (§6.8, lowest→highest): base.css var() fallbacks < this bridge's
+ * host adoption < host plain-CSS overrides < resolved board theme (tutor op,
+ * inline on the board root).
  */
 
-/* Library tokens published to Tailwind's theme scope (use as utilities:
- * bg-board-bg, text-board-ink, font-board-display, rounded-board-md, ...). */
+/* ---- 1. adoption: host Tailwind theme → --dg-* ---- */
+:root {
+  --dg-color-bg: var(--color-background, var(--color-white, #f7f7f5));
+  --dg-color-surface: var(--color-surface, var(--color-white, #ffffff));
+  --dg-color-ink: var(--color-foreground, #1f1f1d);
+  --dg-color-muted: var(--color-muted, var(--color-gray-500, #565650));
+  --dg-color-accent: var(--color-primary, var(--color-blue-600, #2e5dc4));
+  --dg-color-info: var(--color-info, var(--color-blue-500, #2563eb));
+  --dg-color-success: var(--color-success, var(--color-green-600, #15803d));
+  --dg-color-warn: var(--color-warn, var(--color-amber-600, #b45309));
+  --dg-color-danger: var(--color-danger, var(--color-red-600, #b91c1c));
+  --dg-color-border: var(--color-border, var(--color-gray-200, #e2e2dc));
+  --dg-font-display: var(--font-display, var(--font-sans, system-ui, -apple-system, sans-serif));
+  --dg-font-body: var(--font-sans, system-ui, -apple-system, sans-serif);
+  --dg-font-mono: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  --dg-radius-sm: var(--radius-sm, 4px);
+  --dg-radius-md: var(--radius-md, 8px);
+  --dg-radius-lg: var(--radius-lg, 16px);
+}
+
+/* ---- 2. publication: board tokens as Tailwind theme values ----
+ * (use as utilities: bg-board-bg, text-board-ink, font-board-display, rounded-board-md, ...) */
 @theme inline {
   --color-board-bg: var(--dg-color-bg, #f7f7f5);
   --color-board-surface: var(--dg-color-surface, #ffffff);

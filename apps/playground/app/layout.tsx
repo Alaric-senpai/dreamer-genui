@@ -3,7 +3,7 @@ import "./globals.css"
 // import { ThemeProvider } from "@/components/theme-provider"
 // import { cn } from "@/lib/utils";
 // import { TooltipProvider } from "@/components/ui/tooltip";
-import { JetbrainsMono,  Montserrat } from "@/fonts";
+import { JetbrainsMono, Montserrat } from "@/fonts";
 
 
 
@@ -16,7 +16,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={"antialiased",  "font-sans", Montserrat.variable, JetbrainsMono.variable}
+      className={`antialiased font-sans ${Montserrat.variable} ${JetbrainsMono.variable}`}
     >
       <body>
         {/*<ThemeProvider>*/}

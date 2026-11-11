@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DreamerProvider, Board, useBoard, type UIEvent, type ThemeName, type Reply } from 'dreamer-genui';
+import { DreamerProvider, Board, useBoard, type UIEvent, type Reply } from 'dreamer-genui';
 import { createRegistry } from 'dreamer-genui/core';
 import type { LibraryError } from 'dreamer-genui/core';
 
@@ -47,7 +47,7 @@ const registry = createRegistry();
 
 export default function Home() {
   const [fixtureName, setFixtureName] = useState<string>('define-term');
-  const [theme, setTheme] = useState<ThemeName>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [events, setEvents] = useState<UIEvent[]>([]);
   const [errors, setErrors] = useState<LibraryError[]>([]);
   const board = useBoard();
@@ -83,11 +83,11 @@ export default function Home() {
   return (
     <DreamerProvider
       registry={registry}
-      theme={theme}
+      colorScheme={theme}
       onEvent={(e) => setEvents((prev) => [...prev, e])}
       onError={(err) => setErrors((prev) => [...prev, err])}
     >
-      <main style={{ display: 'grid', gridTemplateColumns: '260px 1fr 280px', gap: 16, padding: 16, minHeight: '100vh' }}>
+      <main className="grid" style={{  gap: 16, padding: 16, minHeight: '100vh' }}>
         {/* Left: fixture picker + theme switcher */}
         <aside>
           <h1>dreamer-genui playground</h1>
@@ -107,7 +107,7 @@ export default function Home() {
           </fieldset>
           <fieldset>
             <legend>Theme</legend>
-            {(['light', 'dark'] as ThemeName[]).map((t) => (
+            {(['light', 'dark'] as const).map((t) => (
               <label key={t} style={{ display: 'block' }}>
                 <input type="radio" name="theme" checked={theme === t} onChange={() => setTheme(t)} /> {t}
               </label>
@@ -118,9 +118,13 @@ export default function Home() {
           </p>
         </aside>
 
-        {/* Center: the blackboard */}
-        <div style={{ position: 'relative', minHeight: '70vh' }}>
-          <Board store={board} />
+        {/* Center: the blackboard. Tailwind classNames here sit OUTSIDE the
+         * library's @layer — they win over board defaults (§7.6 slot override). */}
+        <div style={{ position: 'relative', minHeight: '100dvh' }}>
+          <Board
+            store={board}
+            classNames={{ root: 'rounded-2xl ring-2 ring-rose-400/60 h-full', content: 'max-w-3xl' }}
+          />
         </div>
 
         {/* Right: event + error logs */}
