@@ -51,6 +51,7 @@
   --color-board-success: var(--dg-color-success, #15803d);
   --color-board-warn: var(--dg-color-warn, #b45309);
   --color-board-danger: var(--dg-color-danger, #b91c1c);
+  --color-board-border: var(--dg-color-border, #e2e2dc);
   --font-board-display: var(--dg-font-display, system-ui, -apple-system, sans-serif);
   --font-board-body: var(--dg-font-body, system-ui, -apple-system, sans-serif);
   --font-board-mono: var(--dg-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);

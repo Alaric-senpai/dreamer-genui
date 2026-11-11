@@ -7,22 +7,22 @@ import type { LibraryError } from 'dreamer-genui/core';
 
 // Fixtures import from the repo's canonical fixtures/ directory (the one the
 // test suite uses too — no duplicated copies).
-import defineTerm from '../../../fixtures/define-term.json';
-import attachExplainer from '../../../fixtures/attach-explainer.json';
-import cuedNarration from '../../../fixtures/cued-narration.json';
-import themeMoodShift from '../../../fixtures/theme-mood-shift.json';
-import replaceWithTheme from '../../../fixtures/replace-with-theme.json';
-import cameraMoves from '../../../fixtures/camera-moves.json';
-import replaceNewTopic from '../../../fixtures/replace-new-topic.json';
-import streamingPartial from '../../../fixtures/streaming-partial.json';
-import mathChem from '../../../fixtures/math-chem.json';
-import chartBar from '../../../fixtures/chart-bar.json';
-import invalidDuplicate from '../../../fixtures/invalid-duplicate-id.json';
-import invalidUnknownType from '../../../fixtures/invalid-unknown-type.json';
-import invalidDepth from '../../../fixtures/invalid-depth-exceeded.json';
-import invalidCueCycle from '../../../fixtures/invalid-cue-cycle.json';
-import invalidDisallowedMood from '../../../fixtures/invalid-disallowed-mood.json';
-import invalidUnreadablePalette from '../../../fixtures/invalid-unreadable-palette.json';
+import defineTerm from '../../../../fixtures/define-term.json';
+import attachExplainer from '../../../../fixtures/attach-explainer.json';
+import cuedNarration from '../../../../fixtures/cued-narration.json';
+import themeMoodShift from '../../../../fixtures/theme-mood-shift.json';
+import replaceWithTheme from '../../../../fixtures/replace-with-theme.json';
+import cameraMoves from '../../../../fixtures/camera-moves.json';
+import replaceNewTopic from '../../../../fixtures/replace-new-topic.json';
+import streamingPartial from '../../../../fixtures/streaming-partial.json';
+import mathChem from '../../../../fixtures/math-chem.json';
+import chartBar from '../../../../fixtures/chart-bar.json';
+import invalidDuplicate from '../../../../fixtures/invalid-duplicate-id.json';
+import invalidUnknownType from '../../../../fixtures/invalid-unknown-type.json';
+import invalidDepth from '../../../../fixtures/invalid-depth-exceeded.json';
+import invalidCueCycle from '../../../../fixtures/invalid-cue-cycle.json';
+import invalidDisallowedMood from '../../../../fixtures/invalid-disallowed-mood.json';
+import invalidUnreadablePalette from '../../../../fixtures/invalid-unreadable-palette.json';
 
 const FIXTURES: Record<string, Reply> = {
   'define-term': defineTerm as Reply,
@@ -87,7 +87,7 @@ export default function Home() {
       onEvent={(e) => setEvents((prev) => [...prev, e])}
       onError={(err) => setErrors((prev) => [...prev, err])}
     >
-      <main className="grid" style={{  gap: 16, padding: 16, minHeight: '100vh' }}>
+      <main className="grid gap-4 p-4 min-h-screen lg:grid-cols-[260px_minmax(0,1fr)_280px]">
         {/* Left: fixture picker + theme switcher */}
         <aside>
           <h1>dreamer-genui playground</h1>
@@ -120,7 +120,7 @@ export default function Home() {
 
         {/* Center: the blackboard. Tailwind classNames here sit OUTSIDE the
          * library's @layer — they win over board defaults (§7.6 slot override). */}
-        <div style={{ position: 'relative', minHeight: '100dvh' }}>
+        <div className="relative min-h-dvh min-w-0">
           <Board
             store={board}
             classNames={{ root: 'rounded-2xl ring-2 ring-rose-400/60 h-full', content: 'max-w-3xl' }}

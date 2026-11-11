@@ -51,7 +51,7 @@ export const namedPresets: Record<ThemeName, Partial<ThemeTokens>> = {
 
 /** Type-scale steps (§9: big contrast between hero and body). Plain CSS variables — not tutor-facing tokens. */
 const lightTypeScale: CssTokens = {
-  '--dg-text-hero': 'clamp(2.5rem, 9vw, 4.5rem)',
+  '--dg-text-hero': 'clamp(2.75rem, 11vw, 5.25rem)',
   '--dg-text-heading': 'clamp(1.7rem, 5.5vw, 2.4rem)',
   '--dg-text-body': '1.05rem',
   '--dg-text-small': '0.875rem',

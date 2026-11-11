@@ -196,13 +196,20 @@ describe('whole-run effects', () => {
     const { container } = renderKinetic(['the ', mark, ' part'], 'typewriter');
     // sr-only copy announces the full final text; the animated run types
     expect(container.querySelector('.dg-sr-only')!.textContent).toBe('the best part');
-    // before the mark's slot: not rendered yet
-    advanceClock(20); // ~3 chars of 'the '
+    // before the mark's slot: not rendered yet (26 ms per char, so 20 ms types nothing)
+    advanceClock(20);
     expect(container.querySelector('mark')).toBeNull();
-    // once typed past its slot: the whole mark appears inline, unsplitted
+    // once typed past its slot: the whole mark appears inline, unsplit
     advanceClock(400);
-    expect(container.querySelector('mark.dg-mark-highlight')!.textContent).toBe('best');
-    expect(container.querySelector('mark.dg-mark-highlight')!.closest('[aria-hidden]')!.tagName).not.toBe('MARK');
+    const markEl = container.querySelector('mark.dg-mark-highlight')!;
+    expect(markEl.textContent).toBe('best');
+    // The mark rides inside the animated run (intentionally aria-hidden), while
+    // the sr-only copy is its SIBLING — that pair is the whole a11y contract.
+    const hiddenRun = markEl.closest('[aria-hidden]');
+    expect(hiddenRun).not.toBeNull();
+    expect(hiddenRun!.tagName).toBe('SPAN');
+    expect(hiddenRun!.querySelector('.dg-sr-only')).toBeNull();
+    expect(container.querySelector('.dg-sr-only')!.parentElement).toBe(hiddenRun!.parentElement);
   });
 
   test('scribble draws its stroke next to intact content (only the decorative svg is hidden)', () => {

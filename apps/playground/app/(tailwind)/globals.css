@@ -1,3 +1,8 @@
+/* Layer order (§7.6): predeclare BEFORE Tailwind so `dreamer-genui` sits below
+ * `components`/`utilities`. Host utilities then win over library defaults
+ * regardless of specificity, and the library still beats Tailwind preflight. */
+@layer theme, base, dreamer-genui, components, utilities;
+
 @import "tailwindcss";
 /* dreamer-genui bridges: adoption (host theme → --dg-*) + the compiled board styles */
 @import "dreamer-genui/tailwind.css";

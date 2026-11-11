@@ -59,8 +59,8 @@
     letter-spacing: -0.03em;
     line-height: 1.04;
     text-wrap: balance;
-    /* Screen-owning (§9.2): the hero breaks out of the reading column and
-     * claims vertical space as a scene of its own. True focus ownership —
+    /* Screen-owning (§9.2): the hero fills the reading column and claims
+     * vertical space as a scene of its own. True focus ownership —
      * everything else receding while it stands — is the M4 receding pass;
      * hosts override via [data-dg-variant='hero'] or the --dg-text-hero var. */
     width: 100%;
@@ -69,6 +69,9 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    /* Long single words must break, never push the page sideways (320px). */
+    overflow-wrap: anywhere;
+    hyphens: auto;
   }
   .dg-text-heading {
     font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));

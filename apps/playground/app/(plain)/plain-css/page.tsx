@@ -54,7 +54,7 @@ export default function PlainCssPage() {
 
   return (
     <DreamerProvider registry={registry} onEvent={(e) => setEvents((p) => [...p, e])} onError={(e) => setErrors((p) => [...p, e])}>
-      <main style={{ padding: 16 }}>
+      <main className="plain-demo" style={{ padding: 16 }}>
         <a href="/" style={{ color: 'var(--dg-color-accent)' }}>← back to the Tailwind playground</a>
         <Board store={board} />
         <section aria-label="event log" style={{ marginTop: 16 }}>

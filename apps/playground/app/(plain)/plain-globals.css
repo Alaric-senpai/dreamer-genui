@@ -1,0 +1,28 @@
+/*
+ * Plain-CSS-only root: no Tailwind, no bridge, no preflight. The only
+ * library stylesheet a host needs is styles.css (§7.6). This file is the
+ * whole "host setup" for the plain route — proof that Tailwind is optional.
+ */
+@import "dreamer-genui/styles.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #f6f3ec;
+  color: #22221f;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+a {
+  color: inherit;
+}

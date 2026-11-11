@@ -46,10 +46,12 @@ export function TextBlockView({ block }: { block: TextBlock }): ReactNode {
       </Tag>
     );
   }
-  // Container-level effect: the Animated wrapper in NodeView animates; render text plainly.
+  // Container-level effect: the Animated wrapper in NodeView animates; render
+  // text plainly. The inner span keeps the hero's flex column from turning
+  // every inline fragment/mark into its own flex item (review fix).
   return (
     <Tag className={`dg-text dg-text-${block.variant}`} data-node-id={block.id} {...variantHook}>
-      {renderInline(block.content)}
+      <span>{renderInline(block.content)}</span>
     </Tag>
   );
 }

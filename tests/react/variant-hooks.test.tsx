@@ -39,8 +39,11 @@ describe('§7.6 data-* styling hooks (M3e)', () => {
     const hero = container.querySelector('h1[data-node-id="h1"]');
     expect(hero).toHaveAttribute('data-dg-variant', 'hero');
     expect(hero!.className).toContain('dg-text-hero');
-    // hero's variant default is a kinetic slam (§9.2) — animated units present
-    expect([...(hero!.firstElementChild as HTMLElement).children].some((c) => c.hasAttribute('style'))).toBe(true);
+    // hero's variant default is a kinetic slam (§9.2) — the first animated unit
+    // starts oversized and settles to scale 1 (not a fade like words/chars).
+    const unit = [...(hero!.firstElementChild as HTMLElement).children].find((c) => c.hasAttribute('style')) as HTMLElement;
+    expect(unit).toBeDefined();
+    expect(unit.style.transform).toContain('scale(1.9)');
     const body = container.querySelector('p[data-node-id="b1"]');
     expect(body).toHaveAttribute('data-dg-variant', 'body');
   });

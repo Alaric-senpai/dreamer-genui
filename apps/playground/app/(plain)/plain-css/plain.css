@@ -1,0 +1,26 @@
+/*
+ * Plain-CSS-only host sample (§7.6): proves the library needs no Tailwind.
+ * This route has its own root layout (`(plain)/layout.tsx`) that imports only
+ * `dreamer-genui/styles.css` — no Tailwind, no bridge, no preflight — so this
+ * file is a pure host override sheet, not a second copy of the library CSS.
+ *
+ * Precedence demo: `--dg-color-*` is overridden host-side (plain CSS outside
+ * the library's @layer beats library defaults), while a resolved theme op
+ * (inline on the board root) still wins over this.
+ */
+.plain-demo {
+  --dg-color-bg: #10141d;
+  --dg-color-ink: #f1f3f8;
+  --dg-color-accent: #e8b64c;
+  --dg-color-surface: #171c28;
+  --dg-color-muted: #aab2c5;
+
+  min-height: 100dvh;
+  background: var(--dg-color-bg);
+  color: var(--dg-color-ink);
+}
+
+.plain-demo .dg-board {
+  /* one-off structural override, same mechanism */
+  font-size: 1.1rem;
+}
