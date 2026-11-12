@@ -68,6 +68,20 @@ function unitsIn(container: HTMLElement): HTMLElement[] {
   );
 }
 
+/** Per-word wrappers used by the `chars` split (they keep words atomic for the line breaker). */
+function charWordWrappers(container: HTMLElement): HTMLElement[] {
+  return [...visualRun(container).children].filter(
+    (s): s is HTMLElement => s instanceof HTMLElement && s.hasAttribute('style') && s.style.display === 'inline-block'
+  );
+}
+
+/** The animated copy: `chars` renders an sr-only full-text copy before it. */
+function visualRun(container: HTMLElement): HTMLElement {
+  const first = run(container);
+  if (first.getAttribute('aria-hidden') === 'true') return first;
+  return container.querySelector<HTMLElement>('span[aria-hidden="true"]') ?? first;
+}
+
 describe('splitting effects — words / chars / slam (§9.1)', () => {
   test('words renders one animated unit per word with spaces static between them', () => {
     const { container } = renderKinetic(['hello kinetic world'], 'words');
@@ -77,15 +91,67 @@ describe('splitting effects — words / chars / slam (§9.1)', () => {
 
   test('chars splits letters and preserves every whitespace run', () => {
     const { container } = renderKinetic(['a  b!'], 'chars');
-    const all = [...run(container).children].map((s) => s.textContent);
-    expect(all).toEqual(['a', ' ', ' ', 'b', '!']);
+    // characters are grouped per word; whitespace stays static between words
+    expect(charWordWrappers(container).map((w) => w.textContent)).toEqual(['a', 'b!']);
+    const staticChildren = [...visualRun(container).children].filter((s) => !s.hasAttribute('style'));
+    expect(staticChildren.map((s) => s.textContent)).toEqual([' ', ' ']);
+    expect(visualRun(container).textContent).toBe('a  b!');
+    expect(container.querySelector('.dg-sr-only')!.textContent).toBe('a  b!');
+  });
+
+  test('chars groups each word in one inline-block wrapper so lines cannot break mid-word', () => {
+    // Regression: ungrouped per-char inline-blocks let the line breaker split
+    // "thing" into "thi / ng" on a 390px phone. Word wrappers are atomic boxes,
+    // so breaks only happen at the static spaces between them.
+    const { container } = renderKinetic(['Point at the thing that matters.'], 'chars');
+    const words = charWordWrappers(container);
+    expect(words.map((w) => w.textContent)).toEqual(['Point', 'at', 'the', 'thing', 'that', 'matters.']);
+    for (const word of words) {
+      expect(word.style.display).toBe('inline-block');
+      // every animated character unit lives INSIDE its word wrapper ...
+      expect(word.children.length).toBe(word.textContent!.length);
+      for (const unit of [...word.children] as HTMLElement[]) {
+        expect(unit.style.display).toBe('inline-block');
+      }
+    }
+    // ... and every direct child that is not a word wrapper is whitespace only.
+    for (const child of [...visualRun(container).children] as HTMLElement[]) {
+      if (child.style.display !== 'inline-block') {
+        expect(child.textContent).toMatch(/^\s+$/);
+      }
+    }
+    expect(visualRun(container).textContent).toBe('Point at the thing that matters.');
+    expect(container.querySelector('.dg-sr-only')!.textContent).toBe('Point at the thing that matters.');
   });
 
   test('join integrity: all unit text concatenates to the exact source', () => {
     for (const [effect, split] of [['words', undefined], ['chars', undefined], ['slam', undefined], ['slam', 'chars']] as const) {
       const { container } = renderKinetic(['The count is 42 — wow!'], effect, split as 'chars' | undefined);
-      expect(joinedText(container), `${effect}${split ?? ''}`).toBe('The count is 42 — wow!');
+      const visual = effect === 'chars' || split === 'chars' ? visualRun(container).textContent : joinedText(container);
+      expect(visual, `${effect}${split ?? ''}`).toBe('The count is 42 — wow!');
     }
+  });
+
+  test('chars ships an sr-only full-text copy; the animated letters are hidden from AT (AX name stays readable)', () => {
+    // Chrome's accessible name for per-character inline-blocks is
+    // "P o i n t …"; the sr-only copy keeps the heading name intact.
+    const { container } = renderKinetic(['Point at the thing'], 'chars');
+    expect(container.querySelector('.dg-sr-only')!.textContent).toBe('Point at the thing');
+    const visual = visualRun(container);
+    expect(visual).toHaveAttribute('aria-hidden', 'true');
+    expect(visual.querySelector('.dg-sr-only')).toBeNull();
+    expect(visual.textContent).toBe('Point at the thing');
+  });
+
+  test('chars + an interactive mark falls back to word splitting so the mark stays in AT', () => {
+    const term = { mark: 'term', text: 'estuary', definition: 'where a river meets the sea' } as Inline;
+    const { container } = renderKinetic(['the ', term], 'chars');
+    // no hidden copy: the whole run (and its term) must stay accessible
+    expect(container.querySelector('.dg-sr-only')).toBeNull();
+    expect(container.querySelector('[aria-hidden]')).toBeNull();
+    const termEl = container.querySelector('[role="button"]')!;
+    expect(termEl.textContent).toBe('estuary');
+    expect(termEl.closest('[aria-hidden]')).toBeNull();
   });
 
   test('split runs are fully visible to AT — no hidden copy, no aria-label (naming a generic span is spec-prohibited)', () => {

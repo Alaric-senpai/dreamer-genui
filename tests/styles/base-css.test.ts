@@ -41,4 +41,9 @@ describe('base.css (§7.6 styling architecture)', () => {
   test('low-feel textures (grain/vignette) are not fake-implemented; surfaces stay data hooks', () => {
     expect(css).toMatch(/data-dg-surface/);
   });
+
+  test('annotate circle/bracket have visible M3 shapes (hand-drawn strokes are M5)', () => {
+    expect(css).toMatch(/\.dg-annotate-circle\s*\{[^}]*border-radius:\s*999px/);
+    expect(css).toMatch(/\.dg-annotate-bracket\s*\{[^}]*border-inline:\s*2px solid/);
+  });
 });

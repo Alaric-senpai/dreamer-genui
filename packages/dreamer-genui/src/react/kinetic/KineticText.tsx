@@ -82,24 +82,52 @@ function SplitRun({
   className?: string | undefined;
 }): ReactNode {
   const preset = KINETIC[effect];
-  const mode = split ?? preset.split;
+  const requested = split ?? preset.split;
+  // `chars` puts every character in an inline-block, which makes Chrome's
+  // accessible-name computation insert a space between each character
+  // ("P o i n t …"). Two consequences (review fix after the AX snapshot):
+  //  - plain chars runs get an sr-only full-text copy; the animated copy is
+  //    aria-hidden, exactly like wipe/typewriter/count-up;
+  //  - chars + an interactive mark cannot be hidden, so it falls back to
+  //    word splitting: words stay atomic, the mark stays in the a11y tree.
+  const mode = requested === 'chars' && hasInteractiveMark(content) ? 'words' : requested;
   let unitIndex = 0;
-  const segments = flatten(content).map((seg, i) => {
+  const segments: ReactNode[] = [];
+  // `chars` animates each character as an inline-block. Left as direct
+  // siblings, the line breaker treats them as independent atomic boxes and
+  // can break inside a word ("thi / ng"). Group them per word in one
+  // inline-block wrapper so breaks only happen between words (review fix).
+  let charWord: ReactNode[] = [];
+  let wordKey = 0;
+  const flushChars = (): void => {
+    if (charWord.length === 0) return;
+    segments.push(
+      <span key={`w${wordKey++}`} style={{ display: 'inline-block' }}>
+        {charWord}
+      </span>
+    );
+    charWord = [];
+  };
+  flatten(content).forEach((seg, i) => {
     if (seg.mark) {
-      return <MarkRenderer key={`m${i}`} mark={seg.mark} />;
+      flushChars();
+      segments.push(<MarkRenderer key={`m${i}`} mark={seg.mark} />);
+      return;
     }
     const parts: SplitPart[] = splitIntoParts(seg.text!, mode);
-    return parts.map((part, j) => {
+    parts.forEach((part, j) => {
       if (part.kind === 'space') {
+        flushChars();
         unitIndex += 1;
-        return <span key={`s${i}-${j}`}>{part.text}</span>;
+        segments.push(<span key={`s${i}-${j}`}>{part.text}</span>);
+        return;
       }
       const delay = applyTempo(preset.stagger, tempo) * unitIndex++;
       const duration = applyTempo(preset.duration, tempo) / 1000;
       const initial =
         effect === 'slam' ? { opacity: 0, scale: 1.9, y: -12 } : { opacity: 0, y: mode === 'chars' ? 10 : 18 };
       const animate = effect === 'slam' ? { opacity: 1, scale: 1, y: 0 } : { opacity: 1, y: 0 };
-      return (
+      const unit = (
         <m.span
           key={`u${i}-${j}`}
           style={{ display: 'inline-block', willChange: 'transform, opacity' }}
@@ -110,8 +138,21 @@ function SplitRun({
           {part.text}
         </m.span>
       );
+      if (mode === 'chars') charWord.push(unit);
+      else segments.push(unit);
     });
   });
+  flushChars();
+  if (mode === 'chars') {
+    return (
+      <>
+        <SrOnlyText text={metaText(content)} />
+        <span className={className} aria-hidden="true">
+          {segments}
+        </span>
+      </>
+    );
+  }
   return <span className={className}>{segments}</span>;
 }
 

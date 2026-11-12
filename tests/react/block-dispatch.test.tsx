@@ -61,9 +61,17 @@ describe('TextBlockView dispatch (DECISIONS M3 batch-2 ruling)', () => {
     const { container } = renderView(
       textBlock({ enter: { effect: 'words', split: 'chars' } })
     );
-    // chars: every character is its own unit ('plain body sentence' has 17 chars + 2 spaces)
-    const units = runUnits(container);
-    expect(units).toEqual([...'plain body sentence']);
+    // chars: each word is an atomic inline-block wrapper containing one unit per character.
+    // The animated copy is aria-hidden; its sr-only sibling carries the exact text.
+    const visual = container.querySelector('p[data-node-id="t1"] > span[aria-hidden="true"]') as HTMLElement;
+    const words = [...visual.children].filter(
+      (s): s is HTMLElement => s instanceof HTMLElement && s.hasAttribute('style')
+    );
+    expect(words.map((w) => w.textContent)).toEqual(['plain', 'body', 'sentence']);
+    expect(words.flatMap((w) => [...w.children].map((c) => c.textContent))).toEqual([
+      ...'plainbodysentence',
+    ]);
+    expect(container.querySelector('p[data-node-id="t1"] > .dg-sr-only')!.textContent).toBe('plain body sentence');
   });
 
   test("'lines' split falls back to the effect's native split (pinned ruling)", () => {

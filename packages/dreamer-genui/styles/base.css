@@ -139,6 +139,17 @@
     text-decoration-color: var(--dg-color-accent, #2e5dc4);
     text-underline-offset: 0.2em;
   }
+  /* Annotations: M3 shapes in CSS; hand-drawn draw-on strokes are M5. */
+  .dg-annotate-circle {
+    display: inline-block;
+    border: 2px solid var(--dg-color-accent, #2e5dc4);
+    border-radius: 999px;
+    padding-inline: 0.45em;
+  }
+  .dg-annotate-bracket {
+    border-inline: 2px solid var(--dg-color-accent, #2e5dc4);
+    padding-inline: 0.25em;
+  }
   .dg-mark-math,
   code.dg-mark-math {
     font-family: var(--dg-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);

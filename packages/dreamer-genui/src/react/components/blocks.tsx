@@ -15,7 +15,7 @@ const TEXT_VARIANTS: Record<TextBlock['variant'], ElementType> = {
   hero: 'h1',
   kicker: 'p',
   quote: 'blockquote',
-  heading: 'h3',
+  heading: 'h2',
   definition: 'p',
   body: 'p',
   note: 'aside',

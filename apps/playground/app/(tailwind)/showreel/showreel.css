@@ -1,0 +1,81 @@
+/*
+ * Showreel host chrome. The board itself is library-styled; this sheet only
+ * gives the reel a full-viewport stage and a small studio strip.
+ */
+
+.showreel-stage {
+  min-height: 100dvh;
+  background: var(--background);
+}
+
+.showreel-board {
+  min-height: 100dvh;
+  border-radius: 0;
+}
+
+.showreel-content {
+  max-width: 46rem;
+  min-height: 100dvh;
+  justify-content: center;
+  padding-block: clamp(2rem, 8vh, 6rem);
+  gap: clamp(0.85rem, 1.8vh, 1.5rem);
+}
+
+.showreel-chrome {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 20;
+  width: min(46rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+  padding: 0.7rem 0.9rem 0.6rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--foreground) 88%, transparent);
+  color: var(--background);
+  font: 0.78rem/1.35 var(--font-mono, ui-monospace, monospace);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(10px);
+}
+
+.showreel-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.showreel-button {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--background) 35%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  padding: 0.2rem 0.65rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.showreel-button:hover,
+.showreel-button:focus-visible {
+  background: color-mix(in srgb, var(--background) 18%, transparent);
+}
+
+.showreel-meta {
+  margin-left: auto;
+  opacity: 0.85;
+}
+
+.showreel-note {
+  margin: 0.45rem 0 0;
+  opacity: 0.6;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 640px) {
+  .showreel-content {
+    padding-inline: 1.1rem;
+  }
+  .showreel-meta {
+    margin-left: 0;
+  }
+}

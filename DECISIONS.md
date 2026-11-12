@@ -300,3 +300,17 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 **Hero fills the reading column and wraps.** §9.2 says “screen-owning”, but M3 does not implement a viewport breakout: the hero spans its reading column (`width: 100%`) and claims `min(55vh, 30rem)` of vertical space. `overflow-wrap: anywhere` + `hyphens: auto` keep a long word inside a 320px viewport (verified: document `scrollWidth` 320/375, no horizontal overflow). Container-effect text branches wrap inline content in one span so the hero's flex column cannot turn each mark into a flex item. `tokens.ts` and `base.css` now share the same hero clamp (`clamp(2.75rem, 11vw, 5.25rem)`), pinned by `tests/styles/hero-css.test.ts`.
 
 **Workspace root renamed.** The private root package shared the library's name (`dreamer-genui`), so `pnpm --filter dreamer-genui build` matched both and ran tsup twice concurrently, racing on `dist/` (`ENOENT … unlink dist/core/index.cjs`). The root is now `dreamer-genui-workspace`; the library keeps the name and the filter is unambiguous.
+
+## M3g — showreel gate rulings
+
+**`chars` groups characters per word.** Every character is still its own animated inline-block, but they are wrapped in one inline-block per word. Bare per-character boxes are atomic to the line breaker, so a 390px phone split “thing” into “thi / ng”; word wrappers make breaks legal only at the static spaces between words. Pinned by a regression test that renders the marks heading and asserts the wrapper text.
+
+**`chars` keeps a readable accessible name.** Chrome computes the accessible name of adjacent inline-block characters as `"P o i n t …"`. Plain `chars` runs now render an `.dg-sr-only` full-text copy and mark the animated copy `aria-hidden` (same pattern as `wipe`, `typewriter` and `count-up`). `chars` combined with an interactive mark (term, focusable) cannot hide its content, so it falls back to word splitting: words stay atomic and the control stays in the accessibility tree. Verified against a real Chromium AX tree after the fix: the heading name is exactly `"Point at the thing that matters."`
+
+**`heading` renders `<h2>`.** The marks scene had only an h1 plus headings, so `h3` produced an axe `heading-order` violation. Blocks own their explicit level; the renderer defaults `heading` to `h2`, which is the correct level for a section heading under the board's h1.
+
+**`annotate` circle and bracket get real CSS shapes in M3.** Circle is a rounded outline drawn with a border radius, bracket is inline bars, not a degraded underline. These are legible and distinct now; hand-drawn SVG draw-on strokes and their sequencing remain M5. The CSS-shape pins live in `tests/styles/base-css.test.ts`.
+
+**End card uses `replace`.** `replace` resets the board theme by the M2 ruling, so the detour scenes re-apply their mood after each replace. The final `replace` clears the lingering detour before `Fin.`; the calm register is re-applied immediately after it. Verified in the 66.5 s frame and the final AX snapshot (no leftover detour nodes).
+
+**Recorder fps is not app fps.** The showreel videos are captured with CDP `Page.captureScreenshot` at a ~15 recorded fps, so their frame rate says nothing about performance. Performance claims come from the app's own rAF metrics (`--mode metrics`, `--mode metrics-throttled`): unthrottled 59.67 fps / p95 16.8 ms; 4× CPU throttle 58.34 fps / p95 16.7 ms, with the long frames concentrated at board replacement. `SELF_REVIEW.md` states this split explicitly.

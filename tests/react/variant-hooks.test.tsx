@@ -48,6 +48,21 @@ describe('§7.6 data-* styling hooks (M3e)', () => {
     expect(body).toHaveAttribute('data-dg-variant', 'body');
   });
 
+  test('heading maps to h2: a standalone board never skips a heading level', () => {
+    const reply: ReplyLike = {
+      v: 1,
+      ops: [
+        {
+          op: 'append',
+          blocks: [{ id: 'hd', type: 'text', variant: 'heading', content: ['A section heading'] }],
+        },
+      ],
+    };
+    const { container } = setup(reply);
+    expect(container.querySelector('h2[data-node-id="hd"]')).toBeInTheDocument();
+    expect(container.querySelector('h3')).toBeNull();
+  });
+
   test('node shells carry data-dg-state for host CSS (receding/dimmed is M4 styling)', () => {
     const reply: ReplyLike = {
       v: 1,

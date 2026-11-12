@@ -51,7 +51,8 @@ export function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
       if (mark.kind === 'underline') style.textDecoration = 'underline';
       else if (mark.kind === 'strike') style.textDecoration = 'line-through';
       else if (mark.kind === 'box') style.border = '2px solid var(--dg-color-accent)';
-      else style.textDecoration = 'underline'; // circle/bracket get SVG strokes in M5
+      // circle/bracket get their shapes from CSS here; the hand-drawn SVG
+      // stroke primitives (and draw-on sequencing) are the M5 pass.
       return (
         <span className={`dg-mark-annotate dg-annotate-${mark.kind}`} data-color={mark.color} style={style}>
           {markText(mark.text)}
