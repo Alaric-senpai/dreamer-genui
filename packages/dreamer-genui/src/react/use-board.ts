@@ -1,6 +1,6 @@
 import { useMemo, useRef, useSyncExternalStore } from 'react';
 import { BoardResolver, type ResolverOptions, type ReplyLike } from '../core/resolver';
-import type { BoardState, LibraryError, ResolvedOp } from '../core/types';
+import type { BoardState, LibraryError, ResolvedOp, CameraMove } from '../core/types';
 import type { UIEvent } from '../schema/events';
 import type { Reply } from '../schema/envelope';
 
@@ -27,6 +27,8 @@ export interface BoardStore {
   applyPartial(reply: ReplyLike): ResolvedOp[];
   applyFinal(reply: ReplyLike): ResolvedOp[];
   back(): BoardState;
+  /** Close the top detour (built-in return control); its scoped theme reverts. */
+  closeDetour(): BoardState;
   reset(): void;
   /** Fire a narration cue (§6.3). Nodes waiting on it enter. */
   cue(cueId: string): void;
@@ -40,6 +42,8 @@ export interface BoardStore {
   readonly enterBus: EventSink<string>;
   /** Theme-change bus: emits the resolved theme on theme changes (§6.8). */
   readonly themeChangeBus: EventSink<import('../core/theme').ResolvedTheme>;
+  /** Camera bus: validated explicit camera ops, presentation-only (§6.10). */
+  readonly cameraBus: EventSink<CameraMove>;
   /** UIEvents emitted by rendered components (focus/select/answer/action). */
   readonly events: EventSink<UIEvent>;
   /** Library errors (validation, unknown type...). Buffers pre-mount errors. */
@@ -117,6 +121,11 @@ export function createBoardStore(options: CreateBoardStoreOptions | BoardResolve
       notify();
       return state;
     },
+    closeDetour() {
+      const state = resolver.closeDetour();
+      notify();
+      return state;
+    },
     reset() {
       resolver.reset();
       notify();
@@ -136,6 +145,7 @@ export function createBoardStore(options: CreateBoardStoreOptions | BoardResolve
     cueBus: resolver.cueBus,
     enterBus: resolver.enterBus,
     themeChangeBus: resolver.themeChangeBus,
+    cameraBus: resolver.cameraBus,
   };
   return store;
 }

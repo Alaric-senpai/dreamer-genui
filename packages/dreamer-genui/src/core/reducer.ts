@@ -58,6 +58,11 @@ function applyAttach(state: BoardState, op: AttachOp): BoardState {
     targetRef: op.to, // full parent/item ref, preserved for the M4 return control
     blocks: op.blocks,
     openAt: detourDepth,
+    // Zod defaults make these always present on a validated op.
+    placement: op.placement ?? 'inline',
+    connector: op.connector ?? 'none',
+    mode: op.mode ?? 'inline',
+    targetAnnotate: op.target?.annotate,
   };
   return { ...state, detours: [...state.detours, newDetour] };
 }
@@ -147,6 +152,16 @@ export function applyResolvedTheme(state: BoardState, theme: ResolvedTheme, scop
   }
   if (scope === 'detour') return state; // no open detour: nothing to scope onto
   return { ...state, theme };
+}
+
+/**
+ * Close the top detour (built-in return control, §7.7). A detour-scoped theme
+ * lives on the detour object, so popping it restores the board's theme
+ * automatically (§6.8).
+ */
+export function closeDetour(state: BoardState): BoardState {
+  if (state.detours.length === 0) return state;
+  return { ...state, detours: state.detours.slice(0, -1) };
 }
 
 /** Pop the most recent history snapshot and restore as current state. */

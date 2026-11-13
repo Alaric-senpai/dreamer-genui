@@ -96,10 +96,14 @@ export interface NodeViewProps {
   docIndex: number;
   /** True when rendering inside a group (one level of nesting allowed). */
   nested?: boolean;
+  /** Previous scene receded because newer content owns the focal point (§9.2). */
+  receded?: boolean;
+  /** True when an open detour points at this node (§7.5 dimming). */
+  detourTarget?: boolean;
 }
 
 /** One board node: enter animation wrapper + default component or fallback. */
-export function NodeView({ node, docIndex, nested = false }: NodeViewProps): ReactNode {
+export function NodeView({ node, docIndex, nested = false, receded = false, detourTarget = false }: NodeViewProps): ReactNode {
   const block = node.block;
   return (
     <Animated
@@ -110,11 +114,15 @@ export function NodeView({ node, docIndex, nested = false }: NodeViewProps): Rea
       docIndex={docIndex}
       data-node-id={node.id}
       // data-dg-state is the §7.6 hook host CSS keys off (entering/visible/dimmed
-      // treatments; receding/dimmed styling itself lands in M4)
+      // treatments); receding is a separate hook so hosts can style it alone.
       data-dg-state={node.state}
+      data-dg-receded={receded ? 'true' : undefined}
+      data-dg-detour-target={detourTarget ? 'true' : undefined}
       className={`dg-node dg-node-${node.state}`}
     >
-      <DefaultBlockView node={node} nested={nested} />
+      <div className="dg-node-inner">
+        <DefaultBlockView node={node} nested={nested} />
+      </div>
     </Animated>
   );
 }

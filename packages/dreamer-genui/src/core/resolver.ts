@@ -1,9 +1,9 @@
 import { createError } from './errors';
 import { EventBus } from './events';
-import type { ResolvedOp, LibraryError, BoardState } from './types';
+import type { ResolvedOp, LibraryError, BoardState, CameraMove } from './types';
 import type { UIEvent } from '../schema/events';
 import { validateOp } from './validator';
-import { boardReducer, back as reduceBack, createBoard, applyResolvedTheme } from './reducer';
+import { boardReducer, back as reduceBack, createBoard, applyResolvedTheme, closeDetour as reduceCloseDetour } from './reducer';
 import type { Registry } from './registry';
 import { createRegistry } from './registry';
 import { createThemeResolver, type ThemeContext, type ThemePolicy, type ResolvedTheme } from './theme';
@@ -47,6 +47,7 @@ export class BoardResolver {
   private readonly _cueBus: EventBus<string>;
   private readonly _enterBus: EventBus<string>;
   private readonly _themeChangeBus: EventBus<ResolvedTheme>;
+  private readonly _cameraBus: EventBus<CameraMove>;
   private entryPlan: EntryPlan = { entered: [], pending: [], pendingCues: [] };
   private readonly onError?: (err: LibraryError) => void;
 
@@ -67,6 +68,7 @@ export class BoardResolver {
     this._cueBus = new EventBus<string>();
     this._enterBus = new EventBus<string>();
     this._themeChangeBus = new EventBus<ResolvedTheme>();
+    this._cameraBus = new EventBus<CameraMove>();
     this.state = createBoard();
     // UIEvents from rendered components satisfy event triggers (§6.2).
     this._events.subscribe(ev => this.signalEvent(ev));
@@ -95,6 +97,11 @@ export class BoardResolver {
   /** Theme-change bus: emits the resolved theme whenever it changes (§6.8). */
   get themeChangeBus(): EventBus<ResolvedTheme> {
     return this._themeChangeBus;
+  }
+
+  /** Camera bus: validated explicit camera ops, presentation-only (§6.10). */
+  get cameraBus(): EventBus<CameraMove> {
+    return this._cameraBus;
   }
 
   /** Current (immutable) board state. */
@@ -172,6 +179,13 @@ export class BoardResolver {
     return this.state;
   }
 
+  /** Close the top detour (built-in return control). The detour theme reverts with it. */
+  closeDetour(): BoardState {
+    this.state = reduceCloseDetour(this.state);
+    this.refreshEntry();
+    return this.state;
+  }
+
   /** Reset to an empty board. */
   reset(): void {
     this.state = createBoard();
@@ -235,6 +249,15 @@ export class BoardResolver {
       }
       this.state = boardReducer(this.state, validated.op);
       this.applyThemeSide(validated.op);
+      if (validated.op.op === 'camera') {
+        // Presentation-only (§6.10): validated here, executed by the renderer.
+        this._cameraBus.emit({
+          to: validated.op.to,
+          zoom: validated.op.zoom,
+          duration: validated.op.duration,
+          ease: validated.op.ease,
+        });
+      }
       const result: ResolvedOp = { op: validated.op, status: 'applied' };
       if (validated.warnings?.length) result.error = validated.warnings[0];
       this.refreshEntry();

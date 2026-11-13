@@ -1,156 +1,65 @@
-'use client';
+import Link from 'next/link';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { DreamerProvider, Board, useBoard, type UIEvent, type Reply } from 'dreamer-genui';
-import { createRegistry } from 'dreamer-genui/core';
-import type { LibraryError } from 'dreamer-genui/core';
+/**
+ * Playground index (v2.2 §5): one route per milestone. Milestones that are
+ * shipped link to a live page; future milestones are listed with their status
+ * so the human can see the sequence without dead links.
+ */
+const ROUTES = [
+  { href: '/m1', id: 'M1', title: 'Protocol', status: 'done', note: 'fixtures, JSON Schema, error codes' },
+  { href: '/m2', id: 'M2', title: 'Core', status: 'done', note: 'reducer, cues, theme, prompt guide, snapshots' },
+  { href: '/m3', id: 'M3', title: 'Renderer & kinetic text', status: 'done', note: 'text, marks, cues, moods, styling paths' },
+  { href: '/m4', id: 'M4', title: 'Board behaviour & ambience', status: 'done', note: 'attach/return, receding, camera, streaming' },
+  { href: '/showreel', id: '§9.4', title: 'Showreel', status: 'done', note: 'eleven-beat motion-graphic gate' },
+  { href: '/plain-css', id: 'M3', title: 'Plain-CSS host', status: 'done', note: 'no Tailwind required' },
+] as const;
 
-// Fixtures import from the repo's canonical fixtures/ directory (the one the
-// test suite uses too — no duplicated copies).
-import defineTerm from '../../../../fixtures/define-term.json';
-import attachExplainer from '../../../../fixtures/attach-explainer.json';
-import cuedNarration from '../../../../fixtures/cued-narration.json';
-import themeMoodShift from '../../../../fixtures/theme-mood-shift.json';
-import replaceWithTheme from '../../../../fixtures/replace-with-theme.json';
-import cameraMoves from '../../../../fixtures/camera-moves.json';
-import replaceNewTopic from '../../../../fixtures/replace-new-topic.json';
-import streamingPartial from '../../../../fixtures/streaming-partial.json';
-import mathChem from '../../../../fixtures/math-chem.json';
-import chartBar from '../../../../fixtures/chart-bar.json';
-import invalidDuplicate from '../../../../fixtures/invalid-duplicate-id.json';
-import invalidUnknownType from '../../../../fixtures/invalid-unknown-type.json';
-import invalidDepth from '../../../../fixtures/invalid-depth-exceeded.json';
-import invalidCueCycle from '../../../../fixtures/invalid-cue-cycle.json';
-import invalidDisallowedMood from '../../../../fixtures/invalid-disallowed-mood.json';
-import invalidUnreadablePalette from '../../../../fixtures/invalid-unreadable-palette.json';
+const PLANNED = [
+  ['M4b', 'retrofit + layout/camera showcase (v2.2)'],
+  ['M5', 'figures, diagrams, hand-drawn annotations'],
+  ['M5b', '3D figures (v2.2)'],
+  ['M6a/M6b', 'questions, assessment, exam run-through'],
+  ['M7', 'plugins, devtools, authoring'],
+  ['M8', 'hardening and release (v2.2)'],
+] as const;
 
-const FIXTURES: Record<string, Reply> = {
-  'define-term': defineTerm as Reply,
-  'attach-explainer': attachExplainer as Reply,
-  'cued-narration': cuedNarration as Reply,
-  'theme-mood-shift': themeMoodShift as Reply,
-  'replace-with-theme': replaceWithTheme as Reply,
-  'camera-moves': cameraMoves as Reply,
-  'replace-new-topic': replaceNewTopic as Reply,
-  'streaming-partial': streamingPartial as Reply,
-  'math-chem': mathChem as Reply,
-  'chart-bar': chartBar as Reply,
-  'invalid-duplicate-id': invalidDuplicate as Reply,
-  'invalid-unknown-type': invalidUnknownType as Reply,
-  'invalid-depth-exceeded': invalidDepth as Reply,
-  'invalid-cue-cycle': invalidCueCycle as Reply,
-  'invalid-disallowed-mood': invalidDisallowedMood as Reply,
-  'invalid-unreadable-palette': invalidUnreadablePalette as Reply,
-};
-
-const registry = createRegistry();
-
-export default function Home() {
-  const [fixtureName, setFixtureName] = useState<string>('define-term');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [events, setEvents] = useState<UIEvent[]>([]);
-  const [errors, setErrors] = useState<LibraryError[]>([]);
-  const board = useBoard();
-  const loadedRef = useRef(false);
-
-  // Initial load: render define-term with zero clicks (idempotent across StrictMode).
-  useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    board.reset();
-    board.applyFinal(FIXTURES['define-term']);
-  }, [board]);
-
-  function loadFixture(name: string): void {
-    setFixtureName(name);
-    setEvents([]);
-    setErrors([]);
-    board.reset();
-    board.applyFinal(FIXTURES[name]);
-    console.log(events)
-    // console.log(board)
-  }
-
-  const stats = useMemo(
-    () => ({
-      nodes: Object.keys(board.getState().nodes).length,
-      detours: board.getState().detours.length,
-      history: board.getState().history.length,
-    }),
-    [board]
-  );
-
+export default function PlaygroundIndex() {
   return (
-    <DreamerProvider
-      registry={registry}
-      colorScheme={theme}
-      onEvent={(e) => setEvents((prev) => [...prev, e])}
-      onError={(err) => setErrors((prev) => [...prev, err])}
-    >
-      <main className="grid gap-4 p-4 min-h-screen lg:grid-cols-[260px_minmax(0,1fr)_280px]">
-        {/* Left: fixture picker + theme switcher */}
-        <aside>
-          <h1>dreamer-genui playground</h1>
-          <fieldset>
-            <legend>Fixture</legend>
-            {Object.keys(FIXTURES).map((name) => (
-              <label key={name} style={{ display: 'block' }}>
-                <input
-                  type="radio"
-                  name="fixture"
-                  checked={fixtureName === name}
-                  onChange={() => loadFixture(name)}
-                />{' '}
-                {name}
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>Theme</legend>
-            {(['light', 'dark'] as const).map((t) => (
-              <label key={t} style={{ display: 'block' }}>
-                <input type="radio" name="theme" checked={theme === t} onChange={() => setTheme(t)} /> {t}
-              </label>
-            ))}
-          </fieldset>
-          <p aria-label="board stats">
-            nodes: {stats.nodes} · detours: {stats.detours} · history: {stats.history}
-          </p>
-        </aside>
+    <main className="mx-auto grid max-w-5xl gap-8 p-6 lg:grid-cols-[1fr_280px]">
+      <section>
+        <h1 className="text-3xl font-semibold">dreamer-genui playground</h1>
+        <p className="mt-2 text-neutral-600">
+          One route per milestone. Each route shows live demos of its acceptance criteria, a
+          checklist, logs and a fixture picker scoped to that milestone.
+        </p>
 
-        {/* Center: the blackboard. Tailwind classNames here sit OUTSIDE the
-         * library's @layer — they win over board defaults (§7.6 slot override). */}
-        <div className="relative min-h-dvh min-w-0">
-          <Board
-            store={board}
-            classNames={{ root: 'rounded-2xl ring-2 ring-rose-400/60 h-full', content: 'max-w-3xl' }}
-          />
-        </div>
+        <ul className="mt-6 grid gap-3">
+          {ROUTES.map((route) => (
+            <li key={route.href}>
+              <Link
+                href={route.href}
+                className="block rounded-xl border border-neutral-300 p-4 hover:border-neutral-500"
+              >
+                <span className="text-sm font-semibold text-neutral-500">{route.id}</span>{' '}
+                <span className="font-medium">{route.title}</span>{' '}
+                <span className="text-sm text-emerald-700">({route.status})</span>
+                <span className="mt-1 block text-sm text-neutral-600">{route.note}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-        {/* Right: event + error logs */}
-        <aside>
-          <section aria-label="event log">
-            <h2>Events</h2>
-            <ul>
-              {events.map((e, i) => (
-                <li key={i}>
-                  <code>{JSON.stringify(e)}</code>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section aria-label="error log">
-            <h2>Errors</h2>
-            <ul>
-              {errors.map((err, i) => (
-                <li key={i}>
-                  <code style={{ color: 'crimson' }}>{JSON.stringify(err)}</code>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </aside>
-      </main>
-    </DreamerProvider>
+      <aside>
+        <h2 className="text-lg font-semibold">Planned routes</h2>
+        <ul className="mt-2 space-y-2 text-sm text-neutral-600">
+          {PLANNED.map(([id, note]) => (
+            <li key={id}>
+              <code>{id}</code> — {note}
+            </li>
+          ))}
+        </ul>
+      </aside>
+    </main>
   );
 }

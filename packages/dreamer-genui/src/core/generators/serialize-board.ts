@@ -34,7 +34,7 @@ function nodeItemList(id: string, type: string, block: { type?: string; items?: 
 
 function serializeDetour(d: Detour, depth: number): string {
   const prefix = '  '.repeat(depth + 1);
-  const head = `${prefix}→ Detour at "${d.targetNodeId}" (depth ${depth})${d.theme?.mood ? ` [mood: ${d.theme.mood}]` : ''}:`;
+  const head = `${prefix}→ Detour at "${d.targetNodeId}" (depth ${depth}, ${d.placement}/${d.mode}${d.connector !== 'none' ? `, ${d.connector}` : ''})${d.theme?.mood ? ` [mood: ${d.theme.mood}]` : ''}:`;
   // Detour block ids are real NodeIds — emit them so the tutor can reference,
   // update or remove them next turn.
   const blocks = d.blocks.map(b => {

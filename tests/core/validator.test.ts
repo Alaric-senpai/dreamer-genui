@@ -122,7 +122,7 @@ describe('resolveNodeRef', () => {
 
   test('append cannot reuse an id already used by an open detour block', () => {
     const s = mkState(['n1']);
-    s.detours = [{ id: 'd0', targetNodeId: 'n1', blocks: [{ id: 'detour-x', type: 'text', variant: 'body', content: [] }], openAt: 0 }];
+    s.detours = [{ id: 'd0', targetNodeId: 'n1', blocks: [{ id: 'detour-x', type: 'text', variant: 'body', content: [] }], openAt: 0, placement: 'inline', connector: 'none', mode: 'inline' }];
     const result = validateOp(s, { op: 'append', blocks: [{ id: 'detour-x', type: 'text', variant: 'body', content: [] }] });
     expect(result.valid).toBe(false);
     expect(result.error?.code).toBe('duplicate-id');

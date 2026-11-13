@@ -1,19 +1,22 @@
 'use client';
 
 /**
- * M3 showreel (§9.4, scoped to what M3 implements).
+ * Showreel (§9.4) — M3 + M4.
  *
- * One deterministic, auto-playing sequence in seven beats:
+ * One deterministic, auto-playing sequence in eleven beats:
  *   1. type        — kicker / hero slam / body words
  *   2. voices      — every text variant with its kinetic default
  *   3. marks       — highlight, emphasis, term, focusable, annotations, emphasis FX
  *   4. entrances   — all 16 enter effects, one focal line each
  *   5. cues        — mock narrator drives nodes in on cue (nothing mounted early)
  *   6. mood        — playful → solemn transition (surface + tempo + colour)
- *   7. detour      — attach explainer inline, clickable term, end card
+ *   7. detour      — floating spotlight attach with connector, annotation and return
+ *   8. recede      — appended beats visibly step back as the next idea takes focus
+ *   9. camera      — explicit push-ins and overview returns
+ *  10. ambience    — each shipped preset, named on screen, with live atmosphere
+ *  11. stream      — a partial reply applied progressively, then made final
  *
- * Camera moves, receding, the detour return control and ambience runtime are
- * M4; diagram draw-on is M5. They are honestly absent here (see
+ * Diagram draw-on and hand-drawn annotation strokes are M5 (see
  * docs/showreel/SELF_REVIEW.md).
  *
  * Capture hook: `?capture=1` waits for `window.__SHOWREEL_START__()` instead of
@@ -23,6 +26,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DreamerProvider, Board, useBoard, type Reply, type UIEvent } from 'dreamer-genui';
 import { createRegistry } from 'dreamer-genui/core';
+import streamingPartial from '../../../../../fixtures/streaming-partial.json';
 import './showreel.css';
 
 declare global {
@@ -386,7 +390,7 @@ const SCENE_7B = reply([
         type: 'text',
         variant: 'body',
         content: [
-          'Where a river meets the sea, fresh water and salt water mix. The detour expands inline, right after the line it explains.',
+          'Where a river meets the sea, fresh water and salt water mix. The board dims everything but this line while the detour is open.',
         ],
         enter: { effect: 'rise' },
       },
@@ -394,8 +398,8 @@ const SCENE_7B = reply([
         id: 's7-detour-callout',
         type: 'callout',
         tone: 'info',
-        title: 'Detour',
-        content: ['Attached content opens on the board; the return control is M4.'],
+        title: 'Return',
+        content: ['Return closes the detour and the scoped theme reverts.'],
         enter: { effect: 'rise', delay: 400 },
       },
     ],
@@ -403,6 +407,8 @@ const SCENE_7B = reply([
     connector: 'arrow',
     target: { annotate: 'circle' },
     mode: 'spotlight',
+    // Detour-scoped theme (§6.8): lives on the detour, reverts on return.
+    theme: { mood: 'eerie', transition: { duration: 500, ease: 'smooth' } },
   },
 ]);
 
@@ -430,6 +436,158 @@ const SCENE_7C = reply([
   { op: 'theme', theme: { mood: 'calm', transition: { duration: 400, ease: 'smooth' } } },
 ]);
 
+// --- M4 scenes -------------------------------------------------------------
+
+/** 8. Receding: each append is a new scene, so older beats visibly step back. */
+const SCENE_8 = reply([
+  {
+    op: 'replace',
+    blocks: [
+      {
+        id: 's8-kicker',
+        type: 'text',
+        variant: 'kicker',
+        content: ['the board keeps moving'],
+        enter: { effect: 'wipe' },
+      },
+    ],
+  },
+  { op: 'theme', theme: { mood: 'calm', transition: { duration: 600, ease: 'smooth' } } },
+]);
+
+const SCENE_8_LINES = [
+  'The current idea owns the light.',
+  'What came before steps back — dimmed, not deleted.',
+  'And the next beat arrives with the focus.',
+].map((text, i) =>
+  reply([
+    {
+      op: 'append',
+      blocks: [
+        {
+          id: `s8-line-${i + 1}`,
+          type: 'text',
+          variant: i === 2 ? 'heading' : 'body',
+          content: [text],
+          enter: { effect: i === 1 ? 'rise' : 'words' },
+        },
+      ],
+    },
+  ])
+);
+
+const SCENE_8_HERO = reply([
+  {
+    op: 'append',
+    blocks: [
+      {
+        id: 's8-hero',
+        type: 'text',
+        variant: 'hero',
+        content: ['One focus.'],
+        enter: { effect: 'slam', split: 'words' },
+      },
+    ],
+  },
+]);
+
+/** 9. Camera: explicit push-ins and overview returns (§6.10). */
+const SCENE_9 = reply([
+  {
+    op: 'replace',
+    blocks: [
+      {
+        id: 's9-hero',
+        type: 'text',
+        variant: 'hero',
+        content: ['Follow the thought.'],
+        enter: { effect: 'slam', split: 'words' },
+      },
+      {
+        id: 's9-body',
+        type: 'text',
+        variant: 'body',
+        content: ['The camera moves to whatever is being discussed.'],
+        enter: { effect: 'words', delay: 650 },
+      },
+      {
+        id: 's9-note',
+        type: 'text',
+        variant: 'note',
+        content: ['Then it lets the whole board breathe again.'],
+        enter: { effect: 'reveal', delay: 1_500 },
+      },
+    ],
+  },
+  { op: 'theme', theme: { mood: 'calm', transition: { duration: 500, ease: 'smooth' } } },
+]);
+
+/** 10. Ambience: every shipped preset, named on screen as it takes over. */
+const AMBIENCE_PRESETS = ['grain', 'vignette', 'dust', 'embers', 'fog', 'stars', 'flicker'] as const;
+
+const SCENE_10 = reply([
+  {
+    op: 'replace',
+    blocks: [
+      {
+        id: 's10-kicker',
+        type: 'text',
+        variant: 'kicker',
+        content: ['seven atmospheres'],
+        enter: { effect: 'wipe' },
+      },
+      {
+        id: 's10-hero',
+        type: 'text',
+        variant: 'hero',
+        content: ['Each room has air.'],
+        enter: { effect: 'slam', split: 'words' },
+      },
+      {
+        id: 's10-label',
+        type: 'text',
+        variant: 'heading',
+        content: ['ambience'],
+        enter: { effect: 'chars', delay: 600 },
+      },
+      {
+        id: 's10-body',
+        type: 'text',
+        variant: 'note',
+        content: ['Ambience is data: the tutor names a registered preset and the board breathes.'],
+        enter: { effect: 'reveal', delay: 1_100 },
+      },
+    ],
+  },
+  { op: 'theme', theme: { mood: 'solemn', transition: { duration: 700, ease: 'smooth' } } },
+]);
+
+/** 11. Streaming: the partial reply is applied op by op, then made final. */
+const SCENE_11 = reply([
+  {
+    op: 'replace',
+    blocks: [
+      {
+        id: 's11-kicker',
+        type: 'text',
+        variant: 'kicker',
+        content: ['streaming reply'],
+        enter: { effect: 'wipe' },
+      },
+      {
+        id: 's11-heading',
+        type: 'text',
+        variant: 'heading',
+        content: ['The answer arrives as it is written.'],
+        enter: { effect: 'chars' },
+      },
+    ],
+  },
+  { op: 'theme', theme: { mood: 'playful', transition: { duration: 600, ease: 'smooth' } } },
+]);
+
+const STREAM_REPLY = streamingPartial as unknown as Reply;
+
 // ---------------------------------------------------------------------------
 // Timeline (absolute ms from start)
 // ---------------------------------------------------------------------------
@@ -442,10 +600,26 @@ const T = {
   scene5: 41_000,
   scene6: 51_000,
   scene7: 60_000,
-  done: 68_500,
+  scene8: 68_500,
+  scene9: 77_000,
+  scene10: 86_000,
+  scene11: 100_000,
+  done: 107_500,
 } as const;
 
-const SCENE_NAMES = ['type', 'voices', 'marks', 'entrances', 'cues', 'mood', 'detour'] as const;
+const SCENE_NAMES = [
+  'type',
+  'voices',
+  'marks',
+  'entrances',
+  'cues',
+  'mood',
+  'detour',
+  'recede',
+  'camera',
+  'ambience',
+  'stream',
+] as const;
 type SceneName = (typeof SCENE_NAMES)[number];
 
 // ---------------------------------------------------------------------------
@@ -458,7 +632,9 @@ export default function ShowreelPage() {
   const [playing, setPlaying] = useState(false);
   const [cues, setCues] = useState<string[]>([]);
   const [lastEvent, setLastEvent] = useState<UIEvent | null>(null);
-  const [capture, setCapture] = useState(false);
+  const [capture, setCapture] = useState(true);
+  const [camera, setCamera] = useState<'auto' | 'off'>('auto');
+  const [ambience, setAmbience] = useState<'auto' | 'lite' | 'off'>('auto');
 
   const timers = useRef<number[]>([]);
   const playingRef = useRef(false);
@@ -549,8 +725,47 @@ export default function ShowreelPage() {
       board.applyFinal(SCENE_7);
       board.applyFinal(theme('calm', 500));
       at(1_200, () => board.applyFinal(SCENE_7B));
-      at(3_200, () => document.querySelector<HTMLElement>('.dg-mark-term')?.click());
-      at(5_200, () => board.applyFinal(SCENE_7C));
+      // The built-in return control closes the detour; the board theme is unchanged.
+      at(3_400, () => document.querySelector<HTMLButtonElement>('.dg-detour-return')?.click());
+      at(4_800, () => board.applyFinal(SCENE_7C));
+    });
+    at(T.scene8, () => {
+      go('recede');
+      board.applyFinal(SCENE_8);
+      SCENE_8_LINES.forEach((line, i) => at(900 + i * 1_400, () => board.applyFinal(line)));
+      at(5_200, () => board.applyFinal(SCENE_8_HERO));
+    });
+    at(T.scene9, () => {
+      go('camera');
+      board.applyFinal(SCENE_9);
+      at(900, () => board.applyFinal(reply([{ op: 'camera', to: 's9-hero', zoom: 1.35, duration: 900, ease: 'snappy' }])));
+      at(2_500, () => board.applyFinal(reply([{ op: 'camera', to: 'overview', duration: 900 }])));
+      at(3_700, () => board.applyFinal(reply([{ op: 'camera', to: 's9-note', zoom: 1.25, duration: 800, ease: 'overshoot' }])));
+      at(5_500, () => board.applyFinal(reply([{ op: 'camera', to: 'overview', duration: 800 }])));
+    });
+    at(T.scene10, () => {
+      go('ambience');
+      board.applyFinal(SCENE_10);
+      AMBIENCE_PRESETS.forEach((preset, i) =>
+        at(1_500 + i * 1_400, () =>
+          board.applyFinal(
+            reply([
+              { op: 'update', id: 's10-label', props: { content: [preset] } },
+              {
+                op: 'theme',
+                theme: { mood: 'solemn', ambience: preset, transition: { duration: 500, ease: 'smooth' } },
+              },
+            ])
+          )
+        )
+      );
+    });
+    at(T.scene11, () => {
+      go('stream');
+      board.applyFinal(SCENE_11);
+      at(1_100, () => board.applyPartial({ v: 1, ops: STREAM_REPLY.ops.slice(0, 1) }));
+      at(2_400, () => board.applyPartial(STREAM_REPLY));
+      at(3_800, () => board.applyFinal(STREAM_REPLY));
     });
     at(T.done, () => {
       playingRef.current = false;
@@ -633,14 +848,16 @@ export default function ShowreelPage() {
   return (
     <DreamerProvider registry={registry}>
       <main className="showreel-stage" data-capture={capture ? '1' : undefined}>
-        <h1 className="dg-sr-only">dreamer-genui M3 showreel</h1>
+        <h1 className="dg-sr-only">dreamer-genui showreel</h1>
         <Board
           store={board}
+          camera={camera}
+          ambience={ambience}
           classNames={{ root: 'showreel-board', content: 'showreel-content' }}
           onEvent={(e) => setLastEvent(e)}
         />
 
-        {!capture && (
+       {/* {!capture && (
           <div className="showreel-chrome" role="group" aria-label="showreel controls">
             <div className="showreel-row">
               <button type="button" onClick={play} className="showreel-button">
@@ -652,6 +869,20 @@ export default function ShowreelPage() {
               <button type="button" onClick={() => board.seek('beat-3')} className="showreel-button">
                 seek beat-3
               </button>
+              <button
+                type="button"
+                onClick={() => setCamera((value) => (value === 'auto' ? 'off' : 'auto'))}
+                className="showreel-button"
+              >
+                camera {camera}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAmbience((value) => (value === 'auto' ? 'lite' : value === 'lite' ? 'off' : 'auto'))}
+                className="showreel-button"
+              >
+                ambience {ambience}
+              </button>
               <span className="showreel-meta">
                 scene <strong>{scene}</strong>
                 {cues.length > 0 && <> · cues {cues.join(' · ')}</>}
@@ -659,11 +890,11 @@ export default function ShowreelPage() {
               </span>
             </div>
             <p className="showreel-note">
-              M3 scope: all 16 enter effects, kinetic variants, marks, cue gating and a mood shift.
-              Camera, receding, detour return and ambience runtime are M4.
+              M4 scope: attach/return, receding, camera and every ambience preset, plus the M3 language
+              (16 effects, kinetic variants, marks, cues, mood shift). Diagram draw-on is M5.
             </p>
           </div>
-        )}
+        )}*/}
       </main>
     </DreamerProvider>
   );

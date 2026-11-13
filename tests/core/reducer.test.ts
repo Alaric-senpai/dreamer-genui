@@ -79,7 +79,7 @@ describe('boardReducer', () => {
 
   test('remove clears detours targeting the removed node', () => {
     const s = mkState([SAMPLE_BLOCK, BLOCK2]);
-    s.detours = [{ id: 'd1', targetNodeId: 'n1', blocks: [], openAt: 0 }];
+    s.detours = [{ id: 'd1', targetNodeId: 'n1', blocks: [], openAt: 0, placement: 'inline', connector: 'none', mode: 'inline' }];
     const next = boardReducer(s, { op: 'remove', id: 'n1' });
     expect(next.detours).toHaveLength(0);
   });
@@ -136,7 +136,7 @@ describe('boardReducer', () => {
   test('back with empty history is a no-op (detours preserved)', () => {
     const s = createBoard();
     s.nodes['n1'] = { id: 'n1', block: SAMPLE_BLOCK, state: 'complete' };
-    s.detours = [{ id: 'd1', targetNodeId: 'n1', blocks: [BLOCK2], openAt: 0 }];
+    s.detours = [{ id: 'd1', targetNodeId: 'n1', blocks: [BLOCK2], openAt: 0, placement: 'inline', connector: 'none', mode: 'inline' }];
     const result = back(s);
     expect(result.detours).toHaveLength(1); // nothing to pop — state unchanged
     expect(result.nodes['n1']).toBeDefined();

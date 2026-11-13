@@ -292,6 +292,243 @@
     background-image: radial-gradient(ellipse 100% 80% at 50% 0%, rgba(255, 253, 244, 0.35), transparent 60%);
   }
 
+  /* ---------- M4: camera (§6.10) ---------- */
+  .dg-board {
+    /* Clip the camera push-in at the board edges without creating a scroll
+     * container (unlike overflow:hidden, clip keeps sticky/scroll behavior). */
+    overflow: clip;
+  }
+  .dg-camera {
+    position: relative;
+    z-index: 1;
+    will-change: transform;
+  }
+  .dg-node-inner {
+    transition: opacity calc(var(--dg-theme-duration, 800ms) * 0.6) ease, filter calc(var(--dg-theme-duration, 800ms) * 0.6) ease;
+  }
+
+  /* ---------- M4: receding scenes (§9.2) ---------- */
+  .dg-node[data-dg-receded='true'] .dg-node-inner {
+    opacity: 0.34;
+    filter: saturate(0.72);
+  }
+
+  /* ---------- M4: detour / attachment (§7.5) ---------- */
+  .dg-detour {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: calc(0.7rem * var(--dg-space-scale, 1));
+    padding: calc(1rem * var(--dg-space-scale, 1));
+    /* Scoped themes swap --dg-* vars on this element; re-resolve inherited
+     * text colour here so a dark detour theme never inherits the board ink. */
+    color: var(--dg-color-ink, #1f1f1d);
+    border: 1px solid color-mix(in oklab, var(--dg-color-ink, #1f1f1d) 14%, transparent);
+    border-radius: var(--dg-radius-lg, 12px);
+    background: color-mix(in oklab, var(--dg-color-surface, #ffffff) 86%, var(--dg-color-bg, #f7f7f5));
+    box-shadow: 0 24px 70px -32px rgb(0 0 0 / 42%);
+    animation: dg-detour-in 340ms var(--dg-theme-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    transition: background-color var(--dg-theme-duration, 800ms) var(--dg-theme-ease, ease),
+      color var(--dg-theme-duration, 800ms) var(--dg-theme-ease, ease);
+  }
+  .dg-detour:focus { outline: none; }
+  .dg-detour:focus-visible {
+    outline: 2px solid var(--dg-color-accent, #2e5dc4);
+    outline-offset: 3px;
+  }
+  .dg-detour-flow { margin-top: calc(0.9rem * var(--dg-space-scale, 1)); }
+  .dg-detour-placement-below { margin-bottom: calc(0.9rem * var(--dg-space-scale, 1)); }
+  .dg-detour-blocks { display: flex; flex-direction: column; gap: calc(0.55rem * var(--dg-space-scale, 1)); }
+  .dg-detour-return {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    margin-top: 0.15rem;
+    padding: 0.3em 0.75em;
+    font: inherit;
+    font-size: var(--dg-text-small, 0.875rem);
+    color: var(--dg-color-accent, #2e5dc4);
+    background: none;
+    border: 1px solid color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 40%, transparent);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .dg-detour-return:hover { background: color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 10%, transparent); }
+  .dg-detour-return:focus-visible { outline: 2px solid var(--dg-color-accent, #2e5dc4); outline-offset: 2px; }
+  .dg-detour-return-icon { font-size: 1em; }
+
+  /* Dim everything but the target while a detour is open (§7.5 default). */
+  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node .dg-node-inner {
+    opacity: 0.24;
+    filter: saturate(0.6);
+  }
+  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node[data-dg-detour-target='true'] .dg-node-inner {
+    opacity: 1;
+    filter: none;
+  }
+  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node { pointer-events: none; }
+  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node[data-dg-detour-target='true'] { pointer-events: auto; }
+
+  .dg-detour-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: color-mix(in oklab, var(--dg-color-bg, #f7f7f5) 45%, transparent);
+    backdrop-filter: blur(2px);
+    animation: dg-fade-in 260ms ease both;
+  }
+  .dg-detour-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+  }
+  .dg-detour-float {
+    position: absolute;
+    z-index: 2;
+    pointer-events: auto;
+  }
+  .dg-detour-floating { width: 100%; }
+  .dg-detour-connector {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .dg-detour-connector-path {
+    fill: none;
+    stroke: var(--dg-color-accent, #2e5dc4);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: dg-connector-draw 620ms var(--dg-theme-ease, cubic-bezier(0.22, 1, 0.36, 1)) 80ms forwards;
+  }
+  .dg-detour-connector-head { fill: var(--dg-color-accent, #2e5dc4); }
+
+  /* Target annotation — same vocabulary as inline annotate marks (§7.5). */
+  [data-dg-annotated] { position: relative; }
+  [data-dg-annotated]::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    border-color: var(--dg-color-accent, #2e5dc4);
+    animation: dg-annotate-in 420ms var(--dg-theme-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  }
+  [data-dg-annotated='circle']::after {
+    inset: -7px -11px;
+    border: 2.5px solid var(--dg-color-accent, #2e5dc4);
+    border-radius: 999px;
+  }
+  [data-dg-annotated='underline']::after {
+    left: -3px;
+    right: -3px;
+    bottom: -5px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--dg-color-accent, #2e5dc4);
+    transform-origin: left center;
+  }
+  [data-dg-annotated='box']::after {
+    inset: -6px -8px;
+    border: 2px solid var(--dg-color-accent, #2e5dc4);
+    border-radius: 7px;
+  }
+  [data-dg-annotated='bracket']::after {
+    inset: -3px -9px;
+    border-inline: 2px solid var(--dg-color-accent, #2e5dc4);
+  }
+  [data-dg-annotated='highlight']::after {
+    inset: -2px -5px;
+    z-index: -1;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 24%, transparent);
+  }
+
+  /* ---------- M4: skip control (§6.3/§7.7) ---------- */
+  .dg-skip {
+    position: sticky;
+    top: 10px;
+    z-index: 6;
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    padding: 0.32em 0.85em;
+    font: inherit;
+    font-size: var(--dg-text-small, 0.875rem);
+    color: var(--dg-color-muted, #565650);
+    background: color-mix(in oklab, var(--dg-color-surface, #ffffff) 80%, transparent);
+    border: 1px solid color-mix(in oklab, var(--dg-color-ink, #1f1f1d) 16%, transparent);
+    border-radius: 999px;
+    cursor: pointer;
+    opacity: 0.85;
+    backdrop-filter: blur(4px);
+  }
+  .dg-skip:hover { opacity: 1; border-color: var(--dg-color-accent, #2e5dc4); }
+  .dg-skip:focus-visible { outline: 2px solid var(--dg-color-accent, #2e5dc4); outline-offset: 2px; }
+
+  /* ---------- M4: ambience layer (§6.9) ---------- */
+  .dg-ambience {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .dg-ambience-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transition: opacity 700ms ease;
+  }
+  .dg-ambience-leaving { opacity: 0 !important; transition: opacity 700ms ease; }
+  .dg-ambience-grain {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
+    background-size: 160px 160px;
+    mix-blend-mode: multiply;
+  }
+  .dg-ambience-vignette {
+    background: radial-gradient(ellipse 96% 88% at 50% 44%, transparent 52%, color-mix(in oklab, var(--dg-color-ink, #1f1f1d) 34%, transparent) 100%);
+  }
+  .dg-ambience-haze {
+    background:
+      radial-gradient(ellipse 60% 50% at 18% 68%, color-mix(in oklab, var(--dg-color-muted, #565650) 26%, transparent), transparent 70%),
+      radial-gradient(ellipse 55% 45% at 82% 32%, color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 18%, transparent), transparent 72%);
+    filter: blur(24px);
+  }
+  .dg-ambience-flicker {
+    background: radial-gradient(ellipse 70% 60% at 50% 40%, color-mix(in oklab, var(--dg-color-warn, #b45309) 20%, transparent), transparent 75%);
+    animation: dg-ambience-flicker 4.6s ease-in-out infinite alternate;
+  }
+  .dg-ambience-particles { display: block; }
+
+  /* ---------- M4: keyframes ---------- */
+  @keyframes dg-detour-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes dg-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes dg-connector-draw {
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes dg-annotate-in {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes dg-ambience-flicker {
+    0%, 100% { opacity: calc(0.55 * var(--dg-ambience-intensity, 1)); }
+    35% { opacity: calc(0.85 * var(--dg-ambience-intensity, 1)); }
+    62% { opacity: calc(0.4 * var(--dg-ambience-intensity, 1)); }
+  }
+
   /* ---------- reduced motion (§7.7): calm and instant, content identical ---------- */
   @media (prefers-reduced-motion: reduce) {
     .dg-board {

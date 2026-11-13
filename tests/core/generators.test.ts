@@ -36,6 +36,7 @@ describe('serializeBoard', () => {
     state.nodes['n1'] = { id: 'n1', block: { id: 'n1', type: 'text', variant: 'body', content: [] }, state: 'complete' };
     state.detours = [{
       id: 'd1', targetNodeId: 'n1', openAt: 0,
+      placement: 'inline', connector: 'none', mode: 'inline',
       blocks: [{ id: 'botany-detail', type: 'text', variant: 'body', content: ['Botany studies plants.'] }],
     }];
     const out = serializeBoard(state);

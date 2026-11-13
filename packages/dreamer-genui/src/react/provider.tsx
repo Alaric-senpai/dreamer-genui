@@ -11,12 +11,18 @@ export interface UIStrings {
   return: string;
   continue: string;
   hint: string;
+  /** Accessible name for the attached explainer region (§7.5). */
+  explainer: string;
+  /** Visible skip control that flushes pending entries (§6.3/§7.7). */
+  skip: string;
 }
 
 export const defaultStrings: UIStrings = {
   return: 'Return',
   continue: 'Continue',
   hint: 'Hint',
+  explainer: 'Explainer',
+  skip: 'Skip',
 };
 
 export type ColorScheme = 'auto' | 'light' | 'dark';

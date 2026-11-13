@@ -10,6 +10,12 @@ export { createMotionDriver, createReducedMotionDriver, STAGGER_SECONDS } from '
 export type { MotionDriver, MotionAnimation } from './motion/driver';
 export { renderInline } from './components/inline';
 export { NodeView, FallbackView } from './components/block-renderer';
+export { DetourView, FloatingDetour, isFlowPlacement, resolvePlacement, resolveTargetElement } from './components/detour';
+export type { DetourViewProps, FloatingDetourProps, EffectivePlacement } from './components/detour';
+export { AmbienceLayer } from './ambience/AmbienceLayer';
+export type { AmbienceLayerProps } from './ambience/AmbienceLayer';
+export { seedParticles, stepParticles, drawParticles, particleCount, MAX_PARTICLES, LITE_PARTICLES, seededRandom } from '../ambience/particles';
+export type { Particle } from '../ambience/particles';
 export { TextBlockView, ChoicesView, CalloutView, StepsView, GroupView } from './components/blocks';
 export { resolveTheme, tokensToVars, DEFAULT_VARS, namedPresets } from '../theme/tokens';
 export type { CssTokens, ThemeName } from '../theme/tokens';

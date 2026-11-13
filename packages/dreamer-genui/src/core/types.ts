@@ -3,6 +3,7 @@ import type { Block } from '../schema/blocks';
 import type { UIEvent } from '../schema/events';
 import type { ErrorCode } from '../schema/errors';
 import type { ResolvedTheme } from './theme';
+import type { EaseName } from '../schema/motion';
 
 // Node: a block on the board with runtime state
 export interface Node {
@@ -21,12 +22,22 @@ export interface ResolvedNode {
 }
 
 // Detour: an attached explainer on top of a target node
+export type DetourPlacement = 'right' | 'left' | 'above' | 'below' | 'overlay' | 'inline';
+export type DetourConnector = 'line' | 'arrow' | 'bracket' | 'none';
+export type DetourMode = 'inline' | 'drawer' | 'spotlight';
+export type DetourAnnotate = 'circle' | 'underline' | 'box' | 'highlight' | 'bracket' | 'none';
+
 export interface Detour {
   id: string;
   targetNodeId: string;   // resolved NodeId of the target (parent for parent/item refs)
   targetRef?: string;     // original NodeRef as authored (e.g. "branches/botany")
   blocks: Block[];        // blocks shown in the detour
   openAt: number;         // 0 = first detour, 1 = nested; capped by MAX_DETOUR_DEPTH (2)
+  /** Presentation requested by the attach op (M4; resolved by the renderer). */
+  placement: DetourPlacement;
+  connector: DetourConnector;
+  mode: DetourMode;
+  targetAnnotate?: DetourAnnotate;
   /** Detour-scoped theme (theme op with scope "detour"); reverts when the detour closes. */
   theme?: ResolvedTheme;
 }
@@ -66,6 +77,17 @@ export interface ResolvedOp {
   op: Op;
   status: 'applied' | 'error';
   error?: LibraryError;
+}
+
+/**
+ * A validated camera move (§6.10). Presentation-only: the resolver emits it,
+ * it never enters BoardState. `to` is a NodeRef or "overview".
+ */
+export interface CameraMove {
+  to: string;
+  zoom?: number;
+  duration?: number;
+  ease?: EaseName;
 }
 
 // LibraryError: error emitted by the library (not a crash)

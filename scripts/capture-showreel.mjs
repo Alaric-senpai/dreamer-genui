@@ -9,8 +9,8 @@
  *
  * Usage:
  *   node scripts/capture-showreel.mjs --mode desktop          # video + axe/AX
- *   node scripts/capture-showreel.mjs --mode mobile           # video + axe/AX
- *   node scripts/capture-showreel.mjs --mode reduced          # 22s video
+ *   node scripts/capture-showreel.mjs --mode mobile           # video + axe/AX + narrow detour fallback
+ *   node scripts/capture-showreel.mjs --mode reduced          # video, reduced motion + static ambience
  *   node scripts/capture-showreel.mjs --mode metrics          # no video, fps
  *   node scripts/capture-showreel.mjs --mode metrics-throttled
  *
@@ -179,14 +179,24 @@ async function run() {
 
     await cdp.send('Runtime.evaluate', { expression: 'window.__SHOWREEL_START__()' });
 
-    const deadline = Date.now() + (mode.limitMs > 0 ? mode.limitMs + 8_000 : 95_000);
+    const deadline = Date.now() + (mode.limitMs > 0 ? mode.limitMs + 8_000 : 135_000);
     let done = false;
     let axeMarks = null;
     let axeFinal = null;
     let axMarks = null;
     let cueGate = null;
+    let detourCheck = null;
+    let recedeCheck = null;
+    let cameraCheck = null;
+    let ambienceCheck = null;
+    let streamCheck = null;
     let marksChecked = false;
     let cueChecked = false;
+    let detourChecked = false;
+    let recedeChecked = false;
+    let cameraChecked = false;
+    let ambienceChecked = false;
+    let streamChecked = false;
 
     while (Date.now() < deadline) {
       const scene = await evalValue(cdp, 'window.__SHOWREEL_SCENE__');
@@ -208,6 +218,110 @@ async function run() {
         fs.writeFileSync(path.join(runDir, 'cue-gate.json'), JSON.stringify(cueGate, null, 2));
         console.log(`cue gate: before=${before} after=${after}`);
       }
+      if (!detourChecked && scene === 'detour') {
+        detourChecked = true;
+        await sleep(2_300);
+        detourCheck = await evalJson(cdp, `(() => {
+          const region = document.querySelector('.dg-detour');
+          if (!region) return { open: false };
+          return {
+            open: true,
+            placement: region.getAttribute('data-dg-placement'),
+            floating: Boolean(document.querySelector('.dg-detour-overlay')),
+            returnButton: Boolean(document.querySelector('.dg-detour-return')),
+            annotated: Boolean(document.querySelector('[data-dg-annotated]')),
+            connector: Boolean(document.querySelector('.dg-detour-connector-path')),
+            scopedTheme: Boolean((region.getAttribute('style') || '').includes('--dg-color-bg')),
+            backdrop: Boolean(document.querySelector('.dg-detour-backdrop')),
+          };
+        })()`);
+        const detourAxe = await runAxe(cdp);
+        fs.writeFileSync(path.join(runDir, 'detour-check.json'), JSON.stringify(detourCheck, null, 2));
+        fs.writeFileSync(path.join(runDir, 'axe-detour.json'), JSON.stringify(detourAxe, null, 2));
+        console.log(`detour: ${JSON.stringify(detourCheck)}; axe ${detourAxe.violations.length}`);
+      }
+      if (!recedeChecked && scene === 'recede') {
+        recedeChecked = true;
+        await sleep(6_200);
+        const nodes = await evalValue(cdp, 'document.querySelectorAll(".dg-node").length');
+        const receded = await evalValue(cdp, 'document.querySelectorAll(\'[data-dg-receded="true"]\').length');
+        recedeCheck = { nodes, receded };
+        fs.writeFileSync(path.join(runDir, 'recede-check.json'), JSON.stringify(recedeCheck, null, 2));
+        console.log(`recede: ${receded}/${nodes} receded`);
+      }
+      if (!cameraChecked && scene === 'camera') {
+        cameraChecked = true;
+        await sleep(1_400);
+        const pushed = await evalValue(cdp, 'document.querySelector(".dg-camera")?.style.transform ?? null');
+        await sleep(1_700);
+        const overview = await evalValue(cdp, 'document.querySelector(".dg-camera")?.style.transform ?? null');
+        cameraCheck = { pushed, overview };
+        fs.writeFileSync(path.join(runDir, 'camera-check.json'), JSON.stringify(cameraCheck, null, 2));
+        console.log(`camera: pushed=${pushed} overview=${overview}`);
+      }
+      if (!ambienceChecked && scene === 'ambience') {
+        ambienceChecked = true;
+        // Sample across the preset cycle; each theme op lands 1.4 s apart.
+        await sleep(1_200);
+        const sequence = [];
+        let visibility = null;
+        for (let i = 0; i < 8; i += 1) {
+          const sample = await evalJson(
+            cdp,
+            `(() => {
+              const layer = document.querySelector('.dg-ambience');
+              const canvas = layer ? layer.querySelector('canvas') : null;
+              return {
+                preset: layer ? layer.getAttribute('data-dg-ambience-preset') : null,
+                mode: layer ? layer.getAttribute('data-dg-ambience-mode') : null,
+                canvas: Boolean(canvas),
+                state: canvas ? canvas.getAttribute('data-dg-ambience-state') : null,
+              };
+            })()`
+          );
+          sequence.push(sample);
+          if (!visibility && sample.canvas) {
+            visibility = await evalJsonAsync(
+              cdp,
+              `(async () => {
+                const canvas = document.querySelector('.dg-ambience canvas');
+                const before = canvas ? canvas.getAttribute('data-dg-ambience-state') : null;
+                let hidden = null;
+                let restored = null;
+                if (canvas) {
+                  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+                  document.dispatchEvent(new Event('visibilitychange'));
+                  await new Promise((r) => setTimeout(r, 180));
+                  hidden = canvas.getAttribute('data-dg-ambience-state');
+                  delete document.visibilityState;
+                  document.dispatchEvent(new Event('visibilitychange'));
+                  await new Promise((r) => setTimeout(r, 180));
+                  restored = canvas.getAttribute('data-dg-ambience-state');
+                }
+                return { before, hidden, restored };
+              })()`
+            );
+          }
+          await sleep(1_300);
+        }
+        const ambienceAxe = await runAxe(cdp);
+        ambienceCheck = { sequence, visibility };
+        fs.writeFileSync(path.join(runDir, 'ambience-check.json'), JSON.stringify(ambienceCheck, null, 2));
+        fs.writeFileSync(path.join(runDir, 'axe-ambience.json'), JSON.stringify(ambienceAxe, null, 2));
+        console.log(`ambience: ${JSON.stringify(ambienceCheck)}; axe ${ambienceAxe.violations.length}`);
+      }
+      if (!streamChecked && scene === 'stream') {
+        streamChecked = true;
+        await sleep(2_000);
+        const midText = await evalValue(cdp, 'document.querySelectorAll(\'.dg-node[data-node-id="streaming-text"]\').length');
+        const midChoices = await evalValue(cdp, 'document.querySelectorAll(\'.dg-node[data-node-id="streaming-choices"]\').length');
+        await sleep(2_600);
+        const finalText = await evalValue(cdp, 'document.querySelectorAll(\'.dg-node[data-node-id="streaming-text"]\').length');
+        const finalChoices = await evalValue(cdp, 'document.querySelectorAll(\'.dg-node[data-node-id="streaming-choices"]\').length');
+        streamCheck = { midText, midChoices, finalText, finalChoices };
+        fs.writeFileSync(path.join(runDir, 'stream-check.json'), JSON.stringify(streamCheck, null, 2));
+        console.log(`stream: ${JSON.stringify(streamCheck)}`);
+      }
       const isDone = await evalValue(cdp, 'window.__SHOWREEL_DONE__ === true');
       if (isDone) {
         done = true;
@@ -226,7 +340,22 @@ async function run() {
     axeFinal = await runAxe(cdp);
     fs.writeFileSync(
       path.join(runDir, 'metrics.json'),
-      JSON.stringify({ mode: modeName, done, metrics, frames: frames.length, cueGate }, null, 2)
+      JSON.stringify(
+        {
+          mode: modeName,
+          done,
+          metrics,
+          frames: frames.length,
+          cueGate,
+          detourCheck,
+          recedeCheck,
+          cameraCheck,
+          ambienceCheck,
+          streamCheck,
+        },
+        null,
+        2
+      )
     );
     fs.writeFileSync(path.join(runDir, 'ax-final.json'), JSON.stringify(ax, null, 2));
     fs.writeFileSync(path.join(runDir, 'axe-final.json'), JSON.stringify(axeFinal, null, 2));
@@ -313,6 +442,16 @@ async function evalValue(cdp, expression) {
 async function evalJson(cdp, expression) {
   const value = await evalValue(cdp, `JSON.stringify(${expression})`);
   return value ? JSON.parse(value) : null;
+}
+
+/** Await a promise-returning expression, then decode its JSON. */
+async function evalJsonAsync(cdp, expression) {
+  const { result } = await cdp.send('Runtime.evaluate', {
+    expression: `Promise.resolve(${expression}).then((value) => JSON.stringify(value))`,
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  return result.value ? JSON.parse(result.value) : null;
 }
 
 async function axSnapshot(cdp) {

@@ -86,6 +86,7 @@ export function ChoicesView({ block }: { block: ChoicesBlock }): ReactNode {
           key={item.id}
           type="button"
           className={`dg-choice${selected.has(item.id) ? ' dg-choice-selected' : ''}`}
+          data-dg-target={item.ref ?? `${block.id}/${item.id}`}
           data-ref={item.ref ?? item.id}
           aria-pressed={block.multi ? selected.has(item.id) : undefined}
           onClick={() => fire(item)}
@@ -116,7 +117,7 @@ export function StepsView({ block }: { block: StepsBlock }): ReactNode {
   return (
     <ol className={`dg-steps dg-steps-${block.reveal}`} data-node-id={block.id}>
       {block.items.map((item: StepsBlock['items'][number], i: number) => (
-        <li key={item.id} className="dg-step">
+        <li key={item.id} className="dg-step" data-dg-target={`${block.id}/${item.id}`}>
           <span className="dg-step-number" aria-hidden="true">{i + 1}</span>
           <div>
             <strong className="dg-step-title">{item.title}</strong>

@@ -33,6 +33,33 @@ export interface MoodPreset {
 export interface AmbiencePreset {
   name: string;
   description: string;
+  /**
+   * Generic implementation kind (§6.9). Presets are data: the renderer picks a
+   * layer kind, never a preset name, so hosts can register their own without
+   * touching library code.
+   */
+  layer?: AmbienceLayerKind;
+  /** 0..1, multiplied into the layer opacity. Defaults to 1. */
+  intensity?: number;
+  particles?: AmbienceParticleConfig;
+}
+
+export type AmbienceLayerKind = 'grain' | 'vignette' | 'haze' | 'flicker' | 'particles';
+
+export type AmbienceColorRole = 'ink' | 'muted' | 'accent' | 'info' | 'success' | 'warn' | 'danger';
+
+export interface AmbienceParticleConfig {
+  /** Requested count; the runtime caps it (and halves it in lite mode). */
+  count: number;
+  color: AmbienceColorRole;
+  minSize: number;
+  maxSize: number;
+  /** Vertical speed in px/second (negative = up). */
+  speed: number;
+  /** Horizontal sway amplitude in px/second. */
+  drift: number;
+  twinkle: boolean;
+  direction: 'up' | 'down' | 'left' | 'right' | 'drift' | 'static';
 }
 
 export interface SurfacePreset {
@@ -126,15 +153,30 @@ export const EXAMPLE_MOODS: MoodPreset[] = [
   },
 ];
 
-/** Example ambience presets — implementations live in the ambience runtime (M4); names usable now. */
+/** Example ambience presets — data + generic layer kind; the runtime is in react/ambience. */
 export const EXAMPLE_AMBIENCE: AmbiencePreset[] = [
-  { name: 'grain', description: 'Subtle film-grain texture.' },
-  { name: 'vignette', description: 'Soft darkened edges drawing focus inward.' },
-  { name: 'dust', description: 'Slow drifting motes.' },
-  { name: 'embers', description: 'Sparse warm rising particles.' },
-  { name: 'fog', description: 'Hazy depth behind content.' },
-  { name: 'stars', description: 'A sparse night-sky field.' },
-  { name: 'flicker', description: 'Unsteady, candle-like light.' },
+  { name: 'grain', description: 'Subtle film-grain texture.', layer: 'grain', intensity: 0.8 },
+  { name: 'vignette', description: 'Soft darkened edges drawing focus inward.', layer: 'vignette', intensity: 0.9 },
+  {
+    name: 'dust',
+    description: 'Slow drifting motes.',
+    layer: 'particles',
+    particles: { count: 44, color: 'ink', minSize: 1, maxSize: 2.4, speed: 0, drift: 14, twinkle: true, direction: 'drift' },
+  },
+  {
+    name: 'embers',
+    description: 'Sparse warm rising particles.',
+    layer: 'particles',
+    particles: { count: 26, color: 'accent', minSize: 1.4, maxSize: 3.2, speed: 18, drift: 9, twinkle: true, direction: 'up' },
+  },
+  { name: 'fog', description: 'Hazy depth behind content.', layer: 'haze', intensity: 0.7 },
+  {
+    name: 'stars',
+    description: 'A sparse night-sky field.',
+    layer: 'particles',
+    particles: { count: 56, color: 'ink', minSize: 0.8, maxSize: 1.8, speed: 0, drift: 0, twinkle: true, direction: 'static' },
+  },
+  { name: 'flicker', description: 'Unsteady, candle-like light.', layer: 'flicker', intensity: 0.85 },
 ];
 
 /** Example board surfaces. */
