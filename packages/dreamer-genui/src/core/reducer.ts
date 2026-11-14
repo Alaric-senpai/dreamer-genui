@@ -1,16 +1,31 @@
 import type { BoardState, BoardSnapshot, Node } from './types';
-import type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp, ThemeOp, CameraOp } from '../schema/ops';
+import type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp, ThemeOp, CameraOp, LayoutOp } from '../schema/ops';
 import type { Block } from '../schema/blocks';
+import type { LayoutSpec } from '../schema/layout';
+import type { AssessmentState } from '../schema/assessment';
 import type { ResolvedTheme } from './theme';
 
 const MAX_HISTORY = 50;
+
+/** Default layout: a vertical flow (§6.4). */
+export const DEFAULT_LAYOUT: LayoutSpec = { kind: 'flow' };
 
 function makeNode(block: Block): Node {
   return { id: block.id, block, state: 'complete' };
 }
 
 function snapshot(state: BoardState): BoardSnapshot {
-  return { id: state.id, title: state.title, nodes: { ...state.nodes }, theme: state.theme, firedCues: [...state.firedCues], firedEvents: { ...state.firedEvents }, flushed: state.flushed };
+  return {
+    id: state.id,
+    title: state.title,
+    nodes: { ...state.nodes },
+    theme: state.theme,
+    layout: state.layout,
+    assessments: { ...state.assessments },
+    firedCues: [...state.firedCues],
+    firedEvents: { ...state.firedEvents },
+    flushed: state.flushed,
+  };
 }
 
 // --- Apply helpers ---
@@ -86,6 +101,8 @@ function applyReplace(state: BoardState, op: ReplaceOp): BoardState {
     firedEvents: {},
     flushed: false,
     theme: undefined,
+    layout: op.layout ?? state.layout,
+    assessments: {},
   };
   if (op.title !== undefined) replaced.title = op.title;
   return replaced;
@@ -115,7 +132,10 @@ function applyRemove(state: BoardState, op: RemoveOp): BoardState {
   const { [op.id]: _removed, ...remainingNodes } = state.nodes;
   // Drop detours whose target was removed — they would point at a dead node.
   const detours = state.detours.filter(d => d.targetNodeId !== op.id);
-  return { ...state, nodes: remainingNodes, detours };
+  const assessments = op.id in state.assessments
+    ? Object.fromEntries(Object.entries(state.assessments).filter(([id]) => id !== op.id))
+    : state.assessments;
+  return { ...state, nodes: remainingNodes, detours, assessments };
 }
 
 /**
@@ -136,9 +156,29 @@ export function boardReducer(state: BoardState, op: Op): BoardState {
     case 'camera':
       return state;
     case 'layout':
-      // TODO(M4b-B3): apply layout changes once the layout model lands.
-      return state;
+      return applyLayout(state, op);
   }
+}
+
+/** Apply a layout change; re-flow animation is a renderer concern (§6.4). */
+export function applyLayout(state: BoardState, op: LayoutOp): BoardState {
+  return { ...state, layout: op.layout };
+}
+
+/** Replace one assessment's local-first state (host autosave/restore, §6.8). */
+export function setAssessmentState(
+  state: BoardState,
+  assessmentId: string,
+  next: AssessmentState,
+): BoardState {
+  return { ...state, assessments: { ...state.assessments, [assessmentId]: next } };
+}
+
+/** Drop an assessment's state (for example when its node is removed). */
+export function removeAssessmentState(state: BoardState, assessmentId: string): BoardState {
+  if (!(assessmentId in state.assessments)) return state;
+  const { [assessmentId]: _removed, ...rest } = state.assessments;
+  return { ...state, assessments: rest };
 }
 
 /**
@@ -179,6 +219,8 @@ export function back(state: BoardState): BoardState {
     history: state.history.slice(0, -1),
     detours: [], // back clears detours
     theme: last.theme,
+    layout: last.layout,
+    assessments: last.assessments,
     firedCues: last.firedCues,
     firedEvents: last.firedEvents,
     flushed: last.flushed,
@@ -194,6 +236,8 @@ export function createBoard(id?: string): BoardState {
     history: [],
     detours: [],
     theme: undefined,
+    layout: DEFAULT_LAYOUT,
+    assessments: {},
     firedCues: [],
     firedEvents: {},
     flushed: false,

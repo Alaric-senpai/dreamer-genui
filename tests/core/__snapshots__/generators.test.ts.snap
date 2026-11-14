@@ -3,7 +3,7 @@
 exports[`getSystemPromptGuide > snapshot (default options, built-ins registry) 1`] = `
 "# dreamer-genui Prompt Guide
 
-Reply format is JSON. Output only JSON matching this format.
+Reply format is JSON. Output only JSON matching this format. Profile: lesson.
 
 ## Operations
 
@@ -14,8 +14,9 @@ Reply format: { "v": 1, "ops": [...] }
 - **replace**: Start a new board. The old board is saved in history (max 50). Use 'title' to name the new topic.
 - **update**: Merge props into an existing node (props are merged into the block).
 - **remove**: Delete a node from the board.
+- **layout**: Change the board's composition ({ "op": "layout", "layout": { "kind": "split", "ratio": "2:1" } }). Existing content animates to its new positions; it never re-enters. Use it deliberately — for example flow → split when a question appears beside an explanation.
 - **theme**: Shift the board's mood or tokens mid-lesson ({ "op": "theme", "theme": { "mood": "…" }, "scope": "board" | "detour" }). Moods must be registered names; full theme guidance is documented separately. Use sparingly — only when the emotional register genuinely changes.
-- **camera**: Ask for a virtual-camera move to a node ref or "overview" ({ "op": "camera", "to": "some-node", "zoom": 1.4 }). Presentation-level; the host may honour or ignore it.
+- **camera**: Ask for a virtual-camera move to a node ref or "overview" ({ "op": "camera", "to": "some-node", "zoom": 1.4, "tilt": { "y": 8 }, "dolly": "in" }). A guided sequence is { "op": "camera", "path": [ {...}, {...} ] }; each move may carry a cue trigger so the camera follows narration. Presentation-level and bounded: the host may honour or ignore it, and text stays flat and readable.
 
 Node ids must be unique across the board (including attached detour blocks).
 
@@ -28,6 +29,7 @@ Node ids must be unique across the board (including attached detour blocks).
 - **focusable** (text, ref): clickable text that emits a 'focus' UIEvent with ref.
 - **annotate** (text, kind, color?): circle|underline|box|bracket|strike.
 - **math** (tex): inline math.
+- **blank** (id, options?): a cloze gap; valid only inside a cloze question.
 
 ## Motion
 
@@ -43,9 +45,11 @@ Reduced motion: all effects fall back to instant/unanimated. Always show all con
 
 - **diagram** (kind: tree|radial|cycle): no coordinates. Label nodes with nodes[].id, nodes[].label. Connect with edges[]. Set 'focusable:true' to emit 'focus' on node click.
 - **flowchart** (nodes/edges with decisions, branches, loops, inputs/outputs): use for multi-step processes. Labels are Inline[]. Set 'flow:"pulse"' to animate the path.
+- **timeline** (events with when/label): for chronological sequences.
 - **labeled** (pack, art): reference named parts by id (highlight and label by part id).
 - **chart** (type: bar|line|pie|scatter): series[].data is number[] or {x, y}[].
 - **lottie** (src, loop?): alt required.
+- **scene3d** (objects): procedural shapes from a safe vocabulary; use 'place'/'arrange' rather than raw coordinates. No model registry needed.
 
 ## Idempotency
 
@@ -57,8 +61,22 @@ Write on the board only what you are currently talking about: one idea per beat.
 
 ## Events
 
-The library emits: focus, select, answer, action (return|continue|hint|custom).
+The library emits: focus, select, answer, action (return|continue|hint|view|custom), assessment.
 The host app handles correctness, grading, and routing.
+
+
+## Layout
+
+Choose the composition deliberately; the library owns the geometry. Send a 'layout' op at any time and existing content animates to its new positions (instant under reduced motion).
+
+- **flow** (default): a vertical column for one idea at a time.
+- **split**: two regions ('left'/'right', or 'right-left' to mirror). Use it to pair an explanation with a question or a figure — for example a question enters on the right while the context stays on the left.
+- **grid**: 2–4 columns for parallel items.
+- **stage**: named regions (top|left|center|right|bottom) for composed scenes.
+
+Place a node with 'slot' (left|right|top|bottom|center); unslotted nodes flow into the layout's primary region, and slots a layout does not define fall back to it. Layout options are token names only: 'gap' (none|xs|sm|md|lg|xl), split 'ratio' (1:1|2:1|1:2|3:2|2:3), 'narrow' (stack|tabs), 'narrowOrder', 'pin' (keep one side visible on phones), grid 'columns'/'narrowColumns', stage 'regions'. Never describe screen sizes — the board re-flows by its own container width.
+
+Keep the same node ids across a layout change so content animates rather than re-entering.
 
 
 ## Mood & Theme
@@ -77,9 +95,9 @@ Raw "tokens" may be unavailable depending on host policy; if a theme request is 
 
 ## Block Types
 
-- **text**: text block: variant (body|definition|heading|note), content is Inline[] array.
+- **text**: text block: variant (body|definition|heading|note|hero|kicker|quote), content is Inline[].
 
-- **figure**: figure block: figure.kind (image|icon|diagram|labeled|chart|lottie), alt required.
+- **figure**: figure block: figure.kind (image|icon|diagram|flowchart|timeline|labeled|chart|lottie|model3d|scene3d), alt required.
 
 - **choices**: choices block: items array with {id, label}. intent=navigate emits select; intent=answer emits answer.
 
@@ -87,13 +105,21 @@ Raw "tokens" may be unavailable depending on host policy; if a theme request is 
 
 - **callout**: callout block: tone (info|success|warn|danger), content: Inline[].
 
-- **group**: group block: layout (stack|row|grid), blocks: Block[].
+- **group**: group block: layout (stack|row|grid) plus direction/wrap/align/justify/gap/columns, blocks: Block[].
 
 - **table**: table block: columns: {id, label}[], rows: {colId: Inline[]}[]
 
 - **math**: math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.
 
 - **code**: code block: lang (python|javascript|etc.), source is the code string.
+
+- **list**: list block: style (bullet|number|check|none), items: {id?, content: Inline[]}[] .
+
+- **compare**: compare block: columns: {id, title: Inline[], items: Inline[][]}[]; optional highlight {col,row}.
+
+- **flashcards**: flashcards block: cards: {id, front: Inline[], back: Inline[]}[], flip tap|auto, optional rating.
+
+- **question**: question block: kind (mcq|truefalse|short|numeric|cloze|matching|ordering|hotspot|labelDiagram|extended), prompt: Inline[]. Never add a key inside quiz/exam assessments.
 
 
 ## Worked Examples

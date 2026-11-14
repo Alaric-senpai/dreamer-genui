@@ -4,6 +4,8 @@ import type { UIEvent } from '../schema/events';
 import type { ErrorCode } from '../schema/errors';
 import type { ResolvedTheme } from './theme';
 import type { EaseName } from '../schema/motion';
+import type { LayoutSpec } from '../schema/layout';
+import type { AssessmentState } from '../schema/assessment';
 
 // Node: a block on the board with runtime state
 export interface Node {
@@ -49,6 +51,10 @@ export interface BoardSnapshot {
   nodes: Record<string, Node>;
   /** Board theme before the replace (restored by back()). */
   theme?: ResolvedTheme;
+  /** Board layout before the replace (§6.4). */
+  layout: LayoutSpec;
+  /** Assessment states before the replace (§7.3). */
+  assessments: Record<string, AssessmentState>;
   /** Fired cues of the board being replaced (history keeps theirs, §6.3). */
   firedCues: string[];
   firedEvents: Record<string, true>;
@@ -64,6 +70,10 @@ export interface BoardState {
   detours: Detour[];            // max 2 entries (depth 0 and 1)
   /** Current board theme (resolved; undefined = host/library default). */
   theme?: ResolvedTheme;
+  /** Current board layout (§6.4). Defaults to a vertical flow. */
+  layout: LayoutSpec;
+  /** Local-first assessment state, keyed by assessment node id (§6.8). */
+  assessments: Record<string, AssessmentState>;
   /** Cue ids fired on THIS board (§6.3). Cleared by replace; history snapshots keep theirs. */
   firedCues: string[];
   /** Satisfied event triggers, keyed `${nodeRef}:${event}`. */

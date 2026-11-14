@@ -1,5 +1,6 @@
 import { useMemo, useRef, useSyncExternalStore } from 'react';
-import { BoardResolver, type ResolverOptions, type ReplyLike } from '../core/resolver';
+import { BoardResolver, type BoardAssessments, type ResolverOptions, type ReplyLike } from '../core/resolver';
+import type { BoardSnapshotFile, SnapshotMigrations, OpsLog } from '../core/persistence';
 import type { BoardState, LibraryError, ResolvedOp, CameraMove } from '../core/types';
 import type { UIEvent } from '../schema/events';
 import type { Reply } from '../schema/envelope';
@@ -36,6 +37,16 @@ export interface BoardStore {
   flush(): void;
   /** Fire every cue up to and including cueId, instantly. */
   seek(cueId: string): void;
+  /** Versioned, JSON-serializable snapshot of the full board (§7.3). */
+  snapshot(): BoardSnapshotFile;
+  /** Rehydrate a snapshot; content appears settled (no entrance replay). */
+  restore(snapshot: BoardSnapshotFile, migrations?: SnapshotMigrations): BoardState;
+  /** Ops log with relative timestamps for replay/resume and demos. */
+  exportOps(): OpsLog;
+  /** Replay an ops log synchronously into a settled board state. */
+  replay(log: OpsLog, options?: { base?: BoardState; migrate?: (log: OpsLog) => OpsLog }): BoardState;
+  /** Assessment state machines (lazily created per assessment node, §6.8). */
+  readonly assessments: BoardAssessments;
   /** Cue bus: onCue notifications (host sync, §6.3). */
   readonly cueBus: EventSink<string>;
   /** Enter bus: onEnter notifications as entry gates open. */
@@ -92,6 +103,32 @@ export function createBoardStore(options: CreateBoardStoreOptions | BoardResolve
     },
   };
 
+  /** Assessments API; machine actions notify subscribers so the board re-renders. */
+  const wrapAssessments = (): BoardAssessments => ({
+    get(id) {
+      const machine = resolver.assessments.get(id);
+      if (!machine) return undefined;
+      return new Proxy(machine, {
+        get(target, prop, receiver) {
+          const value = Reflect.get(target, prop, receiver);
+          if (typeof value !== 'function') return value;
+          return (...args: unknown[]) => {
+            const result = (value as (...a: unknown[]) => unknown).apply(target, args);
+            notify();
+            return result;
+          };
+        },
+      });
+    },
+    snapshot: id => resolver.assessments.snapshot(id),
+    restore(id, state) {
+      const result = resolver.assessments.restore(id, state);
+      notify();
+      return result;
+    },
+    list: () => resolver.assessments.list(),
+  });
+
   const store: BoardStore = {
     getState: () => resolver.getState(),
     subscribe(fn) {
@@ -142,6 +179,19 @@ export function createBoardStore(options: CreateBoardStoreOptions | BoardResolve
       resolver.seek(cueId);
       notify();
     },
+    snapshot: () => resolver.snapshot(),
+    restore(snapshot, migrations) {
+      const state = resolver.restore(snapshot, migrations);
+      notify();
+      return state;
+    },
+    exportOps: () => resolver.exportOps(),
+    replay(log, options) {
+      const state = resolver.replay(log, options);
+      notify();
+      return state;
+    },
+    assessments: wrapAssessments(),
     cueBus: resolver.cueBus,
     enterBus: resolver.enterBus,
     themeChangeBus: resolver.themeChangeBus,
@@ -149,7 +199,6 @@ export function createBoardStore(options: CreateBoardStoreOptions | BoardResolve
   };
   return store;
 }
-
 /**
  * Create a board store bound to the component lifetime:
  * `{ state, applyFinal, applyPartial, back, reset, events, errors }` —

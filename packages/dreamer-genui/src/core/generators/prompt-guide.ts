@@ -1,12 +1,18 @@
+import type { ProfileDefinition } from '../plugin';
 import type { Registry } from '../registry';
+import { profileBlockTypes, resolveProfile } from '../profiles';
 
 export interface PromptGuideOptions {
   compact?: boolean;
   language?: string;
   /** Only include these registered types (by id). Unregistered ids are reported. */
   include?: string[];
-  /** Sections or type ids to exclude: 'ops' | 'protocol' | 'examples' | <type id>. */
+  /** Sections or type ids to exclude: 'ops' | 'protocol' | 'layout' | 'theme' | 'models' | 'examples' | <type id>. */
   exclude?: string[];
+  /** Capability profile name (§9.4) or an inline definition. */
+  profile?: string | ProfileDefinition;
+  /** Replace a section ('ops'|'protocol'|'layout'|'theme'|'models'|'examples') or one block type's snippet. */
+  guideOverrides?: Record<string, string>;
 }
 
 // Operations section (registry-independent)
@@ -19,8 +25,9 @@ Reply format: { "v": 1, "ops": [...] }
 - **replace**: Start a new board. The old board is saved in history (max 50). Use 'title' to name the new topic.
 - **update**: Merge props into an existing node (props are merged into the block).
 - **remove**: Delete a node from the board.
+- **layout**: Change the board's composition ({ "op": "layout", "layout": { "kind": "split", "ratio": "2:1" } }). Existing content animates to its new positions; it never re-enters. Use it deliberately — for example flow → split when a question appears beside an explanation.
 - **theme**: Shift the board's mood or tokens mid-lesson ({ "op": "theme", "theme": { "mood": "…" }, "scope": "board" | "detour" }). Moods must be registered names; full theme guidance is documented separately. Use sparingly — only when the emotional register genuinely changes.
-- **camera**: Ask for a virtual-camera move to a node ref or "overview" ({ "op": "camera", "to": "some-node", "zoom": 1.4 }). Presentation-level; the host may honour or ignore it.
+- **camera**: Ask for a virtual-camera move to a node ref or "overview" ({ "op": "camera", "to": "some-node", "zoom": 1.4, "tilt": { "y": 8 }, "dolly": "in" }). A guided sequence is { "op": "camera", "path": [ {...}, {...} ] }; each move may carry a cue trigger so the camera follows narration. Presentation-level and bounded: the host may honour or ignore it, and text stays flat and readable.
 
 Node ids must be unique across the board (including attached detour blocks).`;
 
@@ -33,6 +40,7 @@ const PROTOCOL_GUIDE = `## Inline Marks
 - **focusable** (text, ref): clickable text that emits a 'focus' UIEvent with ref.
 - **annotate** (text, kind, color?): circle|underline|box|bracket|strike.
 - **math** (tex): inline math.
+- **blank** (id, options?): a cloze gap; valid only inside a cloze question.
 
 ## Motion
 
@@ -48,9 +56,11 @@ Reduced motion: all effects fall back to instant/unanimated. Always show all con
 
 - **diagram** (kind: tree|radial|cycle): no coordinates. Label nodes with nodes[].id, nodes[].label. Connect with edges[]. Set 'focusable:true' to emit 'focus' on node click.
 - **flowchart** (nodes/edges with decisions, branches, loops, inputs/outputs): use for multi-step processes. Labels are Inline[]. Set 'flow:"pulse"' to animate the path.
+- **timeline** (events with when/label): for chronological sequences.
 - **labeled** (pack, art): reference named parts by id (highlight and label by part id).
 - **chart** (type: bar|line|pie|scatter): series[].data is number[] or {x, y}[].
 - **lottie** (src, loop?): alt required.
+- **scene3d** (objects): procedural shapes from a safe vocabulary; use 'place'/'arrange' rather than raw coordinates. No model registry needed.
 
 ## Idempotency
 
@@ -62,8 +72,31 @@ Write on the board only what you are currently talking about: one idea per beat.
 
 ## Events
 
-The library emits: focus, select, answer, action (return|continue|hint|custom).
+The library emits: focus, select, answer, action (return|continue|hint|view|custom), assessment.
 The host app handles correctness, grading, and routing.`;
+
+const LAYOUT_GUIDE = `## Layout
+
+Choose the composition deliberately; the library owns the geometry. Send a 'layout' op at any time and existing content animates to its new positions (instant under reduced motion).
+
+- **flow** (default): a vertical column for one idea at a time.
+- **split**: two regions ('left'/'right', or 'right-left' to mirror). Use it to pair an explanation with a question or a figure — for example a question enters on the right while the context stays on the left.
+- **grid**: 2–4 columns for parallel items.
+- **stage**: named regions (top|left|center|right|bottom) for composed scenes.
+
+Place a node with 'slot' (left|right|top|bottom|center); unslotted nodes flow into the layout's primary region, and slots a layout does not define fall back to it. Layout options are token names only: 'gap' (none|xs|sm|md|lg|xl), split 'ratio' (1:1|2:1|1:2|3:2|2:3), 'narrow' (stack|tabs), 'narrowOrder', 'pin' (keep one side visible on phones), grid 'columns'/'narrowColumns', stage 'regions'. Never describe screen sizes — the board re-flows by its own container width.
+
+Keep the same node ids across a layout change so content animates rather than re-entering.`;
+
+const MODELS_GUIDE = `## 3D Models
+
+'model3d' figures direct a model that lives in the host's external registry; the library never generates meshes, shaders or code.
+
+- Use ONLY model, part, view, animation, path and cutaway ids returned by the model tools ('find_models', 'get_model') or supplied in the host's model context. Never invent ids.
+- Direct the model instead of describing its structure in prose: 'view', 'highlight', 'dim', 'isolate', 'explode', 'cutaway', 'labels', 'flow' and 'animation'.
+- Use 'tour' steps with cue triggers so view changes, highlights and labels follow the narration.
+- Tapping a part emits 'focus' with ref "<figureId>/<partId>".
+- Always include 'alt'; the poster/alt is the fallback when 3D is unavailable.`;
 
 /** Registry-aware mood/ambience/surface section (§6.8): moods listed WITH their descriptions. */
 function themeGuide(registry: Registry): string {
@@ -114,35 +147,46 @@ const WORKED_EXAMPLES = `
 /**
  * Build the tutor-facing prompt guide.
  *
- * Registry-aware: the per-type snippets come from the registered manifests
- * (built-ins and plugins alike), so a plugin's snippet or an asset pack's part
- * ids appear automatically. options.include filters the listed types;
- * options.exclude removes sections ('ops', 'protocol', 'examples') or type ids;
- * compact omits the protocol details and worked examples; language appends an
- * output-language instruction.
+ * Registry- and profile-aware: the per-type snippets come from the registered
+ * manifests (built-ins and plugins alike), so a plugin's snippet or an asset
+ * pack's part ids appear automatically. `profile` selects a capability profile
+ * (§9.4) and `include`/`exclude` filter types and sections. `guideOverrides`
+ * replaces a section or one type's snippet. `compact` omits protocol details
+ * and worked examples; `language` appends an output-language instruction.
+ *
+ * `model3d` is omitted entirely unless at least one model connector is
+ * registered (§6.16); `scene3d` needs no registry.
  */
 export function getSystemPromptGuide(registry: Registry, options?: PromptGuideOptions): string {
   const excluded = new Set(options?.exclude ?? []);
+  const overrides = options?.guideOverrides ?? {};
+  const { name: profileName, definition: profile } = resolveProfile(registry, options?.profile);
+  const compact = options?.compact ?? profile.compact ?? false;
+  const hasConnectors = registry.listModelConnectors().length > 0;
+
   const parts: string[] = [];
-
   parts.push('# dreamer-genui Prompt Guide\n');
-  parts.push('Reply format is JSON. Output only JSON matching this format.\n');
+  parts.push(`Reply format is JSON. Output only JSON matching this format.${profileName !== 'custom' ? ` Profile: ${profileName}.` : ''}\n`);
 
-  if (!excluded.has('ops')) parts.push(OPS_GUIDE, '\n');
-  if (!excluded.has('protocol')) parts.push(PROTOCOL_GUIDE, '\n');
-  if (!excluded.has('theme')) parts.push(themeGuide(registry), '\n');
+  if (!excluded.has('ops')) parts.push(overrides.ops ?? OPS_GUIDE, '\n');
+  if (!excluded.has('protocol')) parts.push(overrides.protocol ?? PROTOCOL_GUIDE, '\n');
+  if (!excluded.has('layout')) parts.push(overrides.layout ?? LAYOUT_GUIDE, '\n');
+  if (!excluded.has('theme')) parts.push(overrides.theme ?? themeGuide(registry), '\n');
+  if (hasConnectors && !excluded.has('models')) parts.push(overrides.models ?? MODELS_GUIDE, '\n');
 
-  // Registry-aware block-type snippets
+  // Registry-aware block-type snippets, filtered by the active profile.
   const include = options?.include?.length ? options.include : undefined;
   const caps = registry.getCapabilities();
   const missing = include ? include.filter(t => !caps.includes(t)) : [];
-  const selected = include ? caps.filter(t => include.includes(t)) : caps;
+  const profileTypes = profileBlockTypes(registry, profile);
+  let selected = include ? profileTypes.filter(t => include.includes(t)) : profileTypes;
+  if (!hasConnectors) selected = selected.filter(t => t !== 'model3d');
   const remaining = selected.filter(t => !excluded.has(t));
 
   if (remaining.length) {
     parts.push('## Block Types\n');
     for (const t of remaining) {
-      const guide = registry.getManifest(t)?.promptGuide;
+      const guide = overrides[t] ?? registry.getManifest(t)?.promptGuide;
       parts.push(`- **${t}**${guide ? `: ${guide}` : ''}\n`);
     }
   }
@@ -151,8 +195,8 @@ export function getSystemPromptGuide(registry: Registry, options?: PromptGuideOp
     parts.push(`\nNote: requested types not registered: ${missing.join(', ')}.\n`);
   }
 
-  if (!options?.compact && !excluded.has('examples')) {
-    parts.push(WORKED_EXAMPLES);
+  if (!compact && !excluded.has('examples')) {
+    parts.push(overrides.examples ?? WORKED_EXAMPLES);
   }
 
   if (options?.language) {
