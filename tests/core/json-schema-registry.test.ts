@@ -18,6 +18,15 @@ describe('registryToJsonSchema (§8.1)', () => {
     expect(text).toContain('"camera"');
   });
 
+  test('layout op and M4b protocol surface appear in the schema', () => {
+    expect(text).toContain('"layout"');
+    expect(text).toContain('"question"');
+    expect(text).toContain('"assessment"');
+    expect(text).toContain('"flowchart"');
+    expect(text).toContain('"model3d"');
+    expect(text).toContain('"scene3d"');
+  });
+
   test('schema rejects a mood that is not registered', () => {
     // find the mood enum in the raw schema and check forbidden-frolic is absent
     expect(text).not.toContain('forbidden-frolic');

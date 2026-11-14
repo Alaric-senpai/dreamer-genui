@@ -1,0 +1,53 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "exam-paper",
+          "type": "assessment",
+          "mode": "exam",
+          "title": ["End-of-topic check"],
+          "instructions": ["Read each question carefully. You may flag a question and return to it."],
+          "timer": { "kind": "countdown", "seconds": 1800, "warnAtSeconds": [300, 60] },
+          "navigation": "linear",
+          "allowFlag": true,
+          "submit": { "confirm": true },
+          "sections": [
+            {
+              "id": "section-a",
+              "title": ["Section A"],
+              "questions": [
+                {
+                  "id": "exam-q1",
+                  "type": "question",
+                  "kind": "mcq",
+                  "prompt": ["Which stage follows processing?"],
+                  "options": [
+                    { "id": "a", "label": ["Collect"] },
+                    { "id": "b", "label": ["Release"] }
+                  ],
+                  "marks": 1
+                },
+                {
+                  "id": "exam-q2",
+                  "type": "question",
+                  "kind": "cloze",
+                  "prompt": ["Complete the sentence."],
+                  "content": [
+                    "The cycle returns to ",
+                    { "mark": "blank", "id": "exam-blank-1" },
+                    "."
+                  ],
+                  "marks": 1
+                }
+              ]
+            }
+          ],
+          "totalMarks": 2
+        }
+      ]
+    }
+  ]
+}

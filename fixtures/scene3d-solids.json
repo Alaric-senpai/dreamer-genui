@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "scene-solids",
+          "type": "figure",
+          "figure": {
+            "kind": "scene3d",
+            "objects": [
+              { "id": "core", "shape": "sphere", "size": "md", "color": "accent", "label": ["Core"] },
+              { "id": "ring-a", "shape": "torus", "size": "sm", "color": "info" },
+              { "id": "ring-b", "shape": "torus", "size": "sm", "color": "muted" },
+              { "id": "axis", "shape": "cylinder", "size": "xs", "color": "ink", "animate": { "effect": "spin", "speed": 0.6 } }
+            ],
+            "arrange": [
+              { "kind": "ring", "of": ["ring-a", "ring-b"], "spacing": "lg" },
+              { "kind": "row", "of": ["core", "axis"], "spacing": "md" }
+            ],
+            "view": "iso",
+            "controls": "both",
+            "interactive": true,
+            "tour": [
+              { "trigger": { "on": "cue", "id": "focus-core" }, "view": { "focus": "core", "distance": "near" } }
+            ],
+            "alt": "A procedural scene: a sphere core, two torus rings and a cylinder axis."
+          }
+        }
+      ]
+    }
+  ]
+}

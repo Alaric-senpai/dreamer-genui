@@ -1,0 +1,20 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "unknown-part-figure",
+          "type": "figure",
+          "figure": {
+            "kind": "model3d",
+            "model": "demo:assembly",
+            "highlight": ["ghost-part"],
+            "alt": "A demo assembly highlighting a part that the manifest does not define."
+          }
+        }
+      ]
+    }
+  ]
+}

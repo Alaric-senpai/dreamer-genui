@@ -1,0 +1,50 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "model-tour",
+          "type": "figure",
+          "figure": {
+            "kind": "model3d",
+            "model": "demo:assembly",
+            "view": "iso",
+            "controls": "both",
+            "autoRotate": false,
+            "tour": [
+              {
+                "trigger": { "on": "cue", "id": "view-top" },
+                "view": { "view": "top-down" },
+                "duration": 900,
+                "ease": "smooth"
+              },
+              {
+                "trigger": { "on": "cue", "id": "show-rotor" },
+                "isolate": ["rotor"],
+                "highlight": ["rotor"],
+                "labels": [{ "part": "rotor", "text": ["Rotor"] }],
+                "duration": 700
+              },
+              {
+                "trigger": { "on": "cue", "id": "cutaway" },
+                "cutaway": "half",
+                "explode": 0.4,
+                "flow": { "path": "flow", "pulse": true },
+                "duration": 800
+              },
+              {
+                "trigger": { "on": "cue", "id": "wrap" },
+                "view": "iso",
+                "explode": 0,
+                "duration": 900
+              }
+            ],
+            "alt": "A demo assembly toured through a top view, an isolated rotor, a cutaway with a flow path, then back to an isometric view."
+          }
+        }
+      ]
+    }
+  ]
+}

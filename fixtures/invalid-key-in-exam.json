@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "exam-with-key",
+          "type": "assessment",
+          "mode": "exam",
+          "title": ["Exam"],
+          "sections": [
+            {
+              "id": "section-a",
+              "questions": [
+                {
+                  "id": "leaky-question",
+                  "type": "question",
+                  "kind": "mcq",
+                  "prompt": ["Which stage comes first?"],
+                  "options": [
+                    { "id": "a", "label": ["Collect"] },
+                    { "id": "b", "label": ["Release"] }
+                  ],
+                  "key": "a"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

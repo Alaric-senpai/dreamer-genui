@@ -157,8 +157,13 @@ export function eventKey(nodeRef: string, event: UIEvent extends { type: infer T
  */
 export function signalEvent(state: BoardState, ev: UIEvent): BoardState {
   if (ev.type !== 'focus' && ev.type !== 'select' && ev.type !== 'answer') return state;
-  const keys: string[] = [eventKey(ev.nodeId, ev.type)];
-  if ('ref' in ev && ev.ref !== undefined) keys.push(eventKey(ev.ref, ev.type));
+  // Namespaced plugin events share the string `type` space; only the core
+  // events above carry a string nodeId.
+  const nodeId = (ev as { nodeId?: unknown }).nodeId;
+  if (typeof nodeId !== 'string') return state;
+  const keys: string[] = [eventKey(nodeId, ev.type)];
+  const ref = (ev as { ref?: unknown }).ref;
+  if (typeof ref === 'string') keys.push(eventKey(ref, ev.type));
   let matched = false;
   const firedEvents = { ...state.firedEvents };
   for (const key of keys) {

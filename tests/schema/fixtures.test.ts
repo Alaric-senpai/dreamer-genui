@@ -20,11 +20,32 @@ const VALID = [
   'replace-with-theme.json',
   'camera-moves.json',
   'diagram-radial.json',
+  'diagram-cycle.json',
   'labeled-art.json',
   'chart-bar.json',
   'math-chem.json',
   'lottie-basic.json',
   'streaming-partial.json',
+  // M4b additions (v2.1 / v2.2 protocol surface).
+  'split-explanation-question.json',
+  'split-reversed.json',
+  'layout-change-animated.json',
+  'group-flex-grid.json',
+  'process-flowchart.json',
+  'timeline.json',
+  'compare.json',
+  'list.json',
+  'question-kinds.json',
+  'assessment-practice.json',
+  'assessment-exam.json',
+  'assessment-review.json',
+  'flashcards.json',
+  'camera-tilt-path.json',
+  'model3d-basic.json',
+  'model3d-tour.json',
+  'model3d-hotspot-question.json',
+  'model3d-label-question.json',
+  'scene3d-solids.json',
 ];
 
 const INVALID = [
@@ -68,5 +89,9 @@ describe('Invalid fixtures are rejected', () => {
     const fixture = loadFixture('invalid-duplicate-id.json');
     // Schema doesn't catch duplicate ids (that's a board-state concern)
     expect(() => ReplySchema.parse(fixture)).not.toThrow();
+  });
+
+  test.each(INVALID)('%s is present and non-empty', (file) => {
+    expect(loadFixture(file).ops.length).toBeGreaterThan(0);
   });
 });

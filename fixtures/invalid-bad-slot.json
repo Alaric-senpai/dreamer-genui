@@ -1,0 +1,17 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "bad-slot-block",
+          "type": "text",
+          "variant": "body",
+          "slot": "middle",
+          "content": ["This slot is not part of the vocabulary."]
+        }
+      ]
+    }
+  ]
+}

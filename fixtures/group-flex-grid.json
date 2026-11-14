@@ -1,0 +1,55 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "flex-grid-group",
+          "type": "group",
+          "layout": "grid",
+          "columns": 2,
+          "gap": "md",
+          "align": "stretch",
+          "justify": "between",
+          "reverseOnNarrow": true,
+          "blocks": [
+            {
+              "id": "group-heading",
+              "type": "text",
+              "variant": "heading",
+              "content": ["Two ideas, one frame"]
+            },
+            {
+              "id": "group-list",
+              "type": "list",
+              "style": "check",
+              "items": [
+                { "id": "first", "content": ["First idea"] },
+                { "id": "second", "content": ["Second idea"], "enter": { "effect": "rise", "order": 2 } }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "row-group",
+          "type": "group",
+          "layout": "row",
+          "direction": "row",
+          "wrap": true,
+          "gap": "sm",
+          "minItemWidth": "md",
+          "blocks": [
+            { "id": "chip-a", "type": "text", "variant": "kicker", "content": ["Alpha"] },
+            { "id": "chip-b", "type": "text", "variant": "kicker", "content": ["Beta"] }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "id": "assembly",
+  "version": "1.0.0",
+  "title": "Demo assembly",
+  "description": "A small mechanical assembly used only for protocol examples.",
+  "tags": ["demo", "mechanical"],
+  "locale": "en",
+  "license": {
+    "name": "CC0-1.0",
+    "attribution": "Example content"
+  },
+  "conventions": { "upAxis": "y", "frontAxis": "+z", "unit": "m" },
+  "assets": {
+    "model": "models/assembly.glb",
+    "poster": "models/assembly-poster.png",
+    "sizeBytes": 1200000,
+    "triangles": 24000
+  },
+  "parts": {
+    "base": { "label": "Base", "nodes": ["Base_Mesh"], "group": "casing" },
+    "housing": {
+      "label": "Housing",
+      "nodes": ["Housing_Mesh"],
+      "group": "casing",
+      "anchor": [0, 0.4, 0]
+    },
+    "rotor": {
+      "label": "Rotor",
+      "nodes": ["Rotor_Mesh"],
+      "group": "internals",
+      "description": "The rotating part."
+    },
+    "seal": { "label": "Seal", "nodes": ["Seal_Mesh"], "group": "casing" }
+  },
+  "groups": {
+    "casing": { "label": "Casing", "parts": ["base", "housing", "seal"] },
+    "internals": { "label": "Internals", "parts": ["rotor"] }
+  },
+  "views": {
+    "top-down": { "label": "Top down", "position": [0, 5, 0], "target": [0, 0, 0], "fov": 45 }
+  },
+  "animations": {
+    "spin": { "label": "Spin", "clip": "RotorSpin", "loop": true }
+  },
+  "paths": {
+    "flow": {
+      "label": "Flow path",
+      "points": [
+        [0, 1, 0],
+        [0, 0.5, 0.5],
+        [0, 0, 1]
+      ],
+      "parts": ["rotor"]
+    }
+  },
+  "cutaways": {
+    "half": { "label": "Half section", "plane": { "normal": [0, 0, 1], "offset": 0 } }
+  },
+  "explode": { "rotor": [0, 0.6, 0] }
+}

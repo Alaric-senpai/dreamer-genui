@@ -1,0 +1,14 @@
+{
+  "id": "assembly-over-budget",
+  "version": "1.0.0",
+  "title": "Over-budget demo assembly",
+  "conventions": { "upAxis": "y", "frontAxis": "+z", "unit": "m" },
+  "assets": {
+    "model": "models/assembly.glb",
+    "sizeBytes": 5000000,
+    "triangles": 120000
+  },
+  "parts": {
+    "base": { "label": "Base", "nodes": ["Base_Mesh"] }
+  }
+}

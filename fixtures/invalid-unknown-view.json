@@ -1,0 +1,20 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "unknown-view-figure",
+          "type": "figure",
+          "figure": {
+            "kind": "model3d",
+            "model": "demo:assembly",
+            "view": { "view": "ghost-view" },
+            "alt": "A demo assembly asking for a view that the manifest does not define."
+          }
+        }
+      ]
+    }
+  ]
+}

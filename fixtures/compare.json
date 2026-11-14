@@ -1,0 +1,27 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "compare-two-ways",
+          "type": "compare",
+          "columns": [
+            {
+              "id": "way-a",
+              "title": ["Approach A"],
+              "items": [["Starts from a rule"], ["Predicts one outcome"], ["Easy to test"]]
+            },
+            {
+              "id": "way-b",
+              "title": ["Approach B"],
+              "items": [["Starts from examples"], ["Weighs many outcomes"], ["Needs more data"]]
+            }
+          ],
+          "highlight": { "col": "way-b", "row": 1 }
+        }
+      ]
+    }
+  ]
+}

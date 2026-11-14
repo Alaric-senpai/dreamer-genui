@@ -80,15 +80,10 @@ export interface ResolvedOp {
 }
 
 /**
- * A validated camera move (§6.10). Presentation-only: the resolver emits it,
- * it never enters BoardState. `to` is a NodeRef or "overview".
+ * A validated camera move (§6.12). Presentation-only: the resolver emits it,
+ * it never enters BoardState. The schema is the single source of truth.
  */
-export interface CameraMove {
-  to: string;
-  zoom?: number;
-  duration?: number;
-  ease?: EaseName;
-}
+export type { CameraMove } from '../schema/ops';
 
 // LibraryError: error emitted by the library (not a crash)
 export interface LibraryError {

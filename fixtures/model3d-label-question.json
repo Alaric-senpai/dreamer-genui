@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "model-label-question",
+          "type": "question",
+          "kind": "labelDiagram",
+          "prompt": ["Place each label on the matching part."],
+          "figure": {
+            "kind": "model3d",
+            "model": "demo:assembly",
+            "view": "iso",
+            "controls": "orbit",
+            "alt": "A demo assembly. Place the labels for base, housing and rotor."
+          },
+          "labels": [
+            { "id": "label-base", "text": ["Base"] },
+            { "id": "label-housing", "text": ["Housing"] },
+            { "id": "label-rotor", "text": ["Rotor"] }
+          ]
+        }
+      ]
+    }
+  ]
+}

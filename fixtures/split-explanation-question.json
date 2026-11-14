@@ -1,0 +1,46 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "layout",
+      "layout": {
+        "kind": "split",
+        "sides": "left-right",
+        "ratio": "3:2",
+        "gap": "lg",
+        "narrow": "stack",
+        "narrowOrder": "left-first",
+        "pin": "right"
+      },
+      "transition": { "duration": 500, "ease": "smooth" }
+    },
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "explain-beat",
+          "type": "text",
+          "variant": "body",
+          "slot": "left",
+          "content": [
+            "The pattern repeats because each step feeds the next.",
+            " Watch the two ideas side by side."
+          ],
+          "enter": { "effect": "words", "order": 1 }
+        },
+        {
+          "id": "check-beat",
+          "type": "question",
+          "kind": "mcq",
+          "slot": "right",
+          "prompt": ["Which step feeds the next?"],
+          "options": [
+            { "id": "a", "label": ["The first step"] },
+            { "id": "b", "label": ["The last step"] }
+          ],
+          "enter": { "effect": "rise", "order": 2 }
+        }
+      ]
+    }
+  ]
+}

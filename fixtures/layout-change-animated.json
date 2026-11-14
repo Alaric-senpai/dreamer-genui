@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "single-column-intro",
+          "type": "text",
+          "variant": "body",
+          "content": ["A single column carries the opening idea."],
+          "enter": { "effect": "words", "order": 1 }
+        }
+      ]
+    },
+    {
+      "op": "layout",
+      "layout": {
+        "kind": "split",
+        "sides": "left-right",
+        "ratio": "1:1",
+        "gap": "lg",
+        "narrow": "stack"
+      },
+      "transition": { "duration": 600, "ease": "smooth" }
+    },
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "question-on-cue",
+          "type": "question",
+          "kind": "short",
+          "slot": "right",
+          "prompt": ["Say the idea back in one sentence."],
+          "placeholder": "One sentence",
+          "enter": { "effect": "rise", "trigger": { "on": "cue", "id": "ask-back" }, "order": 2 }
+        }
+      ]
+    }
+  ]
+}

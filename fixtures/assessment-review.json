@@ -1,0 +1,56 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "review-paper",
+          "type": "assessment",
+          "mode": "review",
+          "title": ["Review your check"],
+          "result": {
+            "awarded": 1,
+            "total": 2,
+            "summary": ["One correct, one to revisit."]
+          },
+          "sections": [
+            {
+              "id": "section-a",
+              "questions": [
+                {
+                  "id": "review-q1",
+                  "type": "question",
+                  "kind": "mcq",
+                  "prompt": ["Which stage follows processing?"],
+                  "options": [
+                    { "id": "a", "label": ["Collect"] },
+                    { "id": "b", "label": ["Release"] }
+                  ],
+                  "status": "correct",
+                  "feedback": {
+                    "message": ["Correct."],
+                    "explanation": ["Processing feeds release."],
+                    "awarded": 1
+                  }
+                },
+                {
+                  "id": "review-q2",
+                  "type": "question",
+                  "kind": "truefalse",
+                  "prompt": ["A cycle can return to its first stage."],
+                  "status": "incorrect",
+                  "feedback": {
+                    "message": ["Not quite."],
+                    "explanation": ["Returning to the first stage is what makes it a cycle."],
+                    "awarded": 0
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

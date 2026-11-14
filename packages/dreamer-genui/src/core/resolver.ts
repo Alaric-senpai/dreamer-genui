@@ -252,7 +252,7 @@ export class BoardResolver {
       if (validated.op.op === 'camera') {
         // Presentation-only (§6.10): validated here, executed by the renderer.
         this._cameraBus.emit({
-          to: validated.op.to,
+          to: validated.op.to ?? 'overview',
           zoom: validated.op.zoom,
           duration: validated.op.duration,
           ease: validated.op.ease,

@@ -1,0 +1,35 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "layout",
+      "layout": {
+        "kind": "split",
+        "sides": "right-left",
+        "ratio": "2:3",
+        "gap": "md",
+        "narrow": "stack",
+        "narrowOrder": "right-first"
+      }
+    },
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "explain-reversed",
+          "type": "text",
+          "variant": "note",
+          "slot": "right",
+          "content": ["The explanation sits on the logical right; under RTL the sides mirror."]
+        },
+        {
+          "id": "check-reversed",
+          "type": "question",
+          "kind": "truefalse",
+          "slot": "left",
+          "prompt": ["Logical sides mirror under RTL."]
+        }
+      ]
+    }
+  ]
+}

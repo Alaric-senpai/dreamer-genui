@@ -3,6 +3,9 @@ import { createError } from './errors';
 import { OpSchema } from '../schema/ops';
 import type { Op } from '../schema/ops';
 import type { Block } from '../schema/blocks';
+import type { QuestionBlock } from '../schema/question';
+import type { AssessmentBlock, AssessmentMode } from '../schema/assessment';
+import type { FlowchartFigure, Figure } from '../schema/figures';
 import type { NodeId, NodeRef } from '../schema/common';
 
 export interface ValidationResult {
@@ -74,6 +77,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
     case 'append': {
       const dup = checkDuplicateIds(state, op.blocks);
       if (dup) return { valid: false, error: dup };
+      const semantic = checkBlockSemantics(op.blocks);
+      if (semantic) return { valid: false, error: semantic };
       const { op: rewritten, warnings } = breakAfterCycles(op);
       return { valid: true, op: rewritten, warnings: warnings.length ? warnings : undefined };
     }
@@ -90,6 +95,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
       }
       const dup = checkDuplicateIds(state, op.blocks);
       if (dup) return { valid: false, error: dup };
+      const semantic = checkBlockSemantics(op.blocks);
+      if (semantic) return { valid: false, error: semantic };
       const { op: rewritten, warnings } = breakAfterCycles(op);
       return { valid: true, op: rewritten, warnings: warnings.length ? warnings : undefined };
     }
@@ -97,6 +104,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
     case 'replace': {
       const dup = checkDuplicateIds(state, op.blocks);
       if (dup) return { valid: false, error: dup };
+      const semantic = checkBlockSemantics(op.blocks);
+      if (semantic) return { valid: false, error: semantic };
       const { op: rewritten, warnings } = breakAfterCycles(op);
       return { valid: true, op: rewritten, warnings: warnings.length ? warnings : undefined };
     }
@@ -120,6 +129,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
     // contrast) lives in the theme resolver (M2 core).
     case 'theme':
     case 'camera':
+    case 'layout':
+      // TODO(M4b-B3): validate slots against the active layout regions.
       return { valid: true, op };
   }
 }
@@ -127,6 +138,289 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
 /** Blocks from append/attach/replace ops — they all carry `blocks`. */
 function opBlocks(op: Op): Block[] | undefined {
   return op.op === 'append' || op.op === 'attach' || op.op === 'replace' ? op.blocks : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Semantic validation (§6.8, §6.15). The schema catches shapes; these rules
+// catch relationships the schema cannot express on its own.
+// ---------------------------------------------------------------------------
+
+interface BlankHit {
+  id: string;
+  path: string[];
+}
+
+/** Find every `{ mark: "blank" }` in a value, with the key path that led to it. */
+function collectBlanks(value: unknown, path: string[] = [], hits: BlankHit[] = []): BlankHit[] {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectBlanks(item, [...path, String(index)], hits));
+    return hits;
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (record.mark === 'blank' && typeof record.id === 'string') {
+      hits.push({ id: record.id, path });
+    }
+    for (const [key, child] of Object.entries(record)) {
+      collectBlanks(child, [...path, key], hits);
+    }
+  }
+  return hits;
+}
+
+function checkBlockSemantics(blocks: readonly Block[]): LibraryError | undefined {
+  for (const block of blocks) {
+    const error = checkSingleBlock(block);
+    if (error) return error;
+  }
+  return undefined;
+}
+
+function checkSingleBlock(block: Block): LibraryError | undefined {
+  if (block.type === 'group') {
+    // Group children are blocks in their own right; validate each in its own
+    // context rather than treating the group as a flat inline container.
+    return checkBlockSemantics(block.blocks as Block[]);
+  }
+  if (block.type === 'question') {
+    return checkQuestion(block);
+  }
+  if (block.type === 'assessment') {
+    return checkAssessment(block);
+  }
+  if (block.type === 'figure') {
+    const figure = block.figure;
+    if (figure.kind === 'flowchart') return checkFlowchart(block.id, figure);
+    if (figure.kind === 'diagram') return checkDiagram(block.id, figure);
+    // model3d directives are validated against a manifest at resolve time
+    // (M5b); the schema-level rules are all that can be checked here.
+    return checkNoStrayBlanks(block);
+  }
+  return checkNoStrayBlanks(block);
+}
+
+function checkNoStrayBlanks(block: Block): LibraryError | undefined {
+  const stray = collectBlanks(block);
+  if (stray.length === 0) return undefined;
+  return createError(
+    'invalid-node',
+    `"blank" mark is only valid inside a cloze question (found in node "${block.id}")`,
+    block.id,
+    block.type,
+  );
+}
+
+function checkQuestion(question: QuestionBlock, mode?: AssessmentMode): LibraryError | undefined {
+  if (question.key !== undefined && (mode === 'exam' || mode === 'quiz')) {
+    return createError(
+      'key-in-exam',
+      `Question "${question.id}" carries an answer key in ${mode} mode`,
+      question.id,
+      'question',
+    );
+  }
+
+  const blanks = collectBlanks(question);
+  const stray = blanks.filter(hit => hit.path[0] !== 'content');
+
+  if (question.kind === 'cloze') {
+    if (stray.length > 0) {
+      return createError(
+        'invalid-node',
+        `"blank" mark outside a cloze question's content (question "${question.id}")`,
+        question.id,
+        'question',
+      );
+    }
+    const contentBlanks = blanks.filter(hit => hit.path[0] === 'content');
+    if (contentBlanks.length === 0) {
+      return createError(
+        'invalid-node',
+        `Cloze question "${question.id}" has no blank marks`,
+        question.id,
+        'question',
+      );
+    }
+    const seenBlankIds = new Set<string>();
+    for (const hit of contentBlanks) {
+      if (seenBlankIds.has(hit.id)) {
+        return createError(
+          'invalid-node',
+          `Duplicate blank id "${hit.id}" in cloze question "${question.id}"`,
+          question.id,
+          'question',
+        );
+      }
+      seenBlankIds.add(hit.id);
+    }
+  } else if (blanks.length > 0) {
+    return createError(
+      'invalid-node',
+      `"blank" mark is only valid in a cloze question (question "${question.id}" is "${question.kind}")`,
+      question.id,
+      'question',
+    );
+  }
+
+  switch (question.kind) {
+    case 'mcq':
+      return checkUniqueIds(question.id, question.options);
+    case 'matching':
+      return checkUniqueIds(question.id, question.left) ?? checkUniqueIds(question.id, question.right);
+    case 'ordering':
+      return checkUniqueIds(question.id, question.items);
+    default:
+      return undefined;
+  }
+}
+
+function checkUniqueIds(nodeId: string, items: readonly { id: string }[]): LibraryError | undefined {
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (seen.has(item.id)) {
+      return createError('invalid-node', `Duplicate item id "${item.id}" in "${nodeId}"`, nodeId);
+    }
+    seen.add(item.id);
+  }
+  return undefined;
+}
+
+function checkAssessment(assessment: AssessmentBlock): LibraryError | undefined {
+  const headerBlanks = collectBlanks({ title: assessment.title, instructions: assessment.instructions });
+  if (headerBlanks.length > 0) {
+    return createError(
+      'assessment-invalid',
+      `"blank" marks belong in question content, not assessment copy ("${assessment.id}")`,
+      assessment.id,
+      'assessment',
+    );
+  }
+
+  const sectionIds = new Set<string>();
+  const questionIds = new Set<string>();
+
+  for (const section of assessment.sections) {
+    if (sectionIds.has(section.id)) {
+      return createError(
+        'assessment-invalid',
+        `Duplicate section id "${section.id}" in assessment "${assessment.id}"`,
+        assessment.id,
+        'assessment',
+      );
+    }
+    sectionIds.add(section.id);
+
+    const sectionBlanks = collectBlanks({ title: section.title, instructions: section.instructions });
+    if (sectionBlanks.length > 0) {
+      return createError(
+        'assessment-invalid',
+        `"blank" marks belong in question content, not section copy ("${section.id}")`,
+        assessment.id,
+        'assessment',
+      );
+    }
+
+    for (const question of section.questions) {
+      if (questionIds.has(question.id)) {
+        return createError(
+          'assessment-invalid',
+          `Duplicate question id "${question.id}" in assessment "${assessment.id}"`,
+          assessment.id,
+          'assessment',
+        );
+      }
+      questionIds.add(question.id);
+
+      const questionError = checkQuestion(question, assessment.mode);
+      if (questionError) return questionError;
+    }
+  }
+
+  if (assessment.timer?.kind === 'countdown') {
+    const { seconds, warnAtSeconds } = assessment.timer;
+    if (warnAtSeconds?.some(warn => warn >= seconds)) {
+      return createError(
+        'assessment-invalid',
+        `Timer warnings must fire before the countdown ends ("${assessment.id}")`,
+        assessment.id,
+        'assessment',
+      );
+    }
+  }
+
+  return undefined;
+}
+
+function checkFlowchart(nodeId: string, figure: FlowchartFigure): LibraryError | undefined {
+  const ids = new Set<string>();
+  for (const node of figure.nodes) {
+    if (ids.has(node.id)) {
+      return createError('invalid-node', `Duplicate flowchart node id "${node.id}"`, nodeId, 'figure');
+    }
+    ids.add(node.id);
+  }
+
+  const has = (id: string) => ids.has(id);
+  for (const edge of figure.edges) {
+    if (!has(edge.from) || !has(edge.to)) {
+      return createError(
+        'invalid-node',
+        `Flowchart edge "${edge.from}" → "${edge.to}" references an unknown node`,
+        nodeId,
+        'figure',
+      );
+    }
+  }
+  for (const input of figure.inputs ?? []) {
+    if (!has(input.to)) {
+      return createError('invalid-node', `Flowchart input targets unknown node "${input.to}"`, nodeId, 'figure');
+    }
+  }
+  for (const output of figure.outputs ?? []) {
+    if (!has(output.from)) {
+      return createError('invalid-node', `Flowchart output leaves unknown node "${output.from}"`, nodeId, 'figure');
+    }
+  }
+
+  if (figure.lanes) {
+    const laneIds = new Set<string>();
+    for (const lane of figure.lanes) {
+      if (laneIds.has(lane.id)) {
+        return createError('invalid-node', `Duplicate flowchart lane id "${lane.id}"`, nodeId, 'figure');
+      }
+      laneIds.add(lane.id);
+    }
+    for (const node of figure.nodes) {
+      if (node.lane !== undefined && !laneIds.has(node.lane)) {
+        return createError(
+          'invalid-node',
+          `Flowchart node "${node.id}" names unknown lane "${node.lane}"`,
+          nodeId,
+          'figure',
+        );
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function checkDiagram(nodeId: string, figure: Extract<Figure, { kind: 'diagram' }>): LibraryError | undefined {
+  const ids = new Set(figure.nodes.map(node => node.id));
+  if (figure.root !== undefined && !ids.has(figure.root)) {
+    return createError('invalid-node', `Diagram root "${figure.root}" is not a node`, nodeId, 'figure');
+  }
+  for (const edge of figure.edges) {
+    if (!ids.has(edge.from) || !ids.has(edge.to)) {
+      return createError(
+        'invalid-node',
+        `Diagram edge "${edge.from}" → "${edge.to}" references an unknown node`,
+        nodeId,
+        'figure',
+      );
+    }
+  }
+  return undefined;
 }
 
 /**

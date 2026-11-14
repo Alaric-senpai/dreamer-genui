@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "timeline-steps",
+          "type": "figure",
+          "figure": {
+            "kind": "timeline",
+            "orientation": "vertical",
+            "events": [
+              { "id": "observe", "when": "First", "label": ["An observation is recorded"] },
+              { "id": "explain", "when": "Then", "label": ["A model is proposed"], "detail": ["The model must predict, not just describe."] },
+              { "id": "test", "when": "Later", "label": ["A measurement tests it"], "enter": { "effect": "rise", "order": 3 } }
+            ],
+            "focusable": true,
+            "alt": "A three-step timeline: observation, model, measurement."
+          }
+        }
+      ]
+    }
+  ]
+}

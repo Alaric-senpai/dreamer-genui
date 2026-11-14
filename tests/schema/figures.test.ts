@@ -17,7 +17,7 @@ describe('Figures', () => {
   });
 
   test('parses diagram figure with all layouts', () => {
-    for (const layout of ['tree', 'radial', 'flow', 'cycle'] as const) {
+    for (const layout of ['tree', 'radial', 'cycle'] as const) {
       const parsed = FigureSchema.parse({
         kind: 'diagram',
         layout,
@@ -27,6 +27,17 @@ describe('Figures', () => {
       });
       expect((parsed as { layout: string }).layout).toBe(layout);
     }
+  });
+
+  test('diagram no longer accepts the removed flow layout (v2.1)', () => {
+    const result = FigureSchema.safeParse({
+      kind: 'diagram',
+      layout: 'flow',
+      nodes: [{ id: 'n1', label: 'Root' }],
+      edges: [],
+      alt: 'A diagram',
+    });
+    expect(result.success).toBe(false);
   });
 
   test('parses labeled figure', () => {

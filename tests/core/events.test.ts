@@ -30,8 +30,8 @@ describe('EventBus', () => {
     bus.subscribe(e => a.push(e));
     bus.subscribe(e => b.push(e));
     bus.emit({ type: 'select', nodeId: 'c1', ref: 'item-2' });
-    expect(a[0]?.nodeId).toBe('c1');
-    expect(b[0]?.nodeId).toBe('c1');
+    expect(a[0]).toMatchObject({ type: 'select', nodeId: 'c1' });
+    expect(b[0]).toMatchObject({ type: 'select', nodeId: 'c1' });
   });
 
   test('size reflects subscriber count', () => {

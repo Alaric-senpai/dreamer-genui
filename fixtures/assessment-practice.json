@@ -1,0 +1,49 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "practice-set",
+          "type": "assessment",
+          "mode": "practice",
+          "title": ["Quick practice"],
+          "instructions": ["Answer at your own pace; feedback appears immediately."],
+          "timer": { "kind": "elapsed" },
+          "navigation": "free",
+          "allowFlag": false,
+          "sections": [
+            {
+              "id": "section-one",
+              "title": ["Warm-up"],
+              "questions": [
+                {
+                  "id": "practice-q1",
+                  "type": "question",
+                  "kind": "mcq",
+                  "prompt": ["Which stage comes first?"],
+                  "options": [
+                    { "id": "a", "label": ["Collect"] },
+                    { "id": "b", "label": ["Release"] }
+                  ],
+                  "key": "a",
+                  "marks": 1
+                },
+                {
+                  "id": "practice-q2",
+                  "type": "question",
+                  "kind": "numeric",
+                  "prompt": ["How many stages are in the cycle?"],
+                  "unit": "stages",
+                  "marks": 1
+                }
+              ]
+            }
+          ],
+          "totalMarks": 2
+        }
+      ]
+    }
+  ]
+}

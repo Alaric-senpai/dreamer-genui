@@ -1,0 +1,117 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "q-mcq",
+          "type": "question",
+          "kind": "mcq",
+          "prompt": ["Pick the matching idea."],
+          "options": [
+            { "id": "a", "label": ["First idea"] },
+            { "id": "b", "label": ["Second idea"] }
+          ],
+          "key": "a"
+        },
+        {
+          "id": "q-truefalse",
+          "type": "question",
+          "kind": "truefalse",
+          "prompt": ["The pattern repeats."]
+        },
+        {
+          "id": "q-short",
+          "type": "question",
+          "kind": "short",
+          "prompt": ["Name the pattern."],
+          "placeholder": "A short answer",
+          "maxLength": 120
+        },
+        {
+          "id": "q-numeric",
+          "type": "question",
+          "kind": "numeric",
+          "prompt": ["How many stages are shown?"],
+          "unit": "stages",
+          "step": 1
+        },
+        {
+          "id": "q-cloze",
+          "type": "question",
+          "kind": "cloze",
+          "prompt": ["Complete the sentence."],
+          "content": [
+            "The cycle returns to ",
+            { "mark": "blank", "id": "blank-1", "options": ["collect", "release"], "width": "md" },
+            " before it repeats."
+          ]
+        },
+        {
+          "id": "q-matching",
+          "type": "question",
+          "kind": "matching",
+          "prompt": ["Match each stage to its role."],
+          "left": [
+            { "id": "l-collect", "label": ["Collect"] },
+            { "id": "l-release", "label": ["Release"] }
+          ],
+          "right": [
+            { "id": "r-gather", "label": ["Gather input"] },
+            { "id": "r-emit", "label": ["Emit output"] }
+          ]
+        },
+        {
+          "id": "q-ordering",
+          "type": "question",
+          "kind": "ordering",
+          "prompt": ["Put the stages in order."],
+          "items": [
+            { "id": "o-collect", "label": ["Collect"] },
+            { "id": "o-process", "label": ["Process"] },
+            { "id": "o-release", "label": ["Release"] }
+          ]
+        },
+        {
+          "id": "q-hotspot",
+          "type": "question",
+          "kind": "hotspot",
+          "prompt": ["Tap the moving part."],
+          "figure": {
+            "kind": "labeled",
+            "pack": "starter",
+            "art": "simple-machine",
+            "highlight": ["rotor"],
+            "alt": "A simple machine with a base, housing and rotor."
+          }
+        },
+        {
+          "id": "q-label-diagram",
+          "type": "question",
+          "kind": "labelDiagram",
+          "prompt": ["Drop each label onto its part."],
+          "figure": {
+            "kind": "labeled",
+            "pack": "starter",
+            "art": "simple-machine",
+            "alt": "A simple machine with a base, housing and rotor."
+          },
+          "labels": [
+            { "id": "label-base", "text": ["Base"] },
+            { "id": "label-rotor", "text": ["Rotor"] }
+          ]
+        },
+        {
+          "id": "q-extended",
+          "type": "question",
+          "kind": "extended",
+          "prompt": ["Explain the cycle in your own words."],
+          "minWords": 20,
+          "maxWords": 120,
+          "hints": [["Start from the input."], ["Then follow the loop."]]
+        }
+      ]
+    }
+  ]
+}

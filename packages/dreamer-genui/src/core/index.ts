@@ -10,6 +10,7 @@ export * from './errors';
 export * from './events';
 export * from './registry';
 export * from './validator';
+export * from './model';
 export * from './reducer';
 export * from './resolver';
 export * from './cues';

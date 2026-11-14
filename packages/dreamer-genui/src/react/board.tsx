@@ -328,7 +328,7 @@ export function Board({
       holdCameraUntilRef.current = Date.now() + (move.duration ?? 800) + 800;
       requestAnimationFrame(() => {
         if (detourRef.current) return;
-        moveCamera(move.to, move.zoom ?? 1.2, move.duration ?? 800, move.ease ?? 'smooth');
+        moveCamera(move.to ?? 'overview', move.zoom ?? 1.2, move.duration ?? 800, move.ease ?? 'smooth');
       });
     });
     return off;

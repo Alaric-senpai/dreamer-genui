@@ -1,0 +1,47 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "process-map",
+          "type": "figure",
+          "figure": {
+            "kind": "flowchart",
+            "direction": "down",
+            "nodes": [
+              { "id": "intake", "label": ["Collect input"], "shape": "start", "lane": "prep" },
+              { "id": "mix", "label": ["Combine materials"], "shape": "step", "lane": "prep" },
+              { "id": "heat", "label": ["Apply heat"], "shape": "step", "lane": "process" },
+              { "id": "ready", "label": ["Ready?"], "shape": "decision", "lane": "process" },
+              { "id": "cool", "label": ["Cool and settle"], "shape": "step", "lane": "process" },
+              { "id": "product", "label": ["Finished product"], "shape": "end", "lane": "process" }
+            ],
+            "edges": [
+              { "from": "intake", "to": "mix" },
+              { "from": "mix", "to": "heat" },
+              { "from": "heat", "to": "ready" },
+              { "from": "ready", "to": "cool", "label": ["yes"], "kind": "branch" },
+              { "from": "ready", "to": "mix", "label": ["not yet — recycle"], "kind": "recycle" },
+              { "from": "cool", "to": "product" }
+            ],
+            "inputs": [{ "to": "mix", "label": ["Additive"] }],
+            "outputs": [{ "from": "product", "label": ["Product"] }],
+            "lanes": [
+              { "id": "prep", "label": "Preparation" },
+              { "id": "process", "label": "Processing" }
+            ],
+            "numbered": true,
+            "flow": "pulse",
+            "narrow": "stepper",
+            "reveal": "sequential",
+            "focusable": true,
+            "alt": "A flowchart: collect input, combine materials, apply heat, check readiness, cool and settle, finished product. A recycle loop returns from the readiness check to combining materials. An additive enters at combining; product leaves at the end."
+          },
+          "enter": { "effect": "draw", "order": 1 }
+        }
+      ]
+    }
+  ]
+}

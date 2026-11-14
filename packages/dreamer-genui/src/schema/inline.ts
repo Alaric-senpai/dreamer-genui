@@ -50,6 +50,14 @@ export const MarkSchema = z.discriminatedUnion('mark', [
     tex: z.string(),
     ...MarkEnterSchema.shape,
   }),
+  z.object({
+    /** Cloze blank. Valid only inside a `cloze` question (core validates). */
+    mark: z.literal('blank'),
+    id: z.string().min(1),
+    options: z.array(z.string()).optional(),
+    width: z.enum(['sm', 'md', 'lg']).optional(),
+    ...MarkEnterSchema.shape,
+  }),
 ]);
 
 export type Mark = z.infer<typeof MarkSchema>;

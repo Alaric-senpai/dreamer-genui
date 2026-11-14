@@ -46,7 +46,8 @@ Reduced motion: all effects fall back to instant/unanimated. Always show all con
 
 ## Figures
 
-- **diagram** (kind: tree|radial|flow|cycle): no coordinates. Label nodes with nodes[].id, nodes[].label. Connect with edges[]. Set 'focusable:true' to emit 'focus' on node click.
+- **diagram** (kind: tree|radial|cycle): no coordinates. Label nodes with nodes[].id, nodes[].label. Connect with edges[]. Set 'focusable:true' to emit 'focus' on node click.
+- **flowchart** (nodes/edges with decisions, branches, loops, inputs/outputs): use for multi-step processes. Labels are Inline[]. Set 'flow:"pulse"' to animate the path.
 - **labeled** (pack, art): reference named parts by id (highlight and label by part id).
 - **chart** (type: bar|line|pie|scatter): series[].data is number[] or {x, y}[].
 - **lottie** (src, loop?): alt required.

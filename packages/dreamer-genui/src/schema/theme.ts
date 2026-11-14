@@ -47,6 +47,22 @@ export const TextureTokensSchema = z.object({
 });
 export type TextureTokens = z.infer<typeof TextureTokensSchema>;
 
+/** Density is a host/user setting, not normally tutor-controlled (§6.10). */
+export const DensityTokensSchema = z.object({
+  /** Type/space scale. 1 = comfortable. */
+  scale: z.number().min(0.5).max(2).optional(),
+  /** Minimum tap target in px. */
+  minTarget: z.number().min(24).max(96).optional(),
+});
+export type DensityTokens = z.infer<typeof DensityTokensSchema>;
+
+/** Component-level tokens, validated per component metadata (§8.5). */
+export const ComponentTokensSchema = z.record(
+  z.string().min(1),
+  z.record(z.string().min(1), z.union([z.string(), z.number()])),
+);
+export type ComponentTokens = z.infer<typeof ComponentTokensSchema>;
+
 export const ThemeTokensSchema = z.object({
   color: ColorTokensSchema.optional(),
   font: FontTokensSchema.optional(),
@@ -54,6 +70,8 @@ export const ThemeTokensSchema = z.object({
   space: z.object({ scale: z.number().min(0.5).max(3).optional() }).optional(),
   motion: MotionTokensSchema.optional(),
   texture: TextureTokensSchema.optional(),
+  density: DensityTokensSchema.optional(),
+  components: ComponentTokensSchema.optional(),
 });
 export type ThemeTokens = z.infer<typeof ThemeTokensSchema>;
 
@@ -79,6 +97,8 @@ export const ThemeSpecSchema = z.object({
   tokens: ThemeTokensSchema.optional(),
   ambience: AmbienceSpecSchema.optional(),
   surface: z.string().min(1).optional(),
+  /** Registered motion preset (tempo + easing set). */
+  motionPreset: z.string().min(1).optional(),
   transition: z
     .object({
       duration: z.number().min(0).max(10_000).optional(),

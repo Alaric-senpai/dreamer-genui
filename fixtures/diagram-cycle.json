@@ -1,0 +1,32 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "cycle-diagram",
+          "type": "figure",
+          "figure": {
+            "kind": "diagram",
+            "layout": "cycle",
+            "root": "collect",
+            "nodes": [
+              { "id": "collect", "label": ["Collect"] },
+              { "id": "process", "label": ["Process"] },
+              { "id": "release", "label": ["Release"] }
+            ],
+            "edges": [
+              { "from": "collect", "to": "process" },
+              { "from": "process", "to": "release" },
+              { "from": "release", "to": "collect" }
+            ],
+            "reveal": "sequential",
+            "focusable": true,
+            "alt": "A three-stage cycle: collect, process, release, returning to collect."
+          }
+        }
+      ]
+    }
+  ]
+}

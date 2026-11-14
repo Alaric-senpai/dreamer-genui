@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "stray-blank",
+          "type": "text",
+          "variant": "body",
+          "content": [
+            "A blank outside a cloze question is invalid: ",
+            { "mark": "blank", "id": "nowhere" }
+          ]
+        }
+      ]
+    }
+  ]
+}

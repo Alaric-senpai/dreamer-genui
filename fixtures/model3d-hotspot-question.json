@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "model-hotspot",
+          "type": "question",
+          "kind": "hotspot",
+          "prompt": ["Tap the part that rotates."],
+          "figure": {
+            "kind": "model3d",
+            "model": "demo:assembly",
+            "view": "iso",
+            "controls": "orbit",
+            "interactive": true,
+            "alt": "A demo assembly. Choose the rotating part."
+          }
+        }
+      ]
+    }
+  ]
+}

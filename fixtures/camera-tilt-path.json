@@ -1,0 +1,44 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "camera-path-anchor",
+          "type": "text",
+          "variant": "heading",
+          "content": ["A guided camera path"]
+        },
+        {
+          "id": "camera-path-target",
+          "type": "text",
+          "variant": "body",
+          "content": ["Pan, zoom, tilt and dolly, each step on its own cue."]
+        }
+      ]
+    },
+    {
+      "op": "camera",
+      "path": [
+        { "to": "overview", "zoom": 1, "duration": 800, "ease": "smooth" },
+        {
+          "to": "camera-path-target",
+          "zoom": 1.4,
+          "tilt": { "x": 8, "y": -4 },
+          "dolly": "in",
+          "duration": 1200,
+          "ease": "smooth",
+          "trigger": { "on": "cue", "id": "focus-detail" }
+        },
+        {
+          "to": "overview",
+          "dolly": "out",
+          "tilt": { "x": 0, "y": 0 },
+          "duration": 900,
+          "trigger": { "on": "cue", "id": "wrap-up" }
+        }
+      ]
+    }
+  ]
+}

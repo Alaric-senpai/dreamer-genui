@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "study-cards",
+          "type": "flashcards",
+          "flip": "tap",
+          "rating": true,
+          "cards": [
+            {
+              "id": "card-1",
+              "front": ["What does the cycle start with?"],
+              "back": ["Collecting input."]
+            },
+            {
+              "id": "card-2",
+              "front": ["What closes the cycle?"],
+              "back": ["Returning to the first stage."]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

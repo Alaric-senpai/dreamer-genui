@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { MotionFieldsSchema, EnterSchema } from './motion';
+import { EnterSchema } from './motion';
+import { InlineSchema } from './inline';
+import { Model3DFigureSchema, Scene3DFigureSchema } from './model';
 
 // --- Figure kinds ---
 
@@ -17,15 +19,16 @@ const IconFigureSchema = z.object({
   alt: z.string().optional(),
 });
 
-// diagram
+// diagram — "flow" was removed in v2.1; processes use the `flowchart` kind.
+const DiagramLabelSchema = z.union([z.string(), z.array(InlineSchema)]);
 const DiagramFigureSchema = z.object({
   kind: z.literal('diagram'),
-  layout: z.enum(['tree', 'radial', 'flow', 'cycle']),
+  layout: z.enum(['tree', 'radial', 'cycle']),
   direction: z.enum(['down', 'right']).optional(),
   root: z.string().optional(),
   nodes: z.array(z.object({
     id: z.string(),
-    label: z.string(),
+    label: DiagramLabelSchema,
     icon: z.string().optional(),
     note: z.string().optional(),
     enter: EnterSchema.optional(),
@@ -39,6 +42,60 @@ const DiagramFigureSchema = z.object({
   focusable: z.boolean().optional(),
   alt: z.string(),
 });
+
+// flowchart (v2.1) — layered process with decisions, loops, inputs/outputs.
+const FlowchartNodeSchema = z.object({
+  id: z.string().min(1),
+  label: z.array(InlineSchema),
+  detail: z.array(InlineSchema).optional(),
+  shape: z.enum(['step', 'start', 'end', 'decision', 'io', 'substance', 'note']).optional(),
+  lane: z.string().optional(),
+  icon: z.string().optional(),
+  enter: EnterSchema.optional(),
+});
+const FlowchartEdgeSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  label: z.array(InlineSchema).optional(),
+  kind: z.enum(['flow', 'branch', 'recycle', 'optional']).optional(),
+});
+export const FlowchartFigureSchema = z.object({
+  kind: z.literal('flowchart'),
+  direction: z.enum(['down', 'right']).optional(),
+  nodes: z.array(FlowchartNodeSchema).min(1).max(64),
+  edges: z.array(FlowchartEdgeSchema),
+  inputs: z.array(z.object({ to: z.string().min(1), label: z.array(InlineSchema) })).optional(),
+  outputs: z.array(z.object({ from: z.string().min(1), label: z.array(InlineSchema) })).optional(),
+  lanes: z.array(z.object({ id: z.string().min(1), label: z.string() })).optional(),
+  numbered: z.boolean().optional(),
+  flow: z.enum(['pulse', 'none']).optional(),
+  narrow: z.enum(['stepper', 'compact']).optional(),
+  reveal: z.enum(['sequential', 'all']).optional(),
+  focusable: z.boolean().optional(),
+  alt: z.string(),
+});
+export type FlowchartFigure = z.infer<typeof FlowchartFigureSchema>;
+
+// timeline (v2.1)
+export const TimelineFigureSchema = z.object({
+  kind: z.literal('timeline'),
+  orientation: z.enum(['horizontal', 'vertical']).optional(),
+  events: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        when: z.string().min(1),
+        label: z.array(InlineSchema),
+        detail: z.array(InlineSchema).optional(),
+        enter: EnterSchema.optional(),
+      }),
+    )
+    .min(1)
+    .max(64),
+  focusable: z.boolean().optional(),
+  alt: z.string(),
+});
+export type TimelineFigure = z.infer<typeof TimelineFigureSchema>;
 
 // labeled (illustration with named parts)
 const LabeledFigureSchema = z.object({
@@ -77,14 +134,20 @@ const LottieFigureSchema = z.object({
   alt: z.string(),
 });
 
-// Figure discriminated union
+// Figure discriminated union. All kinds share the `kind` discriminator; 3D
+// kinds ship schema-only in M4b (runtime in M5b).
 export const FigureSchema = z.discriminatedUnion('kind', [
   ImageFigureSchema,
   IconFigureSchema,
   DiagramFigureSchema,
+  FlowchartFigureSchema,
+  TimelineFigureSchema,
   LabeledFigureSchema,
   ChartFigureSchema,
   LottieFigureSchema,
+  Model3DFigureSchema,
+  Scene3DFigureSchema,
 ]);
 
 export type Figure = z.infer<typeof FigureSchema>;
+export type FigureKind = Figure['kind'];

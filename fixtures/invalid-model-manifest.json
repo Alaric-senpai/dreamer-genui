@@ -1,0 +1,6 @@
+{
+  "id": "broken-manifest",
+  "title": "Missing the required conventions and parts",
+  "assets": { "model": "models/assembly.glb" },
+  "parts": "not-a-record"
+}

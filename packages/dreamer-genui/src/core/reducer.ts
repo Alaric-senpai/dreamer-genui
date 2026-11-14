@@ -135,6 +135,9 @@ export function boardReducer(state: BoardState, op: Op): BoardState {
     case 'theme':
     case 'camera':
       return state;
+    case 'layout':
+      // TODO(M4b-B3): apply layout changes once the layout model lands.
+      return state;
   }
 }
 

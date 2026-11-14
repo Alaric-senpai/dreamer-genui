@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "missing-model-figure",
+          "type": "figure",
+          "figure": {
+            "kind": "model3d",
+            "model": "demo:ghost-model",
+            "alt": "A model reference that no connector can resolve."
+          }
+        }
+      ]
+    }
+  ]
+}

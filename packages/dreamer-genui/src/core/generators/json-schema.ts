@@ -8,6 +8,7 @@ import {
   RemoveOpSchema,
   ThemeOpSchema,
   CameraOpSchema,
+  LayoutOpSchema,
 } from '../../schema/ops';
 import { ThemeSpecSchema } from '../../schema/theme';
 import type { Registry } from '../registry';
@@ -49,6 +50,7 @@ export function registryToJsonSchema(registry: Registry): ReturnType<typeof zodT
     RemoveOpSchema,
     ThemeOpSchema.extend({ theme }),
     CameraOpSchema,
+    LayoutOpSchema,
   ];
   const opUnion = z.discriminatedUnion('op', ops as never);
 

@@ -1,0 +1,20 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "checklist",
+          "type": "list",
+          "style": "number",
+          "items": [
+            { "id": "one", "content": ["Name the idea"] },
+            { "id": "two", "content": ["Give one example"] },
+            { "id": "three", "content": ["State one limit"], "enter": { "effect": "rise", "order": 2 } }
+          ]
+        }
+      ]
+    }
+  ]
+}

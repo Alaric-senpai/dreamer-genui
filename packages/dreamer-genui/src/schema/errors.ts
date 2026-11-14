@@ -10,6 +10,19 @@ export const ErrorCodeSchema = z.enum([
   'version-mismatch',
   'theme-rejected',
   'cue-cycle',
+  'layout-invalid',
+  'assessment-invalid',
+  'key-in-exam',
+  'plugin-conflict',
+  'plugin-incompatible',
+  'middleware-error',
+  'model-not-found',
+  'model-load-failed',
+  'unknown-part',
+  'unknown-view',
+  'webgl-unavailable',
+  'connector-error',
+  'model-budget-exceeded',
 ]);
 
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;

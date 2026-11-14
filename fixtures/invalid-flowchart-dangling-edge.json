@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "dangling-flow",
+          "type": "figure",
+          "figure": {
+            "kind": "flowchart",
+            "nodes": [
+              { "id": "start", "label": ["Start"], "shape": "start" },
+              { "id": "end", "label": ["End"], "shape": "end" }
+            ],
+            "edges": [
+              { "from": "start", "to": "missing-step" },
+              { "from": "missing-step", "to": "end" }
+            ],
+            "alt": "A flowchart whose edges point at a node that does not exist."
+          }
+        }
+      ]
+    }
+  ]
+}
