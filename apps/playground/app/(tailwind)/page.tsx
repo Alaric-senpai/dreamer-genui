@@ -12,10 +12,11 @@ const ROUTES = [
   { href: '/m4', id: 'M4', title: 'Board behaviour & ambience', status: 'done', note: 'attach/return, receding, camera, streaming' },
   { href: '/showreel', id: '§9.4', title: 'Showreel', status: 'done', note: 'eleven-beat motion-graphic gate' },
   { href: '/plain-css', id: 'M3', title: 'Plain-CSS host', status: 'done', note: 'no Tailwind required' },
+  { href: '/app', id: 'app', title: 'Live board app', status: 'ongoing', note: "A live example of the board working in realime"}
 ] as const;
 
 const PLANNED = [
-  ['M4b', 'retrofit + layout/camera showcase (v2.2)'],
+  ['M4b', 'retrofit + layout/camera showcase (v2.1)'],
   ['M5', 'figures, diagrams, hand-drawn annotations'],
   ['M5b', '3D figures (v2.2)'],
   ['M6a/M6b', 'questions, assessment, exam run-through'],
@@ -38,7 +39,7 @@ export default function PlaygroundIndex() {
             <li key={route.href}>
               <Link
                 href={route.href}
-                className="block rounded-xl border border-neutral-300 p-4 hover:border-neutral-500"
+                className="block rounded-xl border hover:rotate-[-4] border-neutral-300 p-4 shadow-sm hover:scale-95 transition-all duration-300 ease-linear hover:border-neutral-500 hover:shadow-md"
               >
                 <span className="text-sm font-semibold text-neutral-500">{route.id}</span>{' '}
                 <span className="font-medium">{route.title}</span>{' '}
@@ -50,8 +51,9 @@ export default function PlaygroundIndex() {
         </ul>
       </section>
 
-      <aside>
-        <h2 className="text-lg font-semibold">Planned routes</h2>
+      <aside >
+        <div className="border-2 rounded-md h-content p-3">
+          <h2 className="text-lg font-semibold">Planned routes</h2>
         <ul className="mt-2 space-y-2 text-sm text-neutral-600">
           {PLANNED.map(([id, note]) => (
             <li key={id}>
@@ -59,6 +61,8 @@ export default function PlaygroundIndex() {
             </li>
           ))}
         </ul>
+        </div>
+
       </aside>
     </main>
   );
