@@ -5,6 +5,7 @@ import type { LibraryError } from '../core/types';
 import type { UIEvent } from '../schema/events';
 import { MotionProvider } from './motion/animated';
 import { BoardEmitContext } from './emit-context';
+import type { ComponentOverride } from './anatomy';
 
 /** UI strings — all overridable for i18n. */
 export interface UIStrings {
@@ -36,9 +37,12 @@ export interface DreamerContextValue {
   /** Host-facing sinks for events emitted outside any <Board>. */
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
+  /** Component overrides (§8.5.4): built-in component name → replacement. */
+  components: Record<string, ComponentOverride | undefined>;
 }
 
 const DreamerContext = createContext<DreamerContextValue | null>(null);
+export { DreamerContext };
 
 export interface DreamerProviderProps {
   registry: Registry;
@@ -50,6 +54,10 @@ export interface DreamerProviderProps {
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
   strings?: Partial<UIStrings>;
+  /** Slot/part/type replacement (§8.5.4), keyed by built-in component name
+   *  (see `docs/components/`). Overrides receive `renderDefault()` plus the
+   *  component's own props. */
+  components?: Record<string, ComponentOverride | undefined>;
   children: ReactNode;
 }
 
@@ -76,7 +84,7 @@ function useMediaScheme(auto: boolean): 'light' | 'dark' {
  * its own — the resolved board theme flows from the store's state (engine
  * resolver, M2) onto the `<Board>` root as `--dg-*` variables.
  */
-export function DreamerProvider({ registry, colorScheme = 'light', onEvent, onError, strings, children }: DreamerProviderProps) {
+export function DreamerProvider({ registry, colorScheme = 'light', onEvent, onError, strings, components, children }: DreamerProviderProps) {
   const scheme = useMediaScheme(colorScheme === 'auto');
   const value = useMemo<DreamerContextValue>(
     () => ({
@@ -86,8 +94,9 @@ export function DreamerProvider({ registry, colorScheme = 'light', onEvent, onEr
       onEvent,
       onError,
       strings: { ...defaultStrings, ...strings },
+      components: components ?? {},
     }),
-    [registry, colorScheme, scheme, onEvent, onError, strings]
+    [registry, colorScheme, scheme, onEvent, onError, strings, components]
   );
   return (
     <DreamerContext.Provider value={value}>

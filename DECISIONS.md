@@ -406,3 +406,19 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 **Gap tokens (`--dg-gap-*`) introduced on the board root** (none/xs/sm/md/lg/xl, scaled by `--dg-space-scale`); the layout engine, groups and lists read them with inline fallbacks so host overrides win.
 
 **List block ships without per-item `enter` choreography** (TODO M4b-C2 with the anatomy work); glyphs are stylesheet-owned (`bullet`/`number` native list markers, `check` via a styled marker, `none` plain). Split/tab labels for the tabs collapse are also deferred to C2's strings wiring.
+
+## M4b Part C2a — component anatomy rulings
+
+**Component names are lowercase and double as override keys and class prefixes.** The eleven built-ins use the block vocabulary (`text`, `choices`, `callout`, `steps`, `group`, `list`, `board`, `layout`, `detour`, `ambience`, `node`), not PascalCase component names. `components={{ text: … }}` reads like the protocol the host already knows, and `partProps` derives `data-dg-part` and `dg-<name>-<part>` from one string, so no mapping table is needed. Legacy classes (`dg-text dg-text-<variant>`, `dg-choice`, `dg-region`, …) are still passed as the extra class, so existing CSS, snapshots and host selectors keep working while the stable anatomy classes are additive.
+
+**Metadata lives in a React-free leaf module.** `src/react/anatomy-meta.ts` owns `ComponentMeta`, `defineComponentMeta`, `COMPONENT_META` and `COMPONENT_REGISTRY`; `anatomy.tsx` re-exports them and keeps only the runtime contract (`partProps`, `AnatomyProvider`, `useParts`, `useOverride`). This prevents the cycle that would appear if `anatomy.tsx` (imported by every component) also imported the components to populate the registry, and lets `scripts/component-docs.mjs` read the registry with Node's type stripping and no React runtime.
+
+**`styles` overrides need their own type.** `PartClassNames` (`Record<string, string|undefined>`) and `PartStyles` (`Record<string, CSSProperties|undefined>`) are distinct; the context and `BoardProps` use `PartStyleOverrides = Record<string, PartStyles|undefined>`. Collapsing them into one alias made `style` accept strings and failed `tsc`.
+
+**The board cannot read an anatomy context it creates.** `Board` therefore computes its own parts with the standalone `partProps('board', …)` helper from two new props — `partClassNames?: PartOverrides` and `partStyles?: PartStyleOverrides` — and then wraps its subtree in `<AnatomyProvider>` so descendants use `useParts`. The legacy `classNames: { root, content, skip }` prop survives as extra classes. A whole-board `components.board` override is intentionally not supported: replacing the board means writing a host renderer, not patching the board's own shell.
+
+**Every part class is deduped at construction.** `partProps` splits the concatenated class string, drops empties and dedupes with a `Set`; without it, callers that pass a legacy class identical to the anatomy class (`dg-node-inner` in both slots) produced duplicate tokens and broke exact-match assertions.
+
+**Overrides receive `renderDefault` and the original props.** Every built-in view calls `useParts`/`useOverride` unconditionally at the top, builds `defaultView`, and returns `override ? override({ block, children?, renderDefault: () => defaultView }) : defaultView`. The default is a thunk so an override can wrap or omit it without the default subtree being constructed eagerly.
+
+**Docs are generated from the metadata, not hand-written.** `pnpm dg:component-docs` (`scripts/component-docs.mjs`, Node 26 runs the `.ts` module directly) writes `docs/components/<name>.md` plus an index; the part table lists each part, its `data-dg-part` value and its stable class. `tests/react/anatomy.test.tsx` closes the loop: every registry entry must declare parts and tokens, every rendered `data-dg-part` must be documented, an override must replace the default, and per-part `classNames`/`styles` must merge.

@@ -5,6 +5,7 @@ import type { Block } from '../../schema/blocks';
 import type { LibraryError } from '../../core/types';
 import { createError } from '../../core/errors';
 import { useDreamer } from '../provider';
+import { useParts } from '../anatomy';
 import { Animated } from '../motion/animated';
 import { TextBlockView, ChoicesView, CalloutView, StepsView, GroupView, ListView } from './blocks';
 import { renderInline } from './inline';
@@ -112,6 +113,9 @@ export interface NodeViewProps {
 /** One board node: enter animation wrapper + default component or fallback. */
 export function NodeView({ node, docIndex, nested = false, topLevel = false, receded = false, detourTarget = false }: NodeViewProps): ReactNode {
   const block = node.block;
+  const p = useParts('node');
+  const root = p.props('root', `dg-node dg-node-${node.state}`);
+  const inner = p.props('inner', 'dg-node-inner');
   // Grid `span` (§6.2 placement) applies only at board level, inside a grid
   // region; LayoutRegions wraps the node when the span needs a track.
   const span = topLevel && !nested ? (block as { span?: number | 'full' }).span : undefined;
@@ -122,6 +126,7 @@ export function NodeView({ node, docIndex, nested = false, topLevel = false, rec
       // exit plays via <AnimatePresence> wrapper (M4 wires detours/replace exits)
       exit={block.exit}
       docIndex={docIndex}
+      {...root}
       data-node-id={node.id}
       data-dg-board-node={topLevel ? 'true' : undefined}
       data-dg-span={span !== undefined ? String(span) : undefined}
@@ -130,9 +135,8 @@ export function NodeView({ node, docIndex, nested = false, topLevel = false, rec
       data-dg-state={node.state}
       data-dg-receded={receded ? 'true' : undefined}
       data-dg-detour-target={detourTarget ? 'true' : undefined}
-      className={`dg-node dg-node-${node.state}`}
     >
-      <div className="dg-node-inner">
+      <div {...inner}>
         <DefaultBlockView node={node} nested={nested} />
       </div>
     </Animated>

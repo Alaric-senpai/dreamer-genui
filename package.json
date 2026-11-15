@@ -6,7 +6,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
-    "build": "pnpm -r --filter dreamer-genui build"
+    "build": "pnpm -r --filter dreamer-genui build",
+    "dg:component-docs": "node scripts/component-docs.mjs"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",

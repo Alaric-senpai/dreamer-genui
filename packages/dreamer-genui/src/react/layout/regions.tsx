@@ -8,6 +8,7 @@ import {
   type LayoutModel,
   type SlotAssignment,
 } from '../../core/layout';
+import { useParts } from '../anatomy';
 
 /**
  * Layout engine render side (§6.4). Consumes the pure layout model
@@ -104,6 +105,7 @@ export function LayoutRegions({
   renderNode,
   renderFlowDetour,
 }: LayoutRegionsProps): ReactNode {
+  const p = useParts('layout');
   const narrowOrder = useMemo(() => narrowRegions(model), [model]);
   const collapsed = narrow && model.kind !== 'flow';
 
@@ -127,13 +129,13 @@ export function LayoutRegions({
     const orderIndex = narrowOrder.indexOf(slot);
     const pinned =
       collapsed && model.pin !== undefined && model.pin !== 'none' && model.pin === slot;
+    const regionPart = p.props('region', `dg-region dg-region-${slot}`);
     return (
       <div
         key={slot}
-        className={`dg-region dg-region-${slot}`}
-        data-dg-part="region"
+        {...regionPart}
         data-slot={slot}
-        style={{ '--dg-region-order': orderIndex === -1 ? narrowOrder.length : orderIndex } as CSSProperties}
+        style={{ '--dg-region-order': orderIndex === -1 ? narrowOrder.length : orderIndex, ...regionPart.style } as CSSProperties}
         data-dg-pin={pinned ? 'true' : undefined}
         data-dg-region-active={tabsActive ? (visibleTab === slot || undefined) : undefined}
       >
@@ -192,20 +194,21 @@ export function LayoutRegions({
   })();
 
   const visibleSlots = tabsActive ? model.regions.filter(slot => visibleTab === slot) : narrowOrder;
+  const regionsPart = p.props('regions', 'dg-layout-regions');
 
   return (
     <>
       {tabsActive && (
         // TODO(M4b-C2): tab labels belong to the strings registry so locales
         // can name regions; C1 keeps the structural part only.
-        <div className="dg-layout-tabs" role="tablist" data-dg-part="tabs">
+        <div {...p.props('tabs', 'dg-layout-tabs')} role="tablist">
           {model.regions.map(slot => (
             <button
               key={slot}
               type="button"
               role="tab"
               aria-selected={visibleTab === slot}
-              className={`dg-layout-tab${visibleTab === slot ? ' dg-layout-tab-active' : ''}`}
+              {...p.props('tab', `dg-layout-tab${visibleTab === slot ? ' dg-layout-tab-active' : ''}`)}
               onClick={() => setActiveTab(slot)}
             >
               {slot}
@@ -214,10 +217,10 @@ export function LayoutRegions({
         </div>
       )}
       <div
-        className="dg-layout-regions"
+        {...regionsPart}
         data-dg-layout-regions=""
         data-dg-collapsed={collapsed || undefined}
-        style={regionsStyle}
+        style={regionsPart.style ? { ...regionsStyle, ...regionsPart.style } : regionsStyle}
       >
         {visibleSlots.map(renderRegion)}
       </div>

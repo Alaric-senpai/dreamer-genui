@@ -19,6 +19,7 @@ import { TempoContext, tempoOf } from './motion/tempo';
 import { NodeView } from './components/block-renderer';
 import { DetourView, FloatingDetour, isFlowPlacement, resolvePlacement, resolveTargetElement } from './components/detour';
 import { AmbienceLayer } from './ambience/AmbienceLayer';
+import { AnatomyProvider, partProps, type PartOverrides, type PartStyleOverrides } from './anatomy';
 
 /** Valid EaseName values for theme-transition variables (render-side allowlist for the var). */
 const EASE_NAMES = new Set(['smooth', 'snappy', 'overshoot', 'anticipate', 'linear']);
@@ -78,7 +79,19 @@ function nodeText(node: Node): string {
 }
 
 /** Live region announces the newest *entered* node (§7.7: unentered nodes stay silent). */
-function LiveAnnouncer({ state, entry }: { state: BoardState; entry: EntryPlan }): ReactNode {
+function LiveAnnouncer({
+  state,
+  entry,
+  className = 'dg-live-region',
+  style,
+  dataPart,
+}: {
+  state: BoardState;
+  entry: EntryPlan;
+  className?: string;
+  style?: CSSProperties;
+  dataPart?: string;
+}): ReactNode {
   const announcedRef = useRef<string | null>(null);
   const [message, setMessage] = useState('');
   const latest = useRef({ state, entry });
@@ -101,8 +114,9 @@ function LiveAnnouncer({ state, entry }: { state: BoardState; entry: EntryPlan }
       role="status"
       aria-live="polite"
       aria-atomic="true"
-      className="dg-live-region"
-      style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}
+      className={className}
+      data-dg-part={dataPart}
+      style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', ...style }}
     >
       {message}
     </div>
@@ -130,6 +144,10 @@ export interface BoardProps {
   onThemeChange?: (theme: ResolvedTheme) => void;
   /** Slot overrides (Tailwind strings welcome; merged with the library classes). */
   classNames?: { root?: string; content?: string; skip?: string };
+  /** Per-part class overrides for built-in components (§8.5): component → part → class. */
+  partClassNames?: PartOverrides;
+  /** Per-part inline styles for built-in components (§8.5), applied after library styles. */
+  partStyles?: PartStyleOverrides;
 }
 
 /**
@@ -151,11 +169,15 @@ export function Board({
   onCue,
   onThemeChange,
   classNames,
+  partClassNames,
+  partStyles,
 }: BoardProps): ReactNode {
   useBoardVersion(store);
   const state = store.getState();
   const { onEvent: providerOnEvent, onError: providerOnError, registry, strings } = useDreamer();
   const theme = state.theme;
+  // Board parts cannot read the AnatomyProvider it renders below, so bind them directly.
+  const bp = (part: string, extra?: string) => partProps('board', part, partClassNames?.board, partStyles?.board, extra);
 
   const effectivePacing = pacing ?? defaultPacing(state);
   const entry = computeEntryPlan(state, effectivePacing);
@@ -584,75 +606,90 @@ export function Board({
     );
   };
 
+  const boardPart = bp('root', `dg-board${classNames?.root ? ` ${classNames.root}` : ''}`);
+  const cameraPart = bp('camera', 'dg-camera');
+  const contentPart = bp('content', `dg-board-content${classNames?.content ? ` ${classNames.content}` : ''}`);
+  const titlePart = bp('title', 'dg-board-title');
+  const skipPart = bp('skip', `dg-skip${classNames?.skip ? ` ${classNames.skip}` : ''}`);
+  const liveRegionPart = bp('live-region', 'dg-live-region');
+
   return (
     <TempoContext.Provider value={tempo}>
       <BoardEmitContext.Provider value={emit}>
-        <section
-          ref={boardRef}
-          className={`dg-board${classNames?.root ? ` ${classNames.root}` : ''}`}
-          aria-label={state.title ?? 'Blackboard'}
-          data-dg-mood={theme?.mood ?? undefined}
-          data-dg-surface={theme?.surface ?? undefined}
-          data-dg-camera={camera}
-          data-dg-ambience={ambience}
-          data-dg-recede={recede ? 'true' : undefined}
-          data-dg-detour-open={detour ? placement ?? 'true' : undefined}
-          style={style}
-        >
-          <AmbienceLayer
-            preset={ambiencePreset}
-            texture={theme?.tokens.texture}
-            mode={ambience}
-            reducedMotion={prefersReduced}
-          />
-          <LiveAnnouncer state={state} entry={entry} />
-          <div ref={cameraRef} className="dg-camera" style={cameraStyle} data-dg-camera-layer="">
+        <AnatomyProvider classNames={partClassNames} styles={partStyles}>
+          <section
+            ref={boardRef}
+            {...boardPart}
+            aria-label={state.title ?? 'Blackboard'}
+            data-dg-mood={theme?.mood ?? undefined}
+            data-dg-surface={theme?.surface ?? undefined}
+            data-dg-camera={camera}
+            data-dg-ambience={ambience}
+            data-dg-recede={recede ? 'true' : undefined}
+            data-dg-detour-open={detour ? placement ?? 'true' : undefined}
+            style={boardPart.style ? { ...style, ...boardPart.style } : style}
+          >
+            <AmbienceLayer
+              preset={ambiencePreset}
+              texture={theme?.tokens.texture}
+              mode={ambience}
+              reducedMotion={prefersReduced}
+            />
+            <LiveAnnouncer
+              state={state}
+              entry={entry}
+              className={liveRegionPart.className}
+              dataPart={liveRegionPart['data-dg-part']}
+              style={liveRegionPart.style}
+            />
             <div
-              ref={contentRef}
-              className={`dg-board-content${classNames?.content ? ` ${classNames.content}` : ''}`}
-              data-dg-part="content"
-              data-dg-layout={layoutModel.kind}
-              data-dg-narrow={narrow || undefined}
+              ref={cameraRef}
+              {...cameraPart}
+              style={cameraPart.style ? { ...cameraStyle, ...cameraPart.style } : cameraStyle}
+              data-dg-camera-layer=""
             >
-              {state.title && <h2 className="dg-board-title">{state.title}</h2>}
-              {entry.pending.length > 0 && (
-                <button
-                  type="button"
-                  className={`dg-skip${classNames?.skip ? ` ${classNames.skip}` : ''}`}
-                  onClick={() => store.flush()}
-                >
-                  {strings.skip}
-                </button>
-              )}
-              <LayoutRegions
-                model={layoutModel}
-                orderedIds={orderedIds}
-                nodes={state.nodes}
-                assignment={assignment}
-                narrow={narrow}
-                renderNode={renderNode}
-                renderFlowDetour={renderFlowDetour}
-              />
-            </div>
-          </div>
-
-          {detour && floating && placement && (
-            <>
-              {(placement === 'spotlight' || placement === 'overlay') && (
-                <div className="dg-detour-backdrop" aria-hidden="true" onClick={() => closeTopDetour(detour)} />
-              )}
-              <div className="dg-detour-overlay" data-dg-detour-overlay-placement={placement}>
-                <FloatingDetour
-                  detour={detour}
-                  strings={strings}
-                  onReturn={closeTopDetour}
-                  boardRef={boardRef}
-                  cameraToken={String(cameraToken)}
+              <div
+                ref={contentRef}
+                {...contentPart}
+                data-dg-layout={layoutModel.kind}
+                data-dg-narrow={narrow || undefined}
+              >
+                {state.title && <h2 {...titlePart}>{state.title}</h2>}
+                {entry.pending.length > 0 && (
+                  <button type="button" {...skipPart} onClick={() => store.flush()}>
+                    {strings.skip}
+                  </button>
+                )}
+                <LayoutRegions
+                  model={layoutModel}
+                  orderedIds={orderedIds}
+                  nodes={state.nodes}
+                  assignment={assignment}
+                  narrow={narrow}
+                  renderNode={renderNode}
+                  renderFlowDetour={renderFlowDetour}
                 />
               </div>
-            </>
-          )}
-        </section>
+            </div>
+
+            {detour && floating && placement && (
+              <>
+                {(placement === 'spotlight' || placement === 'overlay') && (
+                  <div className="dg-detour-backdrop" aria-hidden="true" onClick={() => closeTopDetour(detour)} />
+                )}
+                <div className="dg-detour-overlay" data-dg-detour-overlay-placement={placement}>
+                  <FloatingDetour
+                    detour={detour}
+                    strings={strings}
+                    onReturn={closeTopDetour}
+                    boardRef={boardRef}
+                    cameraToken={String(cameraToken)}
+                  />
+                </div>
+              </>
+            )}
+          </section>
+        </AnatomyProvider>
       </BoardEmitContext.Provider>
     </TempoContext.Provider>
   );

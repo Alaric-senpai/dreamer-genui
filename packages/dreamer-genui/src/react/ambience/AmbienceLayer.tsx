@@ -18,6 +18,7 @@ import { useReducedMotion } from 'motion/react';
 import type { AmbiencePreset } from '../../theme/presets';
 import type { ThemeTokens } from '../../schema/theme';
 import { drawParticles, seedParticles, stepParticles } from '../../ambience/particles';
+import { useParts } from '../anatomy';
 
 const FRAME_MS = 1000 / 30; // fixed ambience frame budget
 const FADE_MS = 800;
@@ -32,6 +33,7 @@ export interface AmbienceLayerProps {
 }
 
 export function AmbienceLayer({ preset, texture, mode = 'auto', reducedMotion }: AmbienceLayerProps): ReactNode {
+  const p = useParts('ambience');
   const prefersReduced = useReducedMotion();
   const reduced = reducedMotion ?? Boolean(prefersReduced);
   const effective = mode === 'off' ? null : (preset ?? null);
@@ -60,9 +62,18 @@ export function AmbienceLayer({ preset, texture, mode = 'auto', reducedMotion }:
   const vignette = texture?.vignette ?? 0;
 
   return (
-    <div className="dg-ambience" aria-hidden="true" data-dg-ambience-mode={lite ? 'lite' : mode} data-dg-ambience-preset={active?.name ?? preset?.name}>
-      {grain > 0 && <div className="dg-ambience-texture dg-ambience-grain" style={{ opacity: grain }} />}
-      {vignette > 0 && <div className="dg-ambience-texture dg-ambience-vignette" style={{ opacity: vignette }} />}
+    <div
+      {...p.props('root', 'dg-ambience')}
+      aria-hidden="true"
+      data-dg-ambience-mode={lite ? 'lite' : mode}
+      data-dg-ambience-preset={active?.name ?? preset?.name}
+    >
+      {grain > 0 && (
+        <div {...p.props('texture', 'dg-ambience-texture dg-ambience-grain')} style={{ opacity: grain }} />
+      )}
+      {vignette > 0 && (
+        <div {...p.props('texture', 'dg-ambience-texture dg-ambience-vignette')} style={{ opacity: vignette }} />
+      )}
       {leaving && <PresetLayer key={`old-${leaving.name}`} preset={leaving} lite={lite} reduced={reduced} leaving />}
       {active && <PresetLayer key={`new-${active.name}`} preset={active} lite={lite} reduced={reduced} />}
     </div>
@@ -80,21 +91,20 @@ function PresetLayer({
   reduced: boolean;
   leaving?: boolean;
 }): ReactNode {
+  const p = useParts('ambience');
   const layer = preset.layer ?? 'grain';
   const intensity = preset.intensity ?? 1;
+  const layerPart = p.props('layer', `dg-ambience-layer dg-ambience-${layer}${leaving ? ' dg-ambience-leaving' : ''}`);
   const style = {
     '--dg-ambience-intensity': String(intensity),
     opacity: leaving ? 0 : intensity,
+    ...layerPart.style,
   } as CSSProperties;
   if (layer === 'particles' && preset.particles) {
     return <ParticleCanvas config={preset.particles} lite={lite} reduced={reduced} leaving={leaving} />;
   }
   return (
-    <div
-      className={`dg-ambience-layer dg-ambience-${layer}${leaving ? ' dg-ambience-leaving' : ''}`}
-      data-dg-ambience-kind={layer}
-      style={style}
-    />
+    <div {...layerPart} data-dg-ambience-kind={layer} style={style} />
   );
 }
 
@@ -109,6 +119,7 @@ function ParticleCanvas({
   reduced: boolean;
   leaving?: boolean;
 }): ReactNode {
+  const p = useParts('ambience');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [visible, setVisible] = useState(true);
   const [inView, setInView] = useState(true);
@@ -206,7 +217,7 @@ function ParticleCanvas({
   return (
     <canvas
       ref={canvasRef}
-      className={`dg-ambience-layer dg-ambience-particles${leaving ? ' dg-ambience-leaving' : ''}`}
+      {...p.props('layer', `dg-ambience-layer dg-ambience-particles${leaving ? ' dg-ambience-leaving' : ''}`)}
       data-dg-ambience-kind="particles"
       data-dg-ambience-state={state}
     />

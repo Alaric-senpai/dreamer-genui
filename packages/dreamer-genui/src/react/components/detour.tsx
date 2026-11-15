@@ -15,6 +15,7 @@ import type { Detour, DetourPlacement } from '../../core/types';
 import { tokensToVars, type CssTokens } from '../../theme/tokens';
 import type { UIStrings } from '../provider';
 import { useEmitEvent } from '../provider';
+import { useParts } from '../anatomy';
 import { NodeView } from './block-renderer';
 
 export type EffectivePlacement = DetourPlacement | 'drawer' | 'spotlight';
@@ -93,6 +94,7 @@ export function DetourView({
   containerRef,
 }: DetourViewProps): ReactNode {
   const emit = useEmitEvent();
+  const p = useParts('detour');
   const localRef = useRef<HTMLDivElement | null>(null);
   const focusedRef = useRef<string | null>(null);
 
@@ -115,13 +117,13 @@ export function DetourView({
         localRef.current = node;
         if (containerRef) containerRef.current = node;
       }}
-      className={`dg-detour dg-detour-placement-${placement} dg-detour-mode-${detour.mode}${className ? ` ${className}` : ''}`}
+      {...p.props('root', `dg-detour dg-detour-placement-${placement} dg-detour-mode-${detour.mode}${className ? ` ${className}` : ''}`)}
       data-dg-detour={detour.id}
       data-dg-placement={placement}
       role="region"
       aria-label={strings.explainer}
       tabIndex={-1}
-      style={{ ...detourThemeStyle(detour), ...style }}
+      style={{ ...detourThemeStyle(detour), ...style, ...p.props('root').style }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation();
@@ -129,13 +131,13 @@ export function DetourView({
         }
       }}
     >
-      <div className="dg-detour-blocks">
+      <div {...p.props('blocks', 'dg-detour-blocks')}>
         {detour.blocks.map((block, i) => (
           <NodeView key={block.id} node={{ id: block.id, block, state: 'complete', altText: block.alt }} docIndex={i} />
         ))}
       </div>
-      <button type="button" className="dg-detour-return" onClick={close}>
-        <span aria-hidden="true" className="dg-detour-return-icon">↩</span>
+      <button type="button" {...p.props('return', 'dg-detour-return')} onClick={close}>
+        <span aria-hidden="true" {...p.props('return-icon', 'dg-detour-return-icon')}>↩</span>
         {strings.return}
       </button>
     </div>
@@ -291,6 +293,7 @@ function Connector({
   anchor: { x: number; y: number; w: number; h: number };
   detour: { x: number; y: number; w: number; h: number };
 }): ReactNode {
+  const p = useParts('detour');
   const a = { x: anchor.x + anchor.w / 2, y: anchor.y + anchor.h / 2 };
   const edge = { x: anchor.x + anchor.w, y: a.y };
   let start = { x: anchor.x + anchor.w, y: a.y };
@@ -322,7 +325,7 @@ function Connector({
   ) : null;
 
   return (
-    <svg className="dg-detour-connector" aria-hidden="true">
+    <svg {...p.props('connector', 'dg-detour-connector')} aria-hidden="true">
       <path d={path} pathLength={1} className="dg-detour-connector-path" />
       {marker}
     </svg>
