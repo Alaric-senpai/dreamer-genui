@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import type { ElementType, ReactNode } from 'react';
-import type { Block, TextBlock, ChoicesBlock, CalloutBlock, StepsBlock, GroupBlock } from '../../schema/blocks';
+import type { CSSProperties, ElementType, ReactNode } from 'react';
+import type { Block, TextBlock, ChoicesBlock, CalloutBlock, StepsBlock, GroupBlock, ListBlock } from '../../schema/blocks';
 import type { EnterEffect } from '../../schema/motion';
 import { DEFAULT_TEXT_ENTER, KINETIC_PRESETS, type KineticEffect } from '../../motion/presets';
 import { KineticText } from '../kinetic/KineticText';
 import { renderInline } from './inline';
+import { splitTemplate } from '../layout/regions';
 import { useEmitEvent } from '../provider';
 
 // --- Text ---
@@ -131,11 +132,63 @@ export function StepsView({ block }: { block: StepsBlock }): ReactNode {
 
 // --- Group ---
 
+/** Token gap → the `--dg-gap-*` scale (§6.4); `none` collapses to zero. */
+function gapVar(gap: Exclude<GroupBlock['gap'], undefined>): string {
+  return gap === 'none' ? '0px' : `var(--dg-gap-${gap}, calc(0.75rem * var(--dg-space-scale, 1)))`;
+}
+
+/**
+ * The `group` flex/grid vocabulary (§6.4), expressed as `--dg-*` custom
+ * properties the stylesheet turns into flex/grid. `ratio` reuses the split
+ * track grammar and turns the group into a track-based grid, so proportions
+ * never need per-child flex values.
+ */
 export function GroupView({ block, children }: { block: GroupBlock; children: ReactNode }): ReactNode {
+  // Custom properties are not part of React's CSSProperties index; the record
+  // is cast once on use. Values are token names only — never model CSS.
+  const style = {} as Record<string, string>;
+  if (block.gap !== undefined) style['--dg-group-gap'] = gapVar(block.gap);
+  if (block.direction) style['--dg-group-direction'] = block.direction;
+  if (block.align) style['--dg-group-align'] = block.align;
+  if (block.wrap !== undefined) style['--dg-group-wrap'] = block.wrap ? 'wrap' : 'nowrap';
+  if (block.justify) {
+    style['--dg-group-justify'] =
+      block.justify === 'between' ? 'space-between' : block.justify === 'around' ? 'space-around' : block.justify;
+  }
+  if (block.columns) style['--dg-group-columns'] = String(block.columns);
+  if (block.minItemWidth) style['--dg-group-min-width'] = `var(--dg-gap-${block.minItemWidth})`;
+  if (block.ratio) style['--dg-group-template'] = splitTemplate(block.ratio);
   return (
-    <div className={`dg-group dg-group-${block.layout}`} data-node-id={block.id}>
+    <div
+      className={`dg-group dg-group-${block.layout}`}
+      data-node-id={block.id}
+      data-dg-part="group"
+      data-dg-reverse={block.reverseOnNarrow ? 'true' : undefined}
+      data-dg-autofit={block.minItemWidth ? 'true' : undefined}
+      style={style as CSSProperties}
+    >
       {children}
     </div>
+  );
+}
+
+// --- List (v2.1) ---
+
+/**
+ * The `list` block (§6.5): bullet / number / check / none. Glyphs are
+ * stylesheet-owned; item-level `enter` choreography lands with C2.
+ */
+export function ListView({ block }: { block: ListBlock }): ReactNode {
+  const Tag: ElementType = block.style === 'number' ? 'ol' : 'ul';
+  return (
+    <Tag className={`dg-list dg-list-${block.style}`} data-node-id={block.id} data-dg-part="list">
+      {block.items.map((item, i) => (
+        <li key={item.id ?? i} className="dg-list-item" data-dg-part="list-item" data-dg-item-id={item.id}>
+          {block.style === 'check' && <span className="dg-list-check" aria-hidden="true" />}
+          <div className="dg-list-content">{renderInline(item.content)}</div>
+        </li>
+      ))}
+    </Tag>
   );
 }
 

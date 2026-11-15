@@ -17,6 +17,13 @@
   /* ---------- board root ---------- */
   .dg-board {
     position: relative;
+    /* spacing scale used by the layout engine (§6.4); hosts override any of these */
+    --dg-gap-none: 0px;
+    --dg-gap-xs: calc(0.3rem * var(--dg-space-scale, 1));
+    --dg-gap-sm: calc(0.5rem * var(--dg-space-scale, 1));
+    --dg-gap-md: calc(0.75rem * var(--dg-space-scale, 1));
+    --dg-gap-lg: calc(1.1rem * var(--dg-space-scale, 1));
+    --dg-gap-xl: calc(1.6rem * var(--dg-space-scale, 1));
     background-color: var(--dg-color-bg, #f7f7f5);
     color: var(--dg-color-ink, #1f1f1d);
     font-family: var(--dg-font-body, system-ui, -apple-system, sans-serif);
@@ -31,12 +38,110 @@
   }
 
   .dg-board-content {
+    container-type: inline-size;
     padding: calc(1.25rem * var(--dg-space-scale, 1));
     display: flex;
     flex-direction: column;
     gap: calc(1.1rem * var(--dg-space-scale, 1));
     max-width: 42rem;
     margin-inline: auto;
+  }
+
+  /* ---------- layout engine (§6.4) ----------
+   * Geometry comes from the LayoutRegions component as `--dg-*` custom
+   * properties; the stylesheet owns the flex/grid. `flow` keeps the original
+   * DOM contract: nodes sit directly in .dg-board-content. */
+  .dg-layout-regions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dg-gap-lg, calc(1.1rem * var(--dg-space-scale, 1)));
+    min-width: 0;
+  }
+  .dg-layout-regions[data-dg-layout='split'] {
+    display: grid;
+    grid-template-columns: var(--dg-split-template, 1fr 1fr);
+    align-items: start;
+  }
+  .dg-layout-regions[data-dg-layout='split'] .dg-region[data-slot='left'] { grid-column: 1; }
+  .dg-layout-regions[data-dg-layout='split'] .dg-region[data-slot='right'] { grid-column: 2; }
+  .dg-layout-regions[data-dg-layout='grid'] {
+    display: grid;
+    grid-template-columns: repeat(var(--dg-grid-columns, 2), minmax(0, 1fr));
+    align-items: start;
+  }
+  .dg-layout-regions[data-dg-layout='stage'] {
+    display: grid;
+    grid-template-areas: var(--dg-stage-areas, '"center"');
+    grid-template-columns: repeat(var(--dg-stage-columns, 1), minmax(0, 1fr));
+  }
+  .dg-layout-regions[data-dg-layout='stage'] .dg-region[data-slot='top'] { grid-area: top; }
+  .dg-layout-regions[data-dg-layout='stage'] .dg-region[data-slot='bottom'] { grid-area: bottom; }
+  .dg-layout-regions[data-dg-layout='stage'] .dg-region[data-slot='left'] { grid-area: left; }
+  .dg-layout-regions[data-dg-layout='stage'] .dg-region[data-slot='center'] { grid-area: center; }
+  .dg-layout-regions[data-dg-layout='stage'] .dg-region[data-slot='right'] { grid-area: right; }
+
+  .dg-region {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1)));
+    min-width: 0;
+  }
+  /* grid `span` wrapper (only rendered when a node spans tracks) */
+  .dg-region-entry { min-width: 0; }
+
+  /* Sticky `pin` (§6.4 split): keep one side visible while the other scrolls. */
+  .dg-region[data-dg-pin='true'] {
+    position: sticky;
+    top: calc(1rem * var(--dg-space-scale, 1));
+    align-self: start;
+    z-index: 2;
+  }
+
+  /* Narrow collapse: flex stack in `narrowOrder` (JS-measured, board's own width). */
+  .dg-layout-regions[data-dg-collapsed] {
+    display: flex;
+    flex-direction: column;
+  }
+  .dg-layout-regions[data-dg-collapsed] .dg-region {
+    grid-area: auto;
+    grid-column: auto;
+    order: var(--dg-region-order, 0);
+  }
+
+  /* Tabs collapse (§6.4 split narrow: "tabs"). Region labels are strings-registry
+   * material (C2); the structural tab bar ships now. */
+  .dg-layout-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-space-scale, 1)));
+  }
+  .dg-layout-tab {
+    appearance: none;
+    border: 1px solid var(--dg-color-border, #e2e2dc);
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: var(--dg-text-small, 0.875rem);
+    padding: calc(0.35rem * var(--dg-space-scale, 1)) calc(0.8rem * var(--dg-space-scale, 1));
+    border-radius: 999px;
+    cursor: pointer;
+    min-height: var(--dg-min-target, 44px);
+    box-sizing: border-box;
+  }
+  .dg-layout-tab-active {
+    border-color: var(--dg-color-accent, #2e5dc4);
+    color: var(--dg-color-accent, #2e5dc4);
+  }
+  .dg-layout-tab:focus-visible {
+    outline: 2px solid var(--dg-color-accent, #2e5dc4);
+    outline-offset: 2px;
+  }
+
+  /* Multi-region boards compose wider than the single-column flow (§11.1 composition). */
+  .dg-board-content[data-dg-layout='split'],
+  .dg-board-content[data-dg-layout='grid'],
+  .dg-board-content[data-dg-layout='stage'] {
+    max-width: 64rem;
   }
 
   .dg-board-title {
@@ -226,9 +331,61 @@
   .dg-step-content { margin-top: 0.15em; }
 
   /* ---------- group ---------- */
-  .dg-group-stack { display: flex; flex-direction: column; gap: calc(0.75rem * var(--dg-space-scale, 1)); }
-  .dg-group-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: calc(0.75rem * var(--dg-space-scale, 1)); align-items: baseline; }
-  .dg-group-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: calc(0.75rem * var(--dg-space-scale, 1)); }
+  /* `group` flex/grid vocabulary (§6.4): knobs arrive as --dg-group-* vars. */
+  .dg-group-stack {
+    display: flex;
+    flex-direction: var(--dg-group-direction, column);
+    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1))));
+    align-items: var(--dg-group-align, stretch);
+    justify-content: var(--dg-group-justify, flex-start);
+  }
+  .dg-group-row {
+    display: flex;
+    flex-direction: var(--dg-group-direction, row);
+    flex-wrap: var(--dg-group-wrap, wrap);
+    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1))));
+    align-items: var(--dg-group-align, baseline);
+    justify-content: var(--dg-group-justify, flex-start);
+  }
+  .dg-group-grid {
+    display: grid;
+    grid-template-columns: var(--dg-group-template, repeat(var(--dg-group-columns, 2), minmax(0, 1fr)));
+    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1))));
+    align-items: var(--dg-group-align, stretch);
+    justify-content: var(--dg-group-justify, normal);
+  }
+  /* Auto-fit by minimum item width (token-based). */
+  .dg-group-grid[data-dg-autofit='true'] {
+    grid-template-columns: repeat(auto-fit, minmax(min(var(--dg-group-min-width, 13rem), 100%), 1fr));
+  }
+  /* reverseOnNarrow flips to a stack when the board itself is narrow. */
+  [data-dg-narrow='true'] .dg-group[data-dg-reverse='true'] {
+    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* ---------- list block (§6.5) ---------- */
+  .dg-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-space-scale, 1)));
+  }
+  .dg-list-bullet { padding-inline-start: 1.2em; list-style: disc; }
+  .dg-list-number { padding-inline-start: 1.4em; list-style: decimal; }
+  .dg-list-check .dg-list-item {
+    display: flex;
+    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-space-scale, 1)));
+  }
+  .dg-list-check .dg-list-check::before {
+    content: '✓';
+    font-weight: 700;
+    color: var(--dg-color-success, #15803d);
+  }
+  .dg-list-item { min-width: 0; }
+  .dg-list-content { min-width: 0; }
 
   /* ---------- detour ---------- */
   .dg-detour { position: relative; }
@@ -358,17 +515,19 @@
   .dg-detour-return:focus-visible { outline: 2px solid var(--dg-color-accent, #2e5dc4); outline-offset: 2px; }
   .dg-detour-return-icon { font-size: 1em; }
 
-  /* Dim everything but the target while a detour is open (§7.5 default). */
-  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node .dg-node-inner {
+  /* Dim everything but the target while a detour is open (§7.5 default).
+   * Targets every top-level node via its board-node marker, so it works
+   * identically in flow and in region layouts. */
+  .dg-board[data-dg-detour-open] [data-dg-board-node='true'] .dg-node-inner {
     opacity: 0.24;
     filter: saturate(0.6);
   }
-  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node[data-dg-detour-target='true'] .dg-node-inner {
+  .dg-board[data-dg-detour-open] [data-dg-board-node='true'][data-dg-detour-target='true'] .dg-node-inner {
     opacity: 1;
     filter: none;
   }
-  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node { pointer-events: none; }
-  .dg-board[data-dg-detour-open] .dg-board-content > .dg-node[data-dg-detour-target='true'] { pointer-events: auto; }
+  .dg-board[data-dg-detour-open] [data-dg-board-node='true'] { pointer-events: none; }
+  .dg-board[data-dg-detour-open] [data-dg-board-node='true'][data-dg-detour-target='true'] { pointer-events: auto; }
 
   .dg-detour-backdrop {
     position: absolute;

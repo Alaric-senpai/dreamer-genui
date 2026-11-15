@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useReducedMotion } from 'motion/react';
 import type { UIEvent } from '../schema/events';
@@ -10,6 +10,10 @@ import { useBoardVersion } from './use-board';
 import { useDreamer } from './provider';
 import { BoardEmitContext } from './emit-context';
 import { computeEntryPlan, defaultPacing, type EntryPlan, type Pacing } from '../core/cues';
+import { assignSlots, createLayoutModel, type SlotAssignment } from '../core/layout';
+import type { Slot } from '../schema/layout';
+import { LayoutRegions, isNarrow } from './layout/regions';
+import { captureReflowRects, useLayoutReflow, type ReflowRects } from './layout/reflow';
 import { tokensToVars, type CssTokens } from '../theme/tokens';
 import { TempoContext, tempoOf } from './motion/tempo';
 import { NodeView } from './components/block-renderer';
@@ -178,6 +182,85 @@ export function Board({
   const orderedIds = Object.keys(state.nodes).filter((id) => entered.has(id));
   const detour = state.detours[state.detours.length - 1];
 
+  // ---- layout engine (§6.4): regions from the active spec; slots the layout
+  // does not define fall back to the primary region (never fatal) ----
+  const [boardWidth, setBoardWidth] = useState(0);
+  const layoutModel = useMemo(() => createLayoutModel(state.layout, registry), [state.layout, registry]);
+  const assignment: SlotAssignment = useMemo(
+    () =>
+      assignSlots(
+        orderedIds.map((id) => ({
+          id,
+          slot: (state.nodes[id]?.block as { slot?: Slot } | undefined)?.slot,
+        })),
+        layoutModel
+      ),
+    // orderedIds/state.nodes change together with entry; recomputing per
+    // render is fine (pure, cheap) — the memo only avoids reallocating maps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [enteredKey, layoutModel]
+  );
+  const narrow = isNarrow(boardWidth);
+
+  // ---- receding scenes (§9.2): nodes entering in the same commit form one
+  // scene; older scenes visibly recede so the newest idea owns the focal point. ----
+  const [sceneOf, setSceneOf] = useState<Record<string, number>>({});
+  const nextSceneRef = useRef(0);
+  useEffect(() => {
+    setSceneOf((prev) => {
+      const fresh = entry.entered.filter((id) => prev[id] === undefined);
+      if (fresh.length === 0) return prev;
+      const scene = nextSceneRef.current;
+      nextSceneRef.current += 1;
+      const next = { ...prev };
+      for (const id of Object.keys(next)) {
+        if (!(id in state.nodes)) delete next[id];
+      }
+      for (const id of fresh) next[id] = scene;
+      return next;
+    });
+    // entry.entered identity changes every render; the joined key is the signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enteredKey]);
+  const activeScene = useMemo(() => {
+    const values = Object.values(sceneOf);
+    return values.length === 0 ? -1 : Math.max(...values);
+  }, [sceneOf]);
+
+  // Per-region receding (§6.4/§9.2): each region recedes finished content
+  // independently — a node recedes when a newer scene exists in its own region.
+  const regionMaxScene = useMemo(() => {
+    const max: Partial<Record<Slot, number>> = {};
+    for (const slot of Object.keys(assignment.regions) as Slot[]) {
+      let best = -1;
+      for (const id of assignment.regions[slot] ?? []) {
+        const scene = sceneOf[id];
+        if (scene !== undefined && scene > best) best = scene;
+      }
+      max[slot] = best;
+    }
+    return max;
+  }, [assignment, sceneOf]);
+
+  const regionOf = useMemo(() => {
+    const map = new Map<string, Slot>();
+    for (const slot of Object.keys(assignment.regions) as Slot[]) {
+      for (const id of assignment.regions[slot] ?? []) map.set(id, slot);
+    }
+    return map;
+  }, [assignment]);
+
+  const isReceded = useCallback(
+    (id: string): boolean => {
+      if (!recede || detour) return false;
+      const scene = sceneOf[id] ?? -1;
+      const slot = regionOf.get(id);
+      const max = slot !== undefined ? regionMaxScene[slot] : activeScene;
+      return scene < (max ?? activeScene);
+    },
+    [recede, detour, sceneOf, regionOf, regionMaxScene, activeScene]
+  );
+
   // Interactive components emit onto the board's events bus; the bridge
   // below forwards every bus event to both the provider and board sinks.
   const emit = useCallback((event: UIEvent) => store.events.emit(event), [store]);
@@ -226,31 +309,6 @@ export function Board({
 
   // ---- scene tempo (§6.8 motion.speed; every timing in the motion layer scales by it) ----
   const tempo = useMemo(() => tempoOf(theme), [theme]);
-
-  // ---- receding scenes (§9.2): nodes entering in the same commit form one
-  // scene; older scenes visibly recede so the newest idea owns the focal point. ----
-  const [sceneOf, setSceneOf] = useState<Record<string, number>>({});
-  const nextSceneRef = useRef(0);
-  useEffect(() => {
-    setSceneOf((prev) => {
-      const fresh = entry.entered.filter((id) => prev[id] === undefined);
-      if (fresh.length === 0) return prev;
-      const scene = nextSceneRef.current;
-      nextSceneRef.current += 1;
-      const next = { ...prev };
-      for (const id of Object.keys(next)) {
-        if (!(id in state.nodes)) delete next[id];
-      }
-      for (const id of fresh) next[id] = scene;
-      return next;
-    });
-    // entry.entered identity changes every render; the joined key is the signal.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enteredKey]);
-  const activeScene = useMemo(() => {
-    const values = Object.values(sceneOf);
-    return values.length === 0 ? -1 : Math.max(...values);
-  }, [sceneOf]);
 
   // ---- camera (§6.10) ----
   const boardRef = useRef<HTMLElement | null>(null);
@@ -363,8 +421,25 @@ export function Board({
     if (autoReturnRef.current) clearTimeout(autoReturnRef.current);
   }, []);
 
+  // ---- layout re-flow (§6.4): the layout op's transition knobs arrive on the
+  // layoutBus before React re-renders; capture pre-commit positions now, then
+  // the layout effect animates the delta. Reduced motion renders instantly.
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const pendingReflowRef = useRef<{ rects: ReflowRects; duration: number; ease: string } | null>(null);
+  useEffect(() => {
+    return store.layoutBus.subscribe((transition) => {
+      const rects = captureReflowRects(contentRef.current);
+      if (!rects) return;
+      pendingReflowRef.current = {
+        rects,
+        duration: transition.duration ?? 600,
+        ease: CAMERA_EASE[(transition.ease ?? 'smooth') as EaseName] ?? CAMERA_EASE.smooth ?? '',
+      };
+    });
+  }, [store]);
+  useLayoutReflow(contentRef, pendingReflowRef, !prefersReduced);
+
   // ---- detour presentation (§7.5) ----
-  const [boardWidth, setBoardWidth] = useState(0);
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
@@ -425,9 +500,7 @@ export function Board({
   useEffect(() => {
     const content = boardRef.current?.querySelector<HTMLElement>('.dg-board-content');
     if (!content) return undefined;
-    const nodes = Array.from(content.children).filter(
-      (el): el is HTMLElement => el instanceof HTMLElement && el.classList.contains('dg-node')
-    );
+    const nodes = Array.from(content.querySelectorAll<HTMLElement>("[data-dg-board-node='true']"));
     if (!detour) {
       for (const el of nodes) {
         el.removeAttribute('aria-hidden');
@@ -489,6 +562,28 @@ export function Board({
     );
   }
 
+  /** Flow (inline) detours render inside their region, after the anchor node;
+   * when the anchor has not entered, at the end of the primary region. */
+  const renderFlowDetour = (afterId: string | null): ReactNode => {
+    if (!detour || !placement || !isFlowPlacement(placement)) return null;
+    const anchorId = flowAnchorIndex >= 0 ? (orderedIds[flowAnchorIndex] ?? null) : null;
+    return afterId === anchorId ? renderDetour() : null;
+  };
+
+  const renderNode = (id: string, index: number): ReactNode => {
+    const node = state.nodes[id];
+    if (!node) return null;
+    return (
+      <NodeView
+        node={node}
+        docIndex={index}
+        receded={isReceded(id)}
+        detourTarget={id === detourTargetId}
+        topLevel
+      />
+    );
+  };
+
   return (
     <TempoContext.Provider value={tempo}>
       <BoardEmitContext.Provider value={emit}>
@@ -512,7 +607,13 @@ export function Board({
           />
           <LiveAnnouncer state={state} entry={entry} />
           <div ref={cameraRef} className="dg-camera" style={cameraStyle} data-dg-camera-layer="">
-            <div className={`dg-board-content${classNames?.content ? ` ${classNames.content}` : ''}`}>
+            <div
+              ref={contentRef}
+              className={`dg-board-content${classNames?.content ? ` ${classNames.content}` : ''}`}
+              data-dg-part="content"
+              data-dg-layout={layoutModel.kind}
+              data-dg-narrow={narrow || undefined}
+            >
               {state.title && <h2 className="dg-board-title">{state.title}</h2>}
               {entry.pending.length > 0 && (
                 <button
@@ -523,24 +624,15 @@ export function Board({
                   {strings.skip}
                 </button>
               )}
-              {orderedIds.map((id, i) => {
-                const node = state.nodes[id];
-                if (!node) return null;
-                const isReceded = recede && !detour && (sceneOf[id] ?? activeScene) < activeScene;
-                return (
-                  <Fragment key={id}>
-                    <NodeView
-                      node={node}
-                      docIndex={i}
-                      receded={isReceded}
-                      detourTarget={id === detourTargetId}
-                    />
-                    {flowAnchorIndex === i && renderDetour()}
-                  </Fragment>
-                );
-              })}
-              {/* A detour whose target has not entered yet still renders at the end. */}
-              {flowAnchorIndex === -1 && detour && placement && isFlowPlacement(placement) && renderDetour()}
+              <LayoutRegions
+                model={layoutModel}
+                orderedIds={orderedIds}
+                nodes={state.nodes}
+                assignment={assignment}
+                narrow={narrow}
+                renderNode={renderNode}
+                renderFlowDetour={renderFlowDetour}
+              />
             </div>
           </div>
 

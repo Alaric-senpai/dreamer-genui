@@ -7,6 +7,8 @@ import type { QuestionBlock } from '../schema/question';
 import type { AssessmentBlock, AssessmentMode } from '../schema/assessment';
 import type { FlowchartFigure, Figure } from '../schema/figures';
 import type { NodeId, NodeRef } from '../schema/common';
+import { createLayoutModel, layoutDefinesSlot } from './layout';
+import type { Slot } from '../schema/layout';
 
 export interface ValidationResult {
   valid: boolean;
@@ -80,7 +82,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
       const semantic = checkBlockSemantics(op.blocks);
       if (semantic) return { valid: false, error: semantic };
       const { op: rewritten, warnings } = breakAfterCycles(op);
-      return { valid: true, op: rewritten, warnings: warnings.length ? warnings : undefined };
+      const slots = slotWarnings(state, op.blocks);
+      return { valid: true, op: rewritten, warnings: mergeWarnings(warnings, slots) };
     }
 
     case 'attach': {
@@ -98,7 +101,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
       const semantic = checkBlockSemantics(op.blocks);
       if (semantic) return { valid: false, error: semantic };
       const { op: rewritten, warnings } = breakAfterCycles(op);
-      return { valid: true, op: rewritten, warnings: warnings.length ? warnings : undefined };
+      const slots = slotWarnings(state, op.blocks);
+      return { valid: true, op: rewritten, warnings: mergeWarnings(warnings, slots) };
     }
 
     case 'replace': {
@@ -107,7 +111,8 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
       const semantic = checkBlockSemantics(op.blocks);
       if (semantic) return { valid: false, error: semantic };
       const { op: rewritten, warnings } = breakAfterCycles(op);
-      return { valid: true, op: rewritten, warnings: warnings.length ? warnings : undefined };
+      const slots = slotWarnings(state, op.blocks);
+      return { valid: true, op: rewritten, warnings: mergeWarnings(warnings, slots) };
     }
 
     case 'update': {
@@ -130,14 +135,34 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
     case 'theme':
     case 'camera':
     case 'layout':
-      // TODO(M4b-B3): validate slots against the active layout regions.
       return { valid: true, op };
   }
 }
 
-/** Blocks from append/attach/replace ops — they all carry `blocks`. */
-function opBlocks(op: Op): Block[] | undefined {
-  return op.op === 'append' || op.op === 'attach' || op.op === 'replace' ? op.blocks : undefined;
+/**
+ * Slot-vs-layout check (§6.4): a `slot` the active layout does not define
+ * falls back to the primary region — a warning, never fatal. The reducer owns
+ * the fallback; this only reports it.
+ */
+function slotWarnings(state: BoardState, blocks: readonly Block[]): LibraryError[] {
+  if (!state.layout) return [];
+  const model = createLayoutModel(state.layout);
+  const out: LibraryError[] = [];
+  for (const block of blocks) {
+    const slot = (block as { slot?: string }).slot;
+    if (slot && !layoutDefinesSlot(model, slot as Slot)) {
+      out.push(
+        createError('layout-invalid', `Slot "${slot}" is not defined by the active ${model.kind} layout; node ${block.id} falls back to the primary region`, block.id),
+      );
+    }
+  }
+  return out;
+}
+
+/** Combine cycle-rewrite warnings with slot warnings into one list. */
+function mergeWarnings(...lists: LibraryError[][]): LibraryError[] | undefined {
+  const flat = lists.flat();
+  return flat.length ? flat : undefined;
 }
 
 // ---------------------------------------------------------------------------

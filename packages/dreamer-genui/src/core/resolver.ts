@@ -1,6 +1,7 @@
 import { createError } from './errors';
 import { EventBus } from './events';
 import type { ResolvedOp, LibraryError, BoardState, CameraMove } from './types';
+import type { LayoutTransition } from '../schema/layout';
 import type { UIEvent } from '../schema/events';
 import { validateOp } from './validator';
 import { boardReducer, back as reduceBack, createBoard, applyResolvedTheme, closeDetour as reduceCloseDetour, setAssessmentState } from './reducer';
@@ -91,6 +92,7 @@ export class BoardResolver {
   private readonly _enterBus: EventBus<string>;
   private readonly _themeChangeBus: EventBus<ResolvedTheme>;
   private readonly _cameraBus: EventBus<CameraMove>;
+  private readonly _layoutBus: EventBus<LayoutTransition>;
   private entryPlan: EntryPlan = { entered: [], pending: [], pendingCues: [] };
   private readonly onError?: (err: LibraryError) => void;
   private readonly pipeline?: MiddlewarePipeline;
@@ -128,6 +130,7 @@ export class BoardResolver {
     this._enterBus = new EventBus<string>();
     this._themeChangeBus = new EventBus<ResolvedTheme>();
     this._cameraBus = new EventBus<CameraMove>();
+    this._layoutBus = new EventBus<LayoutTransition>();
     this.state = createBoard();
     // UIEvents from rendered components satisfy event triggers (§6.2).
     this._events.subscribe(ev => this.signalEvent(ev));
@@ -161,6 +164,11 @@ export class BoardResolver {
   /** Camera bus: validated explicit camera ops, presentation-only (§6.10). */
   get cameraBus(): EventBus<CameraMove> {
     return this._cameraBus;
+  }
+
+  /** Layout-op bus: the renderer animates the re-flow with these knobs (§6.4). */
+  get layoutBus(): EventBus<LayoutTransition> {
+    return this._layoutBus;
   }
 
   /** Current (immutable) board state. */
@@ -411,6 +419,11 @@ export class BoardResolver {
           duration: validated.op.duration,
           ease: validated.op.ease,
         });
+      }
+      if (validated.op.op === 'layout') {
+        // The renderer animates the re-flow (§6.4); the op's transition knobs
+        // travel with the event so the reducer state stays pure protocol data.
+        this._layoutBus.emit(validated.op.transition ?? {});
       }
       const result: ResolvedOp = { op: validated.op, status: 'applied' };
       if (validated.warnings?.length) result.error = validated.warnings[0];

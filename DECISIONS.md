@@ -384,3 +384,25 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 **Model tools never leak assets (§6.16).** `getModelTools` returns nothing when no connector is registered (the prompt guide then hides `model3d`); `find_models` skips connectors without `search`; `getModelContext` formats compact `ModelSummary` text for host retrieval. Only ids, labels and names cross the boundary — never asset urls, credentials or raw backend shapes.
 
 **`zod` added to root devDependencies** (`3.25.76`, pinned) so root-level tests can author plugin schemas with the public SDK. The package's own dependency stays `^3.23.8`.
+
+## M4b Part C1 — layout engine rulings
+
+**Narrow collapse is JS-measured, not a CSS container query.** `isNarrow(width)` (breakpoint 640, exported) runs on the board's own `clientWidth` via the existing ResizeObserver — not the window — so the board re-composes inside any host container. The board root carries `data-dg-narrow` and regions carry `--dg-region-order`; the stylesheet collapses `split`/`stage` to a stack under those hooks. (A pure-CSS `@container` variant was considered; the JS flag keeps collapse order/pin/tabs logic in one place and testable in jsdom.)
+
+**Re-flow is a hand-rolled FLIP over the Web Animations API, not motion's shared-layout.** `useLayoutReflow` captures `getBoundingClientRect` of every `[data-dg-board-node='true']` element in the `layoutBus` subscription (which fires synchronously during `applyOps`, before React re-renders) and, in a layout effect after commit, inverts old→new deltas with transform-only WAAPI animations (default 600 ms, `cubic-bezier(0.22, 1, 0.36, 1)`; knobs from the op's `transition`). This keeps `LazyMotion domAnimation` (and its bundle) untouched; WAAPI runs off the main thread.
+
+**Layout-transition knobs travel on a `layoutBus`, not in board state.** The reducer state stays pure protocol data (`state.layout` is the spec); the resolver emits `validated.op.transition ?? {}` on `resolver.layoutBus` when a `layout` op applies, and the Board subscribes to capture rects for the FLIP. Nothing about a transition is persisted — replay re-derives it.
+
+**Per-region receding replaces the global rule.** A node recedes when a newer scene exists within its own region (region max scene), reducing to the previous whole-board behavior for `flow`. Region membership comes from `assignSlots`.
+
+**Grid `span` renders through a wrapper only when needed.** A `.dg-region-entry` div with an inline `gridColumn` (from `span`, `full` → `1 / -1`) is emitted only for grid-layout nodes that declare a span; everything else stays flat. `span` is also stamped as `data-dg-span` on the node for host styling.
+
+**DOM contract preserved.** `flow` keeps nodes as direct children of `.dg-board-content`; non-flow layouts render `.dg-layout-regions > .dg-region[data-slot]`. All top-level nodes (flow and region) now carry `data-dg-board-node='true'` — used by FLIP capture and updated detour-dimming selectors (`.dg-board[data-dg-detour-open] [data-dg-board-node='true'] …`), which no longer assume direct children.
+
+**`group.ratio` reuses the split track grammar.** A ratio on a group sets `--dg-group-template` (same tracks as `splitTemplate`), so proportions are pure CSS grid tracks; per-child flex-grow from a token was rejected as unexpressible. `minItemWidth` switches the grid to `auto-fit minmax()` via `data-dg-autofit`. `reverseOnNarrow` flips to a stack under `[data-dg-narrow='true']` (nested groups flip too — accepted for C1).
+
+**Slot-vs-layout validation landed with the layout model (closes the B3 TODO).** `validateOp` now warns `layout-invalid` (warning, never fatal) for append/attach/replace blocks whose `slot` the active layout does not define; the reducer's primary-region fallback is unchanged.
+
+**Gap tokens (`--dg-gap-*`) introduced on the board root** (none/xs/sm/md/lg/xl, scaled by `--dg-space-scale`); the layout engine, groups and lists read them with inline fallbacks so host overrides win.
+
+**List block ships without per-item `enter` choreography** (TODO M4b-C2 with the anatomy work); glyphs are stylesheet-owned (`bullet`/`number` native list markers, `check` via a styled marker, `none` plain). Split/tab labels for the tabs collapse are also deferred to C2's strings wiring.

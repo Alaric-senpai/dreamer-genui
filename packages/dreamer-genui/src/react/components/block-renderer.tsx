@@ -6,7 +6,7 @@ import type { LibraryError } from '../../core/types';
 import { createError } from '../../core/errors';
 import { useDreamer } from '../provider';
 import { Animated } from '../motion/animated';
-import { TextBlockView, ChoicesView, CalloutView, StepsView, GroupView } from './blocks';
+import { TextBlockView, ChoicesView, CalloutView, StepsView, GroupView, ListView } from './blocks';
 import { renderInline } from './inline';
 
 /** Fallback render for invalid/unknown/failed nodes — never blank, never crash. */
@@ -35,6 +35,8 @@ function renderErrorFor(node: Node, nested: boolean): LibraryError | null {
     case 'choices':
     case 'callout':
     case 'steps':
+      return null;
+    case 'list':
       return null;
     case 'figure':
     case 'table':
@@ -71,6 +73,8 @@ function DefaultBlockView({ node, nested }: { node: Node; nested: boolean }): Re
       return <CalloutView block={node.block} />;
     case 'steps':
       return <StepsView block={node.block} />;
+    case 'list':
+      return <ListView block={node.block} />;
     case 'group': {
       if (nested) return <FallbackView node={node} />;
       return (
@@ -96,6 +100,9 @@ export interface NodeViewProps {
   docIndex: number;
   /** True when rendering inside a group (one level of nesting allowed). */
   nested?: boolean;
+  /** True for board-level nodes (as opposed to detour/nested content);
+   * marks the element for FLIP re-flow capture and region dimming. */
+  topLevel?: boolean;
   /** Previous scene receded because newer content owns the focal point (§9.2). */
   receded?: boolean;
   /** True when an open detour points at this node (§7.5 dimming). */
@@ -103,8 +110,11 @@ export interface NodeViewProps {
 }
 
 /** One board node: enter animation wrapper + default component or fallback. */
-export function NodeView({ node, docIndex, nested = false, receded = false, detourTarget = false }: NodeViewProps): ReactNode {
+export function NodeView({ node, docIndex, nested = false, topLevel = false, receded = false, detourTarget = false }: NodeViewProps): ReactNode {
   const block = node.block;
+  // Grid `span` (§6.2 placement) applies only at board level, inside a grid
+  // region; LayoutRegions wraps the node when the span needs a track.
+  const span = topLevel && !nested ? (block as { span?: number | 'full' }).span : undefined;
   return (
     <Animated
       enter={block.enter}
@@ -113,6 +123,8 @@ export function NodeView({ node, docIndex, nested = false, receded = false, deto
       exit={block.exit}
       docIndex={docIndex}
       data-node-id={node.id}
+      data-dg-board-node={topLevel ? 'true' : undefined}
+      data-dg-span={span !== undefined ? String(span) : undefined}
       // data-dg-state is the §7.6 hook host CSS keys off (entering/visible/dimmed
       // treatments); receding is a separate hook so hosts can style it alone.
       data-dg-state={node.state}
