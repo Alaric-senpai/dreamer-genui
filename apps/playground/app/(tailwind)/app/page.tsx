@@ -26,7 +26,7 @@ import {
   serializeBoard,
   type LibraryError,
 } from 'dreamer-genui/core';
-import { ReplySchema } from 'dreamer-genui/schema';
+import { BlockSchema, ReplySchema } from 'dreamer-genui/schema';
 
 const registry = createRegistry();
 
@@ -100,6 +100,74 @@ function extractOps(text: string): unknown[] {
     if (char === ']' && depth === 0) break;
   }
   return ops;
+}
+
+const ENTER_EFFECT_ALIASES: Record<string, string> = {
+  fade: 'reveal',
+  'fade-in': 'reveal',
+  fadeIn: 'reveal',
+  appear: 'reveal',
+  'slide-in': 'rise',
+  'slide-up': 'rise',
+  slide: 'rise',
+  'zoom-in': 'zoom',
+  grow: 'pop',
+  'pop-in': 'pop',
+};
+
+/** Models sometimes use exit effects (fade) for entrances; map known aliases. */
+function repairEffects(value: unknown): void {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    for (const item of value) repairEffects(item);
+    return;
+  }
+  const record = value as Record<string, unknown>;
+  const enter = record.enter;
+  if (enter && typeof enter === 'object') {
+    const enterRecord = enter as Record<string, unknown>;
+    const effect = enterRecord.effect;
+    if (typeof effect === 'string' && ENTER_EFFECT_ALIASES[effect]) {
+      enterRecord.effect = ENTER_EFFECT_ALIASES[effect];
+    }
+  }
+  for (const key of ['blocks', 'items', 'sections', 'questions', 'cards']) {
+    if (Array.isArray(record[key])) repairEffects(record[key]);
+  }
+}
+
+/**
+ * Playground-only tolerance: drop blocks the library schema cannot render
+ * (for example a figure missing its figure object) instead of failing the
+ * whole turn. The library itself stays strict; this keeps the live demo alive.
+ */
+function repairOp(value: unknown): unknown {
+  repairEffects(value);
+  if (!value || typeof value !== 'object') return value;
+  const record = value as Record<string, unknown>;
+  if (!Array.isArray(record.blocks)) return value;
+  record.blocks = record.blocks
+    .map((block) => {
+      repairEffects(block);
+      if (block && typeof block === 'object') {
+        const blockRecord = block as Record<string, unknown>;
+        if (Array.isArray(blockRecord.blocks)) {
+          blockRecord.blocks = blockRecord.blocks
+            .map(repairOp)
+            .filter((child) => BlockSchema.safeParse(child).success);
+        }
+      }
+      return block;
+    })
+    .filter((block) => BlockSchema.safeParse(block).success);
+  return value;
+}
+
+function repairReply(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.ops)) record.ops = record.ops.map(repairOp);
+  return value;
 }
 
 type CueTarget = { on?: unknown; id?: unknown };
@@ -227,7 +295,7 @@ export default function LiveDemonstrationApp() {
           const { done, value } = await reader.read();
           if (done) break;
           raw += decoder.decode(value, { stream: true });
-          const ops = extractOps(tidy(raw));
+          const ops = extractOps(tidy(raw)).map(repairOp);
           if (ops.length > opCount) {
             const fresh = ops.slice(opCount);
             opCount = ops.length;
@@ -245,10 +313,12 @@ export default function LiveDemonstrationApp() {
         const jsonText = finalText.slice(first, last + 1);
         let reply: Reply;
         try {
-          reply = ReplySchema.parse(JSON.parse(jsonText)) as Reply;
+          reply = ReplySchema.parse(repairReply(JSON.parse(jsonText))) as Reply;
         } catch (parseError) {
           // Keep whatever complete ops did stream in, then report the mismatch.
-          if (opCount > 0) board.applyFinal({ v: 1, ops: extractOps(finalText) as Reply['ops'] });
+          if (opCount > 0) {
+            board.applyFinal({ v: 1, ops: extractOps(finalText).map(repairOp) as Reply['ops'] });
+          }
           throw new Error(
             `Invalid reply from the tutor: ${
               parseError instanceof Error ? parseError.message : String(parseError)

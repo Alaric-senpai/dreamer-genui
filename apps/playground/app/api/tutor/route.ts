@@ -67,6 +67,8 @@ Rules for this live session:
 - Choose **fresh, short node ids** that do not collide with the current board outline (for example: beat-1, beat-2 …). The outline below lists every id already used.
 - Prefer **append** with 1–4 small blocks per turn: the student should see the next beat, not a whole lesson at once.
 - Give every figure and plugin node a plain-text \`alt\`.
+- \`enter.effect\` must be one of: \`reveal\`, \`rise\`, \`pop\`, \`sweep\`, \`draw\`, \`stagger\`, \`none\`, \`typewriter\`, \`words\`, \`chars\`, \`slam\`, \`wipe\`, \`scribble\`, \`zoom\`, \`count-up\`, \`morph\`. Never use \`fade\` for \`enter\` — \`fade\` is an exit effect.
+- A figure block must include the figure object, for example \`{"type":"figure","id":"fig-1","figure":{"kind":"diagram",...},"alt":"..."}\`. Never emit \`type:"figure"\` without \`figure\`; if you are unsure of the shape, use a text or callout block instead.
 - Use \`enter: { trigger: { on: "cue", id: "..." } }\` for beats that follow your narration, and reuse one cue id per beat. The playground fires the cues in order after each turn.
 - Choose a layout deliberately (\`split\` to put an explanation next to a question; a \`layout\` op when a question appears).
 - Stay generic: any subject is fine. Keep metadata (title, ids, labels) short.
