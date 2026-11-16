@@ -12,6 +12,8 @@
 | `title` | `board` | `dg-board-title` |
 | `skip` | `board` | `dg-board-skip` |
 | `live-region` | `board` | `dg-board-live-region` |
+| `status` | `board` | `dg-board-status` |
+| `empty` | `board` | `dg-board-empty` |
 
 Every part is addressable through `partClassNames` / `partStyles`:
 
@@ -29,6 +31,8 @@ Every part is addressable through `partClassNames` / `partStyles`:
 - `--dg-color-ink`
 - `--dg-theme-duration`
 - `--dg-theme-ease`
+- `--dg-density-scale`
+- `--dg-min-target`
 
 ## Variants
 
@@ -36,6 +40,12 @@ Every part is addressable through `partClassNames` / `partStyles`:
 - `camera-off`
 - `recede`
 - `detour-open`
+- `compact`
+- `comfortable`
+- `large`
+- `thinking`
+- `listening`
+- `speaking`
 
 ## Data attributes
 
@@ -44,6 +54,8 @@ Every part is addressable through `partClassNames` / `partStyles`:
 - `data-dg-layout`
 - `data-dg-narrow`
 - `data-dg-detour-open`
+- `data-dg-density`
+- `data-dg-status`
 
 ## Events
 

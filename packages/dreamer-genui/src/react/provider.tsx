@@ -6,6 +6,7 @@ import type { UIEvent } from '../schema/events';
 import { MotionProvider } from './motion/animated';
 import { BoardEmitContext } from './emit-context';
 import type { ComponentOverride } from './anatomy';
+import { createTranslator } from '../core/strings';
 
 /** UI strings — all overridable for i18n. */
 export interface UIStrings {
@@ -28,12 +29,22 @@ export const defaultStrings: UIStrings = {
 
 export type ColorScheme = 'auto' | 'light' | 'dark';
 
+/** Host/user density setting (§6.10), not tutor-controlled. */
+export type Density = 'compact' | 'comfortable' | 'large';
+
 export interface DreamerContextValue {
   registry: Registry;
   /** 'auto' resolves via the OS colour scheme (media query, SSR-safe default light). */
   colorScheme: ColorScheme;
   scheme: 'light' | 'dark';
   strings: UIStrings;
+  /** BCP-47 locale used to resolve the strings registry (§7.11). */
+  locale: string;
+  /** Logical writing direction; `rtl` mirrors `left`/`right` slots. */
+  dir: 'ltr' | 'rtl';
+  density: Density;
+  /** Translate a registered strings key (`board.*`, `assessment.*`, ...). */
+  t: (key: string, values?: Record<string, string | number>) => string;
   /** Host-facing sinks for events emitted outside any <Board>. */
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
@@ -54,6 +65,12 @@ export interface DreamerProviderProps {
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
   strings?: Partial<UIStrings>;
+  /** Locale for the strings registry; defaults to `en`. */
+  locale?: string;
+  /** Writing direction; `rtl` mirrors logical left/right placements. */
+  dir?: 'ltr' | 'rtl';
+  /** Host/user density; not normally tutor-controlled. */
+  density?: Density;
   /** Slot/part/type replacement (§8.5.4), keyed by built-in component name
    *  (see `docs/components/`). Overrides receive `renderDefault()` plus the
    *  component's own props. */
@@ -84,8 +101,30 @@ function useMediaScheme(auto: boolean): 'light' | 'dark' {
  * its own — the resolved board theme flows from the store's state (engine
  * resolver, M2) onto the `<Board>` root as `--dg-*` variables.
  */
-export function DreamerProvider({ registry, colorScheme = 'light', onEvent, onError, strings, components, children }: DreamerProviderProps) {
+export function DreamerProvider({
+  registry,
+  colorScheme = 'light',
+  onEvent,
+  onError,
+  strings,
+  locale = 'en',
+  dir = 'ltr',
+  density = 'comfortable',
+  components,
+  children,
+}: DreamerProviderProps) {
   const scheme = useMediaScheme(colorScheme === 'auto');
+  const t = useMemo(() => createTranslator(registry, locale), [registry, locale]);
+  const mergedStrings = useMemo<UIStrings>(
+    () => ({
+      return: strings?.return ?? t('board.return'),
+      continue: strings?.continue ?? t('board.continue'),
+      hint: strings?.hint ?? t('board.hint'),
+      explainer: strings?.explainer ?? defaultStrings.explainer,
+      skip: strings?.skip ?? t('board.skip'),
+    }),
+    [strings, t]
+  );
   const value = useMemo<DreamerContextValue>(
     () => ({
       registry,
@@ -93,10 +132,14 @@ export function DreamerProvider({ registry, colorScheme = 'light', onEvent, onEr
       scheme,
       onEvent,
       onError,
-      strings: { ...defaultStrings, ...strings },
+      strings: mergedStrings,
+      locale,
+      dir,
+      density,
+      t,
       components: components ?? {},
     }),
-    [registry, colorScheme, scheme, onEvent, onError, strings, components]
+    [registry, colorScheme, scheme, onEvent, onError, mergedStrings, locale, dir, density, t, components]
   );
   return (
     <DreamerContext.Provider value={value}>

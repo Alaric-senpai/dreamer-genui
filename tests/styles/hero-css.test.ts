@@ -12,7 +12,8 @@ describe('hero typography (§9.2 + review fix)', () => {
   });
 
   test('the exported token scale cannot drift from the stylesheet fallback', () => {
-    const cssClamp = /font-size:\s*var\(--dg-text-hero,\s*(clamp\([^)]*\))\)/.exec(heroRule)?.[1]?.trim();
+    // Density scaling wraps the clamp in calc(); the exported token stays the clamp itself.
+    const cssClamp = /font-size:\s*var\(--dg-text-hero,\s*(?:calc\()?(clamp\([^)]*\))(?:\s*\*\s*var\([^)]*\))?\)+/.exec(heroRule)?.[1]?.trim();
     expect(cssClamp).toBeTruthy();
     expect(DEFAULT_VARS['--dg-text-hero']).toBe(cssClamp);
   });

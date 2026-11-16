@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Component, useContext, useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { Node } from '../../core/types';
 import type { Block } from '../../schema/blocks';
 import type { LibraryError } from '../../core/types';
 import { createError } from '../../core/errors';
 import { useDreamer } from '../provider';
+import { BoardErrorContext } from '../emit-context';
 import { useParts } from '../anatomy';
 import { Animated } from '../motion/animated';
 import { TextBlockView, ChoicesView, CalloutView, StepsView, GroupView, ListView } from './blocks';
@@ -12,14 +13,57 @@ import { renderInline } from './inline';
 
 /** Fallback render for invalid/unknown/failed nodes — never blank, never crash. */
 export function FallbackView({ node }: { node: Node }): ReactNode {
+  const p = useParts('fallback');
+  const root = p.props('root', 'dg-fallback');
+  const alt = p.props('alt', 'dg-fallback-text');
   // `alt` lives on the node base, except figures where it sits inside `figure`.
   const block = node.block as { alt?: string; figure?: { alt?: string } };
   const text = node.altText ?? block.alt ?? block.figure?.alt ?? `(unable to render "${node.id}")`;
   return (
-    <div className="dg-fallback" data-node-id={node.id}>
-      {text}
+    <div {...root} data-node-id={node.id}>
+      <span {...alt}>{text}</span>
     </div>
   );
+}
+
+interface NodeBoundaryProps {
+  node: Node;
+  onError?: (err: LibraryError) => void;
+  children: ReactNode;
+}
+
+interface NodeBoundaryState {
+  failed: boolean;
+}
+
+/**
+ * Per-node error boundary (§2.4/§7.4): one misbehaving block degrades to its
+ * `alt` fallback without taking down the rest of the board. Reset by keying
+ * the boundary on the node id in `NodeView`.
+ */
+class NodeBoundary extends Component<NodeBoundaryProps, NodeBoundaryState> {
+  override state: NodeBoundaryState = { failed: false };
+
+  static getDerivedStateFromError(): NodeBoundaryState {
+    return { failed: true };
+  }
+
+  override componentDidCatch(error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    this.props.onError?.(
+      createError(
+        'invalid-node',
+        `Node "${this.props.node.id}" failed to render: ${message}`,
+        this.props.node.id,
+        this.props.node.block.type,
+      ),
+    );
+  }
+
+  override render(): ReactNode {
+    if (this.state.failed) return <FallbackView node={this.props.node} />;
+    return this.props.children;
+  }
 }
 
 /** Non-null when the node cannot render normally (i.e. must show a fallback). */
@@ -114,6 +158,9 @@ export interface NodeViewProps {
 export function NodeView({ node, docIndex, nested = false, topLevel = false, receded = false, detourTarget = false }: NodeViewProps): ReactNode {
   const block = node.block;
   const p = useParts('node');
+  const { onError: providerOnError } = useDreamer();
+  const boardOnError = useContext(BoardErrorContext);
+  const onError = boardOnError ?? providerOnError;
   const root = p.props('root', `dg-node dg-node-${node.state}`);
   const inner = p.props('inner', 'dg-node-inner');
   // Grid `span` (§6.2 placement) applies only at board level, inside a grid
@@ -137,7 +184,9 @@ export function NodeView({ node, docIndex, nested = false, topLevel = false, rec
       data-dg-detour-target={detourTarget ? 'true' : undefined}
     >
       <div {...inner}>
-        <DefaultBlockView node={node} nested={nested} />
+        <NodeBoundary key={node.id} node={node} onError={onError}>
+          <DefaultBlockView node={node} nested={nested} />
+        </NodeBoundary>
       </div>
     </Animated>
   );

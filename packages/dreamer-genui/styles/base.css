@@ -17,17 +17,20 @@
   /* ---------- board root ---------- */
   .dg-board {
     position: relative;
+    /* Theme spacing × host density (§6.10): density is a user setting and must
+     * not fight the tutor-controlled theme space scale, so combine both here. */
+    --dg-effective-space: calc(var(--dg-space-scale, 1) * var(--dg-density-scale, 1));
     /* spacing scale used by the layout engine (§6.4); hosts override any of these */
     --dg-gap-none: 0px;
-    --dg-gap-xs: calc(0.3rem * var(--dg-space-scale, 1));
-    --dg-gap-sm: calc(0.5rem * var(--dg-space-scale, 1));
-    --dg-gap-md: calc(0.75rem * var(--dg-space-scale, 1));
-    --dg-gap-lg: calc(1.1rem * var(--dg-space-scale, 1));
-    --dg-gap-xl: calc(1.6rem * var(--dg-space-scale, 1));
+    --dg-gap-xs: calc(0.3rem * var(--dg-effective-space, 1));
+    --dg-gap-sm: calc(0.5rem * var(--dg-effective-space, 1));
+    --dg-gap-md: calc(0.75rem * var(--dg-effective-space, 1));
+    --dg-gap-lg: calc(1.1rem * var(--dg-effective-space, 1));
+    --dg-gap-xl: calc(1.6rem * var(--dg-effective-space, 1));
     background-color: var(--dg-color-bg, #f7f7f5);
     color: var(--dg-color-ink, #1f1f1d);
     font-family: var(--dg-font-body, system-ui, -apple-system, sans-serif);
-    font-size: var(--dg-text-body, 1.05rem);
+    font-size: var(--dg-text-body, calc(1.05rem * var(--dg-density-scale, 1)));
     line-height: var(--dg-line-height, 1.55);
     min-height: 100%;
     /* theme changes tween (§6.8), never a hard cut; knobs come from the resolved theme op */
@@ -39,10 +42,10 @@
 
   .dg-board-content {
     container-type: inline-size;
-    padding: calc(1.25rem * var(--dg-space-scale, 1));
+    padding: calc(1.25rem * var(--dg-effective-space, 1));
     display: flex;
     flex-direction: column;
-    gap: calc(1.1rem * var(--dg-space-scale, 1));
+    gap: calc(1.1rem * var(--dg-effective-space, 1));
     max-width: 42rem;
     margin-inline: auto;
   }
@@ -54,7 +57,7 @@
   .dg-layout-regions {
     display: flex;
     flex-direction: column;
-    gap: var(--dg-gap-lg, calc(1.1rem * var(--dg-space-scale, 1)));
+    gap: var(--dg-gap-lg, calc(1.1rem * var(--dg-effective-space, 1)));
     min-width: 0;
   }
   .dg-layout-regions[data-dg-layout='split'] {
@@ -83,7 +86,7 @@
   .dg-region {
     display: flex;
     flex-direction: column;
-    gap: var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1)));
+    gap: var(--dg-gap-md, calc(0.75rem * var(--dg-effective-space, 1)));
     min-width: 0;
   }
   /* grid `span` wrapper (only rendered when a node spans tracks) */
@@ -92,7 +95,7 @@
   /* Sticky `pin` (§6.4 split): keep one side visible while the other scrolls. */
   .dg-region[data-dg-pin='true'] {
     position: sticky;
-    top: calc(1rem * var(--dg-space-scale, 1));
+    top: calc(1rem * var(--dg-effective-space, 1));
     align-self: start;
     z-index: 2;
   }
@@ -113,7 +116,7 @@
   .dg-layout-tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-space-scale, 1)));
+    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-effective-space, 1)));
   }
   .dg-layout-tab {
     appearance: none;
@@ -121,8 +124,8 @@
     background: none;
     color: inherit;
     font: inherit;
-    font-size: var(--dg-text-small, 0.875rem);
-    padding: calc(0.35rem * var(--dg-space-scale, 1)) calc(0.8rem * var(--dg-space-scale, 1));
+    font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1)));
+    padding: calc(0.35rem * var(--dg-effective-space, 1)) calc(0.8rem * var(--dg-effective-space, 1));
     border-radius: 999px;
     cursor: pointer;
     min-height: var(--dg-min-target, 44px);
@@ -146,7 +149,7 @@
 
   .dg-board-title {
     font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
-    font-size: var(--dg-text-heading, clamp(1.7rem, 5.5vw, 2.4rem));
+    font-size: var(--dg-text-heading, calc(clamp(1.7rem, 5.5vw, 2.4rem) * var(--dg-density-scale, 1)));
     font-weight: 700;
     letter-spacing: -0.015em;
     margin: 0;
@@ -159,7 +162,7 @@
   }
   .dg-text-hero {
     font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
-    font-size: var(--dg-text-hero, clamp(2.75rem, 11vw, 5.25rem));
+    font-size: var(--dg-text-hero, calc(clamp(2.75rem, 11vw, 5.25rem) * var(--dg-density-scale, 1)));
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1.04;
@@ -180,14 +183,14 @@
   }
   .dg-text-heading {
     font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
-    font-size: var(--dg-text-heading, clamp(1.7rem, 5.5vw, 2.4rem));
+    font-size: var(--dg-text-heading, calc(clamp(1.7rem, 5.5vw, 2.4rem) * var(--dg-density-scale, 1)));
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.15;
     text-wrap: balance;
   }
   .dg-text-kicker {
-    font-size: var(--dg-text-kicker, 0.8rem);
+    font-size: var(--dg-text-kicker, calc(0.8rem * var(--dg-density-scale, 1)));
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.14em;
@@ -195,7 +198,7 @@
   }
   .dg-text-quote {
     font-family: var(--dg-font-display, var(--dg-font-body, system-ui, -apple-system, sans-serif));
-    font-size: var(--dg-text-heading, clamp(1.7rem, 5.5vw, 2.4rem));
+    font-size: var(--dg-text-heading, calc(clamp(1.7rem, 5.5vw, 2.4rem) * var(--dg-density-scale, 1)));
     font-style: italic;
     font-weight: 500;
     border-left: 3px solid var(--dg-color-accent, #2e5dc4);
@@ -206,7 +209,7 @@
     padding-left: 0.75em;
   }
   .dg-text-note {
-    font-size: var(--dg-text-small, 0.875rem);
+    font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1)));
     color: var(--dg-color-muted, #565650);
   }
 
@@ -269,7 +272,7 @@
   .dg-choices {
     display: flex;
     flex-direction: column;
-    gap: calc(0.5rem * var(--dg-space-scale, 1));
+    gap: calc(0.5rem * var(--dg-effective-space, 1));
     align-items: stretch;
   }
   .dg-choices-prompt { margin: 0 0 0.25rem; }
@@ -301,7 +304,7 @@
     background: color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 12%, transparent);
   }
   .dg-choice-label { font-weight: 600; }
-  .dg-choice-caption { font-size: var(--dg-text-small, 0.875rem); color: var(--dg-color-muted, #565650); }
+  .dg-choice-caption { font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1))); color: var(--dg-color-muted, #565650); }
   .dg-choice-icon { margin-right: 0.35em; }
 
   /* ---------- callout ---------- */
@@ -335,7 +338,7 @@
   .dg-group-stack {
     display: flex;
     flex-direction: var(--dg-group-direction, column);
-    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1))));
+    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-effective-space, 1))));
     align-items: var(--dg-group-align, stretch);
     justify-content: var(--dg-group-justify, flex-start);
   }
@@ -343,14 +346,14 @@
     display: flex;
     flex-direction: var(--dg-group-direction, row);
     flex-wrap: var(--dg-group-wrap, wrap);
-    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1))));
+    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-effective-space, 1))));
     align-items: var(--dg-group-align, baseline);
     justify-content: var(--dg-group-justify, flex-start);
   }
   .dg-group-grid {
     display: grid;
     grid-template-columns: var(--dg-group-template, repeat(var(--dg-group-columns, 2), minmax(0, 1fr)));
-    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-space-scale, 1))));
+    gap: var(--dg-group-gap, var(--dg-gap-md, calc(0.75rem * var(--dg-effective-space, 1))));
     align-items: var(--dg-group-align, stretch);
     justify-content: var(--dg-group-justify, normal);
   }
@@ -371,13 +374,13 @@
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-space-scale, 1)));
+    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-effective-space, 1)));
   }
   .dg-list-bullet { padding-inline-start: 1.2em; list-style: disc; }
   .dg-list-number { padding-inline-start: 1.4em; list-style: decimal; }
   .dg-list-check .dg-list-item {
     display: flex;
-    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-space-scale, 1)));
+    gap: var(--dg-gap-sm, calc(0.5rem * var(--dg-effective-space, 1)));
   }
   .dg-list-check .dg-list-check::before {
     content: '✓';
@@ -475,8 +478,8 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: calc(0.7rem * var(--dg-space-scale, 1));
-    padding: calc(1rem * var(--dg-space-scale, 1));
+    gap: calc(0.7rem * var(--dg-effective-space, 1));
+    padding: calc(1rem * var(--dg-effective-space, 1));
     /* Scoped themes swap --dg-* vars on this element; re-resolve inherited
      * text colour here so a dark detour theme never inherits the board ink. */
     color: var(--dg-color-ink, #1f1f1d);
@@ -493,9 +496,9 @@
     outline: 2px solid var(--dg-color-accent, #2e5dc4);
     outline-offset: 3px;
   }
-  .dg-detour-flow { margin-top: calc(0.9rem * var(--dg-space-scale, 1)); }
-  .dg-detour-placement-below { margin-bottom: calc(0.9rem * var(--dg-space-scale, 1)); }
-  .dg-detour-blocks { display: flex; flex-direction: column; gap: calc(0.55rem * var(--dg-space-scale, 1)); }
+  .dg-detour-flow { margin-top: calc(0.9rem * var(--dg-effective-space, 1)); }
+  .dg-detour-placement-below { margin-bottom: calc(0.9rem * var(--dg-effective-space, 1)); }
+  .dg-detour-blocks { display: flex; flex-direction: column; gap: calc(0.55rem * var(--dg-effective-space, 1)); }
   .dg-detour-return {
     align-self: flex-start;
     display: inline-flex;
@@ -504,7 +507,7 @@
     margin-top: 0.15rem;
     padding: 0.3em 0.75em;
     font: inherit;
-    font-size: var(--dg-text-small, 0.875rem);
+    font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1)));
     color: var(--dg-color-accent, #2e5dc4);
     background: none;
     border: 1px solid color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 40%, transparent);
@@ -618,7 +621,7 @@
     margin-left: auto;
     padding: 0.32em 0.85em;
     font: inherit;
-    font-size: var(--dg-text-small, 0.875rem);
+    font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1)));
     color: var(--dg-color-muted, #565650);
     background: color-mix(in oklab, var(--dg-color-surface, #ffffff) 80%, transparent);
     border: 1px solid color-mix(in oklab, var(--dg-color-ink, #1f1f1d) 16%, transparent);
@@ -666,6 +669,64 @@
   }
   .dg-ambience-particles { display: block; }
 
+  /* ---------- status, empty and fallback states (§7.5) ---------- */
+  .dg-status {
+    position: absolute;
+    inset-inline-start: 50%;
+    bottom: calc(1rem * var(--dg-effective-space, 1));
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: calc(0.45rem * var(--dg-effective-space, 1));
+    padding: calc(0.35rem * var(--dg-effective-space, 1)) calc(0.8rem * var(--dg-effective-space, 1));
+    border: 1px solid var(--dg-color-border, #e2e2dc);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--dg-color-surface, #ffffff) 88%, transparent);
+    color: var(--dg-color-muted, #565650);
+    font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1)));
+    line-height: 1.2;
+    pointer-events: none;
+    z-index: 5;
+    backdrop-filter: blur(6px);
+  }
+  .dg-status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--dg-color-accent, #2e5dc4);
+    animation: dg-status-pulse 1.6s ease-in-out infinite;
+  }
+  .dg-status[data-dg-status='listening'] .dg-status-dot { background: var(--dg-color-success, #15803d); }
+  .dg-status[data-dg-status='speaking'] .dg-status-dot { background: var(--dg-color-info, #2563eb); }
+
+  .dg-empty {
+    color: var(--dg-color-muted, #565650);
+    font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1)));
+    padding-block: calc(1.5rem * var(--dg-effective-space, 1));
+  }
+
+  .dg-fallback {
+    border: 1px dashed var(--dg-color-border, #e2e2dc);
+    border-radius: var(--dg-radius-md, 12px);
+    padding: calc(0.75rem * var(--dg-effective-space, 1));
+    color: var(--dg-color-muted, #565650);
+    font-size: var(--dg-text-small, calc(0.875rem * var(--dg-density-scale, 1)));
+  }
+  .dg-fallback-text { overflow-wrap: anywhere; }
+
+  /* ---------- RTL (§7.11): logical slots mirror; glyph-like accents follow ---------- */
+  .dg-board[dir='rtl'] .dg-text-quote,
+  .dg-board[dir='rtl'] .dg-text-definition {
+    border-left: none;
+    border-right: 3px solid var(--dg-color-border, #e2e2dc);
+    padding-left: 0;
+    padding-right: 0.75em;
+  }
+  .dg-board[dir='rtl'] .dg-text-quote {
+    border-right-color: var(--dg-color-accent, #2e5dc4);
+  }
+  .dg-board[dir='rtl'] .dg-detour-return-icon { transform: scaleX(-1); }
+
   /* ---------- M4: keyframes ---------- */
   @keyframes dg-detour-in {
     from { opacity: 0; transform: translateY(8px) scale(0.985); }
@@ -681,6 +742,10 @@
   @keyframes dg-annotate-in {
     from { opacity: 0; transform: scale(0.94); }
     to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes dg-status-pulse {
+    0%, 100% { opacity: 0.45; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1); }
   }
   @keyframes dg-ambience-flicker {
     0%, 100% { opacity: calc(0.55 * var(--dg-ambience-intensity, 1)); }

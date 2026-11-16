@@ -12,7 +12,11 @@ import { createRegistry } from '../../packages/dreamer-genui/src/core/registry';
 import type { ReplyLike } from '../../packages/dreamer-genui/src/core/resolver';
 import type { UIEvent } from '../../packages/dreamer-genui/src/schema/events';
 import type { ResolvedTheme } from '../../packages/dreamer-genui/src/core/theme';
+import { DEFAULT_STRINGS } from '../../packages/dreamer-genui/src/core/strings';
 import { setReducedMotion } from '../setup';
+
+/** The detour return control resolves its label from the strings registry. */
+const RETURN_LABEL = new RegExp(DEFAULT_STRINGS['board.return'] ?? 'Back');
 
 function fixture(name: string): ReplyLike {
   return JSON.parse(readFileSync(join(process.cwd(), 'fixtures', name), 'utf8')) as ReplyLike;
@@ -85,7 +89,7 @@ describe('M4 attach end to end (§7.5)', () => {
 
     const region = await screen.findByRole('region', { name: 'Explainer' });
     expect(within(region).getByText(/Botany is the scientific study of plants/)).toBeInTheDocument();
-    expect(within(region).getByRole('button', { name: /Return/ })).toBeInTheDocument();
+    expect(within(region).getByRole('button', { name: RETURN_LABEL })).toBeInTheDocument();
 
     expect(container.querySelector('.dg-detour-overlay')?.getAttribute('data-dg-detour-overlay-placement')).toBe('spotlight');
     expect(container.querySelector('.dg-detour-backdrop')).toBeInTheDocument();
@@ -99,7 +103,7 @@ describe('M4 attach end to end (§7.5)', () => {
       store.applyFinal(ATTACH_EXPLAINER);
     });
     const region = await screen.findByRole('region', { name: 'Explainer' });
-    await user.click(within(region).getByRole('button', { name: /Return/ }));
+    await user.click(within(region).getByRole('button', { name: RETURN_LABEL }));
 
     expect(events).toContainEqual({ type: 'action', action: 'return', nodeId: 'branches' });
     expect(screen.queryByRole('region', { name: 'Explainer' })).toBeNull();
@@ -151,7 +155,7 @@ describe('M4 attach end to end (§7.5)', () => {
     expect(target).not.toHaveAttribute('inert');
     expect(target).not.toHaveAttribute('aria-hidden');
 
-    await user.click(await screen.findByRole('button', { name: /Return/ }));
+    await user.click(await screen.findByRole('button', { name: RETURN_LABEL }));
     await waitFor(() => expect(background).not.toHaveAttribute('inert'));
     expect(background).not.toHaveAttribute('aria-hidden');
   });
@@ -165,7 +169,7 @@ describe('M4 attach end to end (§7.5)', () => {
     const botany = screen.getByRole('button', { name: /Botany/i });
     await waitFor(() => expect(botany.getAttribute('data-dg-annotated')).toBe('circle'));
 
-    await user.click(await screen.findByRole('button', { name: /Return/ }));
+    await user.click(await screen.findByRole('button', { name: RETURN_LABEL }));
     await waitFor(() => expect(botany.hasAttribute('data-dg-annotated')).toBe(false));
   });
 });
@@ -206,7 +210,7 @@ describe('M4 theme op end to end (§6.8)', () => {
     expect(region.getAttribute('style')).toContain('--dg-color-bg');
     expect(board.getAttribute('style')).toBe(before);
 
-    await user.click(within(region).getByRole('button', { name: /Return/ }));
+    await user.click(within(region).getByRole('button', { name: RETURN_LABEL }));
     expect(board.getAttribute('style')).toBe(before);
   });
 });

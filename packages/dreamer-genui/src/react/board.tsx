@@ -8,7 +8,7 @@ import type { ResolvedTheme } from '../core/theme';
 import type { BoardStore } from './use-board';
 import { useBoardVersion } from './use-board';
 import { useDreamer } from './provider';
-import { BoardEmitContext } from './emit-context';
+import { BoardEmitContext, BoardErrorContext } from './emit-context';
 import { computeEntryPlan, defaultPacing, type EntryPlan, type Pacing } from '../core/cues';
 import { assignSlots, createLayoutModel, type SlotAssignment } from '../core/layout';
 import type { Slot } from '../schema/layout';
@@ -123,8 +123,20 @@ function LiveAnnouncer({
   );
 }
 
+/** Lifecycle indicator state shown while the tutor/voice model is at work (§7.5). */
+export type BoardStatus = 'idle' | 'thinking' | 'listening' | 'speaking';
+
+/** Density presets (§6.10): type/space scale and minimum tap target. */
+const DENSITY_VARS: Record<'compact' | 'comfortable' | 'large', { scale: number; minTarget: number }> = {
+  compact: { scale: 0.9, minTarget: 40 },
+  comfortable: { scale: 1, minTarget: 44 },
+  large: { scale: 1.18, minTarget: 56 },
+};
+
 export interface BoardProps {
   store: BoardStore;
+  /** Unobtrusive lifecycle indicator; invisible when `idle` (§7.5). */
+  status?: BoardStatus;
   /** "cued" | "auto"; defaults to cued once any node uses a cue trigger, else auto (§6.3). */
   pacing?: Pacing;
   /** "auto" follows newly entered nodes; "off" disables the virtual camera (§6.10). */
@@ -159,6 +171,7 @@ export interface BoardProps {
  */
 export function Board({
   store,
+  status = 'idle',
   pacing,
   camera = 'auto',
   ambience = 'auto',
@@ -174,7 +187,15 @@ export function Board({
 }: BoardProps): ReactNode {
   useBoardVersion(store);
   const state = store.getState();
-  const { onEvent: providerOnEvent, onError: providerOnError, registry, strings } = useDreamer();
+  const {
+    onEvent: providerOnEvent,
+    onError: providerOnError,
+    registry,
+    strings,
+    dir,
+    density,
+    t,
+  } = useDreamer();
   const theme = state.theme;
   // Board parts cannot read the AnatomyProvider it renders below, so bind them directly.
   const bp = (part: string, extra?: string) => partProps('board', part, partClassNames?.board, partStyles?.board, extra);
@@ -189,16 +210,22 @@ export function Board({
   // stylesheet's var() fallbacks < host CSS < resolved board theme, so the
   // inline style only ever carries the RESOLVED theme tokens + transition knobs) ----
   const style = useMemo<CSSProperties>(() => {
-    if (!theme) return {};
-    const vars: CssTokens = tokensToVars(theme.tokens);
-    // Theme-transition knobs (§6.8: tween, never a cut) — consumed by the base
-    // stylesheet; reduced motion shortens to near-instant via the media query there.
-    vars['--dg-theme-duration'] = `${theme.transition.duration}ms`;
-    vars['--dg-theme-ease'] = EASE_NAMES.has(theme.transition.ease) ? theme.transition.ease : 'smooth';
+    const vars: CssTokens = theme ? tokensToVars(theme.tokens) : {};
+    if (theme) {
+      // Theme-transition knobs (§6.8: tween, never a cut) — consumed by the base
+      // stylesheet; reduced motion shortens to near-instant via the media query there.
+      vars['--dg-theme-duration'] = `${theme.transition.duration}ms`;
+      vars['--dg-theme-ease'] = EASE_NAMES.has(theme.transition.ease) ? theme.transition.ease : 'smooth';
+    }
+    // Density is a host/user setting (§6.10): it scales type, space and the
+    // minimum tap target without overriding the tutor's theme tokens.
+    const densityVars = DENSITY_VARS[density];
+    vars['--dg-density-scale'] = String(densityVars.scale);
+    vars['--dg-min-target'] = `${densityVars.minTarget}px`;
     const css: Record<string, string> = {};
     for (const [k, v] of Object.entries(vars)) css[k] = v;
     return css as CSSProperties;
-  }, [theme]);
+  }, [theme, density]);
 
   const entered = new Set(entry.entered);
   const orderedIds = Object.keys(state.nodes).filter((id) => entered.has(id));
@@ -286,6 +313,7 @@ export function Board({
   // Interactive components emit onto the board's events bus; the bridge
   // below forwards every bus event to both the provider and board sinks.
   const emit = useCallback((event: UIEvent) => store.events.emit(event), [store]);
+  const reportError = useCallback((error: LibraryError) => store.errors.emit(error), [store]);
 
   // Latest sinks without re-subscribing the buses per render (synced before
   // the bus-bridge effect below, declaration order).
@@ -612,10 +640,13 @@ export function Board({
   const titlePart = bp('title', 'dg-board-title');
   const skipPart = bp('skip', `dg-skip${classNames?.skip ? ` ${classNames.skip}` : ''}`);
   const liveRegionPart = bp('live-region', 'dg-live-region');
+  const statusPart = bp('status', 'dg-status');
+  const emptyPart = bp('empty', 'dg-empty');
 
   return (
     <TempoContext.Provider value={tempo}>
       <BoardEmitContext.Provider value={emit}>
+        <BoardErrorContext.Provider value={reportError}>
         <AnatomyProvider classNames={partClassNames} styles={partStyles}>
           <section
             ref={boardRef}
@@ -627,6 +658,8 @@ export function Board({
             data-dg-ambience={ambience}
             data-dg-recede={recede ? 'true' : undefined}
             data-dg-detour-open={detour ? placement ?? 'true' : undefined}
+            data-dg-density={density}
+            dir={dir}
             style={boardPart.style ? { ...style, ...boardPart.style } : style}
           >
             <AmbienceLayer
@@ -642,6 +675,12 @@ export function Board({
               dataPart={liveRegionPart['data-dg-part']}
               style={liveRegionPart.style}
             />
+            {status !== 'idle' && (
+              <div {...statusPart} data-dg-status={status} role="status" aria-live="polite">
+                <span className="dg-status-dot" aria-hidden="true" />
+                <span className="dg-status-label">{t(`board.${status}`)}</span>
+              </div>
+            )}
             <div
               ref={cameraRef}
               {...cameraPart}
@@ -655,6 +694,11 @@ export function Board({
                 data-dg-narrow={narrow || undefined}
               >
                 {state.title && <h2 {...titlePart}>{state.title}</h2>}
+                {Object.keys(state.nodes).length === 0 && (
+                  <div {...emptyPart} data-dg-empty="">
+                    {t('board.empty')}
+                  </div>
+                )}
                 {entry.pending.length > 0 && (
                   <button type="button" {...skipPart} onClick={() => store.flush()}>
                     {strings.skip}
@@ -690,6 +734,7 @@ export function Board({
             )}
           </section>
         </AnatomyProvider>
+        </BoardErrorContext.Provider>
       </BoardEmitContext.Provider>
     </TempoContext.Provider>
   );

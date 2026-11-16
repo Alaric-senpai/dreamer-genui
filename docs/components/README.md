@@ -5,10 +5,11 @@
 | Component | Parts | Override key |
 | :--- | :--- | :--- |
 | [`ambience`](./ambience.md) | `root`, `texture`, `layer` | `components={{ ambience: … }}` |
-| [`board`](./board.md) | `root`, `camera`, `content`, `title`, `skip`, `live-region` | `components={{ board: … }}` |
+| [`board`](./board.md) | `root`, `camera`, `content`, `title`, `skip`, `live-region`, `status`, `empty` | `components={{ board: … }}` |
 | [`callout`](./callout.md) | `root`, `title`, `content` | `components={{ callout: … }}` |
 | [`choices`](./choices.md) | `root`, `prompt`, `item`, `item-icon`, `item-label`, `item-caption` | `components={{ choices: … }}` |
 | [`detour`](./detour.md) | `root`, `blocks`, `return`, `return-icon`, `connector` | `components={{ detour: … }}` |
+| [`fallback`](./fallback.md) | `root`, `alt` | `components={{ fallback: … }}` |
 | [`group`](./group.md) | `root` | `components={{ group: … }}` |
 | [`layout`](./layout.md) | `tabs`, `tab`, `regions`, `region` | `components={{ layout: … }}` |
 | [`list`](./list.md) | `root`, `item`, `marker`, `content` | `components={{ list: … }}` |
