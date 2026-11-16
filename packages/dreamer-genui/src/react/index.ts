@@ -4,6 +4,10 @@ export type { DreamerProviderProps, DreamerContextValue, UIStrings } from './pro
 export { Board } from './board';
 export type { BoardProps } from './board';
 export { createBoardStore, useBoard, useBoardVersion } from './use-board';
+export { BoardStoreProvider, BoardStoreContext, BoardStatusContext, useBoardStore, useBoardStatus } from './store-context';
+export type { BoardStoreProviderProps, BoardStatus } from './store-context';
+export { useNode, useNodeEnter, useCue, useTheme, useLayout, useAssessment, useRegistry } from './headless';
+export type { NodeEnterState, UseCueResult, UseAssessmentResult } from './headless';
 export type { BoardStore } from './use-board';
 export { MotionProvider, Animated } from './motion/animated';
 export { createMotionDriver, createReducedMotionDriver, STAGGER_SECONDS } from './motion/driver';

@@ -11,6 +11,8 @@
     "./schema/*": "./dist/schema/*.js",
     "./core": "./dist/core/index.js",
     "./react": "./dist/react/index.js",
+    "./headless": "./dist/headless/index.js",
+    "./devtools": "./dist/devtools/index.js",
     "./styles.css": "./styles/base.css",
     "./tailwind.css": "./styles/tailwind.css",
     "./tailwind-preset": "./styles/tailwind-preset.cjs"

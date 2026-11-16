@@ -440,3 +440,27 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 **Playground reply tolerance stays in the playground.** Live models drift from the protocol (effect synonyms, bare-string flowchart labels, invented shape names, blocks placed directly in `ops`, trailing prose). `apps/playground/.../reply-repair.ts` owns all repairs — effect aliases, flowchart shape/label normalisation, dangling-edge removal, block salvage, `OpSchema` filtering and balanced-object reply extraction. It is covered by `tests/playground/reply-repair.test.ts`; the published schema and validator remain strict. The flowchart prompt line now lists the exact shape vocabulary and says labels are inline arrays, reducing the need for repairs.
 
 **Prompt-guide snapshot updated deliberately.** The flowchart line change is the only snapshot delta; `tests/core/generators.test.ts` was updated with `-u` after the wording change.
+
+## M4b Part C2c — headless hooks and devtools overlay
+
+**The store is now a React context, not only a prop.** `BoardStoreContext` + `BoardStatusContext` live in `src/react/store-context.tsx`; `<Board>` wraps its subtree in `BoardStoreProvider` so every hook inside a custom component sees the same store and status. `BoardStoreProvider` is public for hosts that render their own UI alongside (or instead of) `<Board>`. `useBoardStore()` throws a named error outside a provider, while `useBoardStatus()` defaults to `idle` so isolated previews do not need the provider.
+
+**Entry state is part of the store surface.** `BoardStore.getEntry(pacing?)` forwards to the resolver's existing `getEntry`; `useNodeEnter` uses the board's `defaultPacing()` when no pacing is passed, so cued/auto behaviour matches `<Board>`. The hook returns `{ entered, pending, plan }` rather than a boolean because progress dots and skip controls need the whole plan.
+
+**Hooks are exported twice on purpose.** `src/react/headless.ts` owns the hooks; `src/react/index.ts` re-exports them for convenience, and the new `dreamer-genui/headless` subpath (`src/headless/index.ts`) re-exports the same hooks plus `createBoardStore`/`useBoard` without importing any default component or stylesheet. The devtools overlay lives on its own `dreamer-genui/devtools` subpath so production hosts can lazy-import it and drop it from the initial bundle.
+
+**`useAssessment` returns state + machine.** Calling `store.assessments.get(id)` creates the machine lazily; the hook returns `{ state, machine }` so headless UIs can render persisted answers (`state`) and drive actions (`start`, `submit`, `extendTime`, ...) without poking at resolver internals.
+
+**The devtools overlay is opt-in and ships no CSS.** `DevtoolsOverlay` reads the store from context (or a `store` prop), subscribes to state/events/errors, and renders node entry state, cue chips (pending cues are clickable), theme/layout summary, registry counts, custom `devtoolsPanels` names, logs and snapshot export. Styling is inline using `--dg-*` variables with neutral fallbacks, so importing the subpath never injects styles and cannot clash with the host; a host that wants a different look replaces the component. The overlay is deliberately not registered in `COMPONENT_META`: it is a dev-only host utility, not a board component with a protocol surface.
+
+**Tests:** `tests/react/headless.test.tsx` covers node/entry/cue/layout/status/registry plus the provider error; `tests/react/devtools.test.tsx` covers node tree, cue firing, registry counts and open/close.
+
+## M4b host render window — `visibleNodeIds`
+
+**A host viewport, not `maxMountedNodes` archiving.** `<Board>` gained an optional `visibleNodeIds?: readonly string[]` prop. When set, only those entered node ids (plus an open detour's target, so an explainer never loses its anchor) are rendered. This is deliberately a pure render filter: `BoardState` is untouched, so nodes remain in `serializeBoard`, snapshots, history, replay and the cue engine. `maxMountedNodes` (§7.6) solves a different problem — archiving finished content for memory — and must not silently hide nodes from a host that is paging beats; a host that pages needs a deterministic window while keeping the tutor's full context.
+
+**Hidden is exactly like unentered for the view.** Filtering happens before slot assignment (`orderedIds`) and before the skip count, so hidden nodes are absent from the DOM, tab order and accessibility tree. The `LiveAnnouncer` derives its newest-entered id from the visible window, the Board-level `onEnter` sink suppresses hidden ids (the engine bus still receives them for headless consumers), and the auto-camera's "freshly entered" set is visible-only, so hidden content is never announced or framed. Recede, cue and layout semantics are unchanged; `visibleNodeIds` omitted means every entered node renders, as before.
+
+**Why not a layout/region feature?** Paging beats is a host presentation concern (the playground's `/app` Continue/Prev). Encoding it in the protocol or layout spec would leak a host UI pattern into tutor-authored JSON and change narrated cue semantics. It stays a renderer prop; no schema or protocol change.
+
+**Tests:** `tests/react/viewport.test.tsx` covers filtering and state retention (`serializeBoard` still lists hidden nodes), live-region/onEnter silence, optional-prop restoration and detour-target retention.

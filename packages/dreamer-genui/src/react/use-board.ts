@@ -5,6 +5,7 @@ import type { BoardState, LibraryError, ResolvedOp, CameraMove } from '../core/t
 import type { LayoutTransition } from '../schema/layout';
 import type { UIEvent } from '../schema/events';
 import type { Reply } from '../schema/envelope';
+import type { EntryPlan, Pacing } from '../core/cues';
 
 /** Structural bus surface exposed by the store — a buffering proxy fits this
  * without matching `EventBus`'s private internals. */
@@ -25,6 +26,8 @@ export interface BoardStore {
   subscribe(fn: () => void): () => void;
   /** Snapshot for useSyncExternalStore — a monotonically increasing version. */
   getVersion(): number;
+  /** Current entered/pending node plan for the given pacing (§6.3). */
+  getEntry(pacing?: Pacing): EntryPlan;
   applyOps(reply: ReplyLike): ResolvedOp[];
   applyPartial(reply: ReplyLike): ResolvedOp[];
   applyFinal(reply: ReplyLike): ResolvedOp[];
@@ -139,6 +142,7 @@ export function createBoardStore(options: CreateBoardStoreOptions | BoardResolve
       return () => listeners.delete(fn);
     },
     getVersion: () => version,
+    getEntry: (pacing = 'cued') => resolver.getEntry(pacing),
     events: resolver.events,
     errors,
     applyOps(reply) {
