@@ -26,7 +26,7 @@ import {
   serializeBoard,
   type LibraryError,
 } from 'dreamer-genui/core';
-import { BlockSchema, ReplySchema } from 'dreamer-genui/schema';
+import { OpSchema, ReplySchema } from 'dreamer-genui/schema';
 
 const registry = createRegistry();
 
@@ -46,129 +46,15 @@ const QUICK_STARTS = [
   'Give me a three-beat lesson on the causes of the First World War, with a sombre mood.',
 ];
 
-/** Remove inline reasoning tags some models emit (MiniMax M2.7 does). */
-function tidy(text: string): string {
-  let out = text.replace(/<think[\s\S]*?<\/think>/gi, '');
-  const open = out.search(/<think\b/i);
-  if (open !== -1) out = out.slice(0, open);
-  out = out.replace(/```(?:json)?/gi, '').replace(/```/g, '');
-  return out;
-}
-
-/** Pull every complete top-level op object out of a partially streamed `ops` array. */
-function extractOps(text: string): unknown[] {
-  const opsKey = text.search(/"ops"\s*:/);
-  if (opsKey === -1) return [];
-  const arrayStart = text.indexOf('[', opsKey);
-  if (arrayStart === -1) return [];
-
-  const ops: unknown[] = [];
-  let depth = 0;
-  let start = -1;
-  let inString = false;
-  let escape = false;
-
-  for (let i = arrayStart + 1; i < text.length; i += 1) {
-    const char = text[i];
-    if (inString) {
-      if (escape) escape = false;
-      else if (char === '\\') escape = true;
-      else if (char === '"') inString = false;
-      continue;
-    }
-    if (char === '"') {
-      inString = true;
-      continue;
-    }
-    if (char === '{') {
-      if (depth === 0) start = i;
-      depth += 1;
-      continue;
-    }
-    if (char === '}') {
-      depth -= 1;
-      if (depth === 0 && start !== -1) {
-        try {
-          ops.push(JSON.parse(text.slice(start, i + 1)));
-        } catch {
-          // Not complete yet — wait for more chunks.
-        }
-        start = -1;
-      }
-      continue;
-    }
-    if (char === ']' && depth === 0) break;
-  }
-  return ops;
-}
-
-const ENTER_EFFECT_ALIASES: Record<string, string> = {
-  fade: 'reveal',
-  'fade-in': 'reveal',
-  fadeIn: 'reveal',
-  appear: 'reveal',
-  'slide-in': 'rise',
-  'slide-up': 'rise',
-  slide: 'rise',
-  'zoom-in': 'zoom',
-  grow: 'pop',
-  'pop-in': 'pop',
-};
-
-/** Models sometimes use exit effects (fade) for entrances; map known aliases. */
-function repairEffects(value: unknown): void {
-  if (!value || typeof value !== 'object') return;
-  if (Array.isArray(value)) {
-    for (const item of value) repairEffects(item);
-    return;
-  }
-  const record = value as Record<string, unknown>;
-  const enter = record.enter;
-  if (enter && typeof enter === 'object') {
-    const enterRecord = enter as Record<string, unknown>;
-    const effect = enterRecord.effect;
-    if (typeof effect === 'string' && ENTER_EFFECT_ALIASES[effect]) {
-      enterRecord.effect = ENTER_EFFECT_ALIASES[effect];
-    }
-  }
-  for (const key of ['blocks', 'items', 'sections', 'questions', 'cards']) {
-    if (Array.isArray(record[key])) repairEffects(record[key]);
-  }
-}
-
-/**
- * Playground-only tolerance: drop blocks the library schema cannot render
- * (for example a figure missing its figure object) instead of failing the
- * whole turn. The library itself stays strict; this keeps the live demo alive.
- */
-function repairOp(value: unknown): unknown {
-  repairEffects(value);
-  if (!value || typeof value !== 'object') return value;
-  const record = value as Record<string, unknown>;
-  if (!Array.isArray(record.blocks)) return value;
-  record.blocks = record.blocks
-    .map((block) => {
-      repairEffects(block);
-      if (block && typeof block === 'object') {
-        const blockRecord = block as Record<string, unknown>;
-        if (Array.isArray(blockRecord.blocks)) {
-          blockRecord.blocks = blockRecord.blocks
-            .map(repairOp)
-            .filter((child) => BlockSchema.safeParse(child).success);
-        }
-      }
-      return block;
-    })
-    .filter((block) => BlockSchema.safeParse(block).success);
-  return value;
-}
-
-function repairReply(value: unknown): unknown {
-  if (!value || typeof value !== 'object') return value;
-  const record = value as Record<string, unknown>;
-  if (Array.isArray(record.ops)) record.ops = record.ops.map(repairOp);
-  return value;
-}
+import {
+  extractOps,
+  extractReplyObject,
+  repairOp,
+  repairReply,
+  repairedOps,
+  tidy,
+  type PlaygroundRepairStats,
+} from './reply-repair';
 
 type CueTarget = { on?: unknown; id?: unknown };
 
@@ -295,7 +181,9 @@ export default function LiveDemonstrationApp() {
           const { done, value } = await reader.read();
           if (done) break;
           raw += decoder.decode(value, { stream: true });
-          const ops = extractOps(tidy(raw)).map(repairOp);
+          const ops = extractOps(tidy(raw))
+            .map(repairOp)
+            .filter((op) => OpSchema.safeParse(op).success);
           if (ops.length > opCount) {
             const fresh = ops.slice(opCount);
             opCount = ops.length;
@@ -306,18 +194,19 @@ export default function LiveDemonstrationApp() {
         raw += decoder.decode();
 
         const finalText = tidy(raw).trim();
-        const first = finalText.indexOf('{');
-        const last = finalText.lastIndexOf('}');
-        if (first === -1 || last <= first) throw new Error('The tutor did not return a JSON reply.');
+        const candidate = extractReplyObject(finalText);
+        if (!candidate) throw new Error('The tutor did not return a JSON reply.');
 
-        const jsonText = finalText.slice(first, last + 1);
+        const jsonText = candidate.jsonText;
+        const repairStats: PlaygroundRepairStats = { droppedOps: 0, salvagedBlocks: 0 };
         let reply: Reply;
         try {
-          reply = ReplySchema.parse(repairReply(JSON.parse(jsonText))) as Reply;
+          reply = ReplySchema.parse(repairReply(candidate.value, repairStats)) as Reply;
         } catch (parseError) {
           // Keep whatever complete ops did stream in, then report the mismatch.
-          if (opCount > 0) {
-            board.applyFinal({ v: 1, ops: extractOps(finalText).map(repairOp) as Reply['ops'] });
+          const salvaged = repairedOps(candidate.value);
+          if (salvaged.length > 0) {
+            board.applyFinal({ v: 1, ops: salvaged });
           }
           throw new Error(
             `Invalid reply from the tutor: ${
@@ -338,6 +227,14 @@ export default function LiveDemonstrationApp() {
           role: 'assistant',
           text: `Board updated — ${reply.ops.length} op${reply.ops.length === 1 ? '' : 's'}${
             cueIds.length ? `, ${cueIds.length} cue${cueIds.length === 1 ? '' : 's'}` : ''
+          }${
+            repairStats.salvagedBlocks || repairStats.droppedOps
+              ? ` (recovered ${repairStats.salvagedBlocks} loose block${
+                  repairStats.salvagedBlocks === 1 ? '' : 's'
+                }, skipped ${repairStats.droppedOps} invalid entr${
+                  repairStats.droppedOps === 1 ? 'y' : 'ies'
+                })`
+              : ''
           }.`,
           detail: jsonText,
         });
@@ -401,72 +298,63 @@ export default function LiveDemonstrationApp() {
 
   return (
     <DreamerProvider registry={registry} colorScheme="auto">
-      <main className="min-h-dvh bg-background text-foreground">
-        <header className="mx-auto flex max-w-[1500px] flex-wrap items-end justify-between gap-3 px-4 pt-5">
-          <div>
-            <Link href="/" className="text-xs text-muted-foreground underline underline-offset-4">
-              ← playground index
-            </Link>
-            <h1 className="font-heading text-2xl font-semibold tracking-tight">
-              Live board app
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              The board is driven by a real tutor over the Dahl inference endpoint. Ask for a lesson
-              and watch it write itself, beat by beat.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <label className="flex items-center gap-2">
-              <span className="text-muted-foreground">Model</span>
-              <select
-                value={model}
-                onChange={(event) => setModel(event.target.value)}
-                className="rounded-md border border-border bg-card px-2 py-1"
-              >
-                {MODELS.map((name) => (
-                  <option key={name} value={name}>
-                    {name.split('/').pop()}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-muted-foreground">Profile</span>
-              <select
-                value={mode}
-                onChange={(event) => setMode(event.target.value as Mode)}
-                className="rounded-md border border-border bg-card px-2 py-1"
-              >
-                <option value="lesson">lesson</option>
-                <option value="assessment">assessment</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={autoReply}
-                onChange={(event) => setAutoReply(event.target.checked)}
-              />
-              auto-respond to answers
-            </label>
-          </div>
-        </header>
+      <main className="min-h-dvh bg-background text-foreground relative">
 
-        <div className="mx-auto grid max-w-[1500px] gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_400px]">
-          <section aria-label="live board" className="relative min-h-[62vh] min-w-0 lg:min-h-[calc(100dvh-8rem)]">
+
+        <div className="mx-auto grid max-w-[1500px] gap-4 ">
+          <section aria-label="live board" className="relative min-h-[100vh] min-w-0 ">
             <Board
               store={board}
-              camera="auto"
+              camera="off"
               ambience="auto"
-              pacing="cued"
+              pacing="auto"
               onEvent={handleEvent}
               onError={(err) => setErrors((prev) => [...prev.slice(-49), err])}
               classNames={{
-                root: 'h-full rounded-2xl ring-1 ring-border shadow-sm',
-                content: 'max-w-3xl',
+                root: 'rounded-2xl min-h-full ring-1 ring-border shadow-sm',
+                content: 'max-w-3xl h-max',
               }}
             />
-            <div className="absolute right-3 top-3 flex gap-2 text-xs">
+            {/* top navigation */}
+            <div className="absolute right-[12.5%] top-3 z-60 flex gap-2 w-[75%] text-xs">
+              <Link href="/" className="text-xs bg-black text-white w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground underline underline-offset-4">
+                ←
+              </Link>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <label className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Model</span>
+                  <select
+                    value={model}
+                    onChange={(event) => setModel(event.target.value)}
+                    className="rounded-md border border-border bg-card px-2 py-1"
+                  >
+                    {MODELS.map((name) => (
+                      <option key={name} value={name}>
+                        {name.split('/').pop()}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="text-muted-foreground">Profile</span>
+                  <select
+                    value={mode}
+                    onChange={(event) => setMode(event.target.value as Mode)}
+                    className="rounded-md border border-border bg-card px-2 py-1"
+                  >
+                    <option value="lesson">lesson</option>
+                    <option value="assessment">assessment</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={autoReply}
+                    onChange={(event) => setAutoReply(event.target.checked)}
+                  />
+                  auto-respond to answers
+                </label>
+              </div>
               <button
                 type="button"
                 onClick={skip}
@@ -494,11 +382,9 @@ export default function LiveDemonstrationApp() {
                 Tutor is writing…
               </p>
             )}
-          </section>
-
-          <aside aria-label="tutor chat" className="flex min-h-0 flex-col gap-3">
-            <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
-              <div className="mb-2 flex flex-wrap gap-1.5">
+            {/* input box */}
+            <div className=" absolute z-50 bottom-5 left-[25%] rounded-2xl w-[50%] max-w-[800px] border border-border bg-card p-3 shadow-sm">
+              {/*<div className="mb-2 flex flex-wrap gap-1.5">
                 {QUICK_STARTS.map((starter) => (
                   <button
                     key={starter}
@@ -512,7 +398,7 @@ export default function LiveDemonstrationApp() {
                     {starter.split('.')[0]}
                   </button>
                 ))}
-              </div>
+              </div>*/}
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -520,7 +406,7 @@ export default function LiveDemonstrationApp() {
                   setInput('');
                   void send(value);
                 }}
-                className="flex flex-col gap-2"
+                className="flex flex-row gap-2"
               >
                 <textarea
                   value={input}
@@ -533,14 +419,14 @@ export default function LiveDemonstrationApp() {
                       void send(value);
                     }
                   }}
-                  rows={3}
+                  rows={1}
                   placeholder="Ask for a lesson, a question, a diagram, a mood shift…"
                   className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring/50"
                 />
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">
+                  {/*<span className="text-[11px] text-muted-foreground">
                     Enter to send · Shift+Enter for a new line
-                  </span>
+                  </span>*/}
                   <button
                     type="submit"
                     disabled={streaming || !input.trim()}
@@ -550,7 +436,11 @@ export default function LiveDemonstrationApp() {
                   </button>
                 </div>
               </form>
-            </div>
+            </div>            
+          </section>
+
+          <aside aria-label="tutor chat" className="flex min-h-0 flex-col gap-3">
+
 
             {error && (
               <p

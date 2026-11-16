@@ -1,6 +1,16 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    // The playground imports the published subpath; map it to source in tests
+    // so playground-only helpers are covered against the real schema.
+    alias: {
+      'dreamer-genui/schema': new URL(
+        './packages/dreamer-genui/src/schema/index.ts',
+        import.meta.url,
+      ).pathname,
+    },
+  },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.{ts,tsx}'],
