@@ -464,3 +464,23 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 **Why not a layout/region feature?** Paging beats is a host presentation concern (the playground's `/app` Continue/Prev). Encoding it in the protocol or layout spec would leak a host UI pattern into tutor-authored JSON and change narrated cue semantics. It stays a renderer prop; no schema or protocol change.
 
 **Tests:** `tests/react/viewport.test.tsx` covers filtering and state retention (`serializeBoard` still lists hidden nodes), live-region/onEnter silence, optional-prop restoration and detour-target retention.
+
+## M4b Part C3 — camera extension rulings
+
+**Camera state separates flat framing from depth.** `CameraState` keeps `scale`/`origin`/`translate` for the board layer and adds `tiltX`/`tiltY`/`dolly`. The layer transform stays `translate() scale()` only; tilt/perspective is applied to a dedicated backdrop wrapper and, through CSS variables, to figure layers. Text blocks therefore never skew (§6.12), and a host can retheme the depth effect through CSS without touching React.
+
+**Presets and dolly are resolved in the renderer, not the schema.** `preset` maps to a bounded zoom (`closeup` 1.45, `wide`/`overview` 1) and `dolly` maps to a depth offset (`in` +48px, `out` −48px, numbers clamped to ±3 and scaled). The schema stays declarative and the host can override the constants in one place. Zoom remains renderer-clamped to 1–1.6 even though the wire schema accepts a wider range.
+
+**Camera paths are a renderer-side scheduler.** `cameraBus` now carries the whole validated `CameraOp` (including `path`, `tilt`, `dolly` and per-step `trigger`). The Board owns one active path at a time; a new camera op cancels it. A step with a cue trigger waits for `store.cueBus` unless the cue is already in `firedCues`; steps without one apply immediately, then the scheduler advances after `duration + 80ms`. Paths are presentation-only and never enter board state, snapshots or replay beyond the original op log.
+
+**Student control is a temporary override, not a mode.** With `cameraControls="pinch-pan"`, pointer gestures update a user camera and set `data-dg-camera-user`; the next tutor move clears it. The reset control (a board part) restores the last tutor camera after 400 ms and removes the override. Auto-camera is suppressed while an override is active, so the board never fights the student. Reduced motion removes the tween and falls back to `scrollIntoView`.
+
+## M4b Part C4 — exam enforcement rulings
+
+**Lock decisions live in the resolver; visual enforcement lives in `<Board>`.** `ResolverOptions.examLocks` opts out per aspect and `examLockStrategy` chooses queue (default) or reject. A locked op is validated, then queued or dropped before the reducer sees it, so board state remains exam-clean and snapshots are correct. The queue flushes from the assessment machine's `onChange` after submit (and from assessment `restore` of a submitted state), replaying through normal validation.
+
+**`<Board>` enforces the presentation half from assessment state.** It derives `examLocksFor(state.assessments, examLocks)` and sets `data-dg-exam`, `data-dg-camera="off"` and `data-dg-ambience="off"`, hides the reset control, disables pointer gestures and stamps `--dg-camera-*` at zero. Exam kinetic lock sets the tempo multiplier to 1000, collapsing entrance durations to near-instant; CSS additionally removes camera transforms/transitions and clamps animated nodes to 1 ms. Hosts can opt out per aspect through the same `examLocks` prop; the resolver remains authoritative for what enters state.
+
+**Restore is part of the unlock path.** `resolver.assessments.restore(id, state)` now writes the restored state into `BoardState` and flushes queued ops when the restored state is already submitted. This makes autosave/reload during an exam safe: the client rehydrates into a locked board, and an already-submitted paper does not stay visually locked.
+
+**Tests:** `tests/core/exam-locks.test.ts` covers queue, reject, camera silence/release, restore and per-aspect opt-out; `tests/react/exam.test.tsx` covers board data attributes and host opt-out.

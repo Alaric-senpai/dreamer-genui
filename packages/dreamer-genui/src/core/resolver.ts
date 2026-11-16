@@ -1,6 +1,7 @@
 import { createError } from './errors';
 import { EventBus } from './events';
-import type { ResolvedOp, LibraryError, BoardState, CameraMove } from './types';
+import type { ResolvedOp, LibraryError, BoardState } from './types';
+import type { CameraOp } from '../schema/ops';
 import type { LayoutTransition } from '../schema/layout';
 import type { UIEvent } from '../schema/events';
 import { validateOp } from './validator';
@@ -11,9 +12,12 @@ import { createThemeResolver, type ThemeContext, type ThemePolicy, type Resolved
 import { computeEntryPlan, fireCue, flushAll, seekTo, signalEvent, newlyEntered, type EntryPlan, type Pacing } from './cues';
 import {
   createAssessmentMachine,
+  examLocksFor,
+  isOpLockedByExam,
   systemClock,
   type AssessmentMachine,
   type Clock,
+  type ExamLockPolicy,
 } from './assessment';
 import {
   appendAssessmentState,
@@ -50,6 +54,14 @@ export interface ResolverOptions {
   dir?: 'ltr' | 'rtl';
   /** Clock for ops-log timestamps and assessment timers (injectable in tests). */
   clock?: Clock;
+  /**
+   * Exam-mode locks (§6.8). Defaults to every distraction lock on; hosts may
+   * opt out per aspect. Locked presentation ops are queued (default) or
+   * rejected until the exam is submitted.
+   */
+  examLocks?: Partial<ExamLockPolicy>;
+  /** What to do with a locked op during an exam. Defaults to "queue". */
+  examLockStrategy?: 'queue' | 'reject';
 }
 
 /** Host API for assessment state machines (§6.8). */
@@ -91,11 +103,14 @@ export class BoardResolver {
   private readonly _cueBus: EventBus<string>;
   private readonly _enterBus: EventBus<string>;
   private readonly _themeChangeBus: EventBus<ResolvedTheme>;
-  private readonly _cameraBus: EventBus<CameraMove>;
+  private readonly _cameraBus: EventBus<CameraOp>;
   private readonly _layoutBus: EventBus<LayoutTransition>;
   private entryPlan: EntryPlan = { entered: [], pending: [], pendingCues: [] };
   private readonly onError?: (err: LibraryError) => void;
   private readonly pipeline?: MiddlewarePipeline;
+  private readonly examPolicy: Partial<ExamLockPolicy>;
+  private readonly examLockStrategy: 'queue' | 'reject';
+  private examQueue: Op[] = [];
   private readonly clock: Clock;
   private opsLog: OpsLog;
   private readonly machines = new Map<string, AssessmentMachine>();
@@ -104,6 +119,8 @@ export class BoardResolver {
     this.registry = options.registry ?? createRegistry({ onError: options.onError });
     this.onError = options.onError;
     this.clock = options.clock ?? systemClock;
+    this.examPolicy = options.examLocks ?? {};
+    this.examLockStrategy = options.examLockStrategy ?? 'queue';
     this.opsLog = createOpsLog(this.clock.now());
     const registeredMiddleware = this.registry.listMiddleware();
     const extraMiddleware = options.middleware ?? [];
@@ -129,7 +146,7 @@ export class BoardResolver {
     this._cueBus = new EventBus<string>();
     this._enterBus = new EventBus<string>();
     this._themeChangeBus = new EventBus<ResolvedTheme>();
-    this._cameraBus = new EventBus<CameraMove>();
+    this._cameraBus = new EventBus<CameraOp>();
     this._layoutBus = new EventBus<LayoutTransition>();
     this.state = createBoard();
     // UIEvents from rendered components satisfy event triggers (§6.2).
@@ -162,7 +179,7 @@ export class BoardResolver {
   }
 
   /** Camera bus: validated explicit camera ops, presentation-only (§6.10). */
-  get cameraBus(): EventBus<CameraMove> {
+  get cameraBus(): EventBus<CameraOp> {
     return this._cameraBus;
   }
 
@@ -181,7 +198,17 @@ export class BoardResolver {
     return {
       get: id => this.machineFor(id),
       snapshot: id => this.machineFor(id)?.snapshot(),
-      restore: (id, state) => this.machineFor(id)?.restore(state),
+      restore: (id, state) => {
+        const next = this.machineFor(id)?.restore(state);
+        if (next) {
+          // Restoring an autosaved exam state must also update board state and
+          // release any presentation ops queued while the exam was running.
+          this.state = setAssessmentState(this.state, id, next);
+          this.flushExamQueue();
+          this.refreshEntry();
+        }
+        return next;
+      },
       list: () =>
         Object.entries(this.state.nodes)
           .filter(([, node]) => node.block.type === 'assessment')
@@ -367,11 +394,26 @@ export class BoardResolver {
       onChange: state => {
         this.state = setAssessmentState(this.state, id, state);
         appendAssessmentState(this.opsLog, id, state, this.clock.now());
+        // Submission releases every queued presentation op (§6.8).
+        this.flushExamQueue();
         this.refreshEntry();
       },
     });
     this.machines.set(id, machine);
     return machine;
+  }
+
+  private currentExamLocks(): ExamLockPolicy {
+    return examLocksFor(Object.values(this.state.assessments), this.examPolicy);
+  }
+
+  /** Replay ops that were queued while an exam was active. */
+  private flushExamQueue(): void {
+    if (this.examQueue.length === 0) return;
+    if (Object.values(this.currentExamLocks()).some(Boolean)) return;
+    const queued = this.examQueue;
+    this.examQueue = [];
+    for (const op of queued) this.validateApply(op);
   }
 
   private reportError(err: LibraryError): void {
@@ -406,6 +448,13 @@ export class BoardResolver {
       for (const warning of validated.warnings ?? []) {
         this.reportError(warning);
       }
+      // Exam mode is distraction-free (§6.8): presentation ops are held back
+      // until submit (default) or rejected per host strategy.
+      const locks = this.currentExamLocks();
+      if (isOpLockedByExam(validated.op, locks)) {
+        if (this.examLockStrategy === 'queue') this.examQueue.push(validated.op);
+        return { op: validated.op, status: 'applied' };
+      }
       this.state = boardReducer(this.state, validated.op);
       appendOp(this.opsLog, validated.op, this.clock.now());
       if (validated.op.op === 'replace') this.machines.clear();
@@ -413,12 +462,7 @@ export class BoardResolver {
       this.applyThemeSide(validated.op);
       if (validated.op.op === 'camera') {
         // Presentation-only (§6.10): validated here, executed by the renderer.
-        this._cameraBus.emit({
-          to: validated.op.to ?? 'overview',
-          zoom: validated.op.zoom,
-          duration: validated.op.duration,
-          ease: validated.op.ease,
-        });
+        this._cameraBus.emit(validated.op);
       }
       if (validated.op.op === 'layout') {
         // The renderer animates the re-flow (§6.4); the op's transition knobs

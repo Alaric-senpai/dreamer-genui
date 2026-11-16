@@ -5,7 +5,7 @@
 | Component | Parts | Override key |
 | :--- | :--- | :--- |
 | [`ambience`](./ambience.md) | `root`, `texture`, `layer` | `components={{ ambience: … }}` |
-| [`board`](./board.md) | `root`, `camera`, `content`, `title`, `skip`, `live-region`, `status`, `empty` | `components={{ board: … }}` |
+| [`board`](./board.md) | `root`, `camera`, `content`, `title`, `skip`, `live-region`, `status`, `empty`, `camera-reset` | `components={{ board: … }}` |
 | [`callout`](./callout.md) | `root`, `title`, `content` | `components={{ callout: … }}` |
 | [`choices`](./choices.md) | `root`, `prompt`, `item`, `item-icon`, `item-label`, `item-caption` | `components={{ choices: … }}` |
 | [`detour`](./detour.md) | `root`, `blocks`, `return`, `return-icon`, `connector` | `components={{ detour: … }}` |

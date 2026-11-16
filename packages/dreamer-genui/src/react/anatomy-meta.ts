@@ -93,10 +93,10 @@ export const COMPONENT_META = {
   }),
   board: defineComponentMeta({
     name: 'board',
-    parts: ['root', 'camera', 'content', 'title', 'skip', 'live-region', 'status', 'empty'],
+    parts: ['root', 'camera', 'content', 'title', 'skip', 'live-region', 'status', 'empty', 'camera-reset'],
     tokens: ['--dg-color-bg', '--dg-color-surface', '--dg-color-ink', '--dg-theme-duration', '--dg-theme-ease', '--dg-density-scale', '--dg-min-target'],
-    variants: ['camera-auto', 'camera-off', 'recede', 'detour-open', 'compact', 'comfortable', 'large', 'thinking', 'listening', 'speaking'],
-    dataAttrs: ['data-dg-mood', 'data-dg-surface', 'data-dg-layout', 'data-dg-narrow', 'data-dg-detour-open', 'data-dg-density', 'data-dg-status'],
+    variants: ['camera-auto', 'camera-off', 'recede', 'detour-open', 'compact', 'comfortable', 'large', 'thinking', 'listening', 'speaking', 'exam'],
+    dataAttrs: ['data-dg-mood', 'data-dg-surface', 'data-dg-layout', 'data-dg-narrow', 'data-dg-detour-open', 'data-dg-density', 'data-dg-status', 'data-dg-camera', 'data-dg-camera-controls', 'data-dg-camera-user', 'data-dg-ambience', 'data-dg-exam'],
     events: ['focus', 'select', 'answer', 'action', 'assessment'],
     effects: [],
   }),

@@ -463,6 +463,43 @@
     z-index: 1;
     will-change: transform;
   }
+  /* Perspective belongs to figure layers and the backdrop, never to text. */
+  .dg-camera-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    perspective: 1200px;
+    transform-style: preserve-3d;
+    transition: transform var(--dg-camera-duration, 0ms) var(--dg-theme-ease, cubic-bezier(0.22, 1, 0.36, 1));
+  }
+  [data-dg-figure],
+  .dg-figure {
+    transform: perspective(1200px)
+      rotateX(var(--dg-camera-tilt-x, 0deg))
+      rotateY(var(--dg-camera-tilt-y, 0deg))
+      translateZ(var(--dg-camera-dolly-z, 0px));
+    transform-style: preserve-3d;
+    transition: transform var(--dg-camera-duration, 0ms) var(--dg-theme-ease, cubic-bezier(0.22, 1, 0.36, 1));
+  }
+  .dg-camera-reset {
+    position: absolute;
+    inset-block-start: calc(12px * var(--dg-density-scale, 1));
+    inset-inline-end: calc(12px * var(--dg-density-scale, 1));
+    z-index: 4;
+    min-height: var(--dg-min-target, 44px);
+    padding: 0 calc(12px * var(--dg-density-scale, 1));
+    border: 1px solid color-mix(in oklab, var(--dg-color-ink, #1f1f1d) 18%, transparent);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--dg-color-surface, #ffffff) 86%, transparent);
+    color: var(--dg-color-ink, #1f1f1d);
+    font: inherit;
+    font-size: calc(0.8rem * var(--dg-density-scale, 1));
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+  }
+  .dg-camera-reset:hover { border-color: var(--dg-color-accent, #2e5dc4); }
+  .dg-camera-reset:focus-visible { outline: 2px solid var(--dg-color-accent, #2e5dc4); outline-offset: 2px; }
   .dg-node-inner {
     transition: opacity calc(var(--dg-theme-duration, 800ms) * 0.6) ease, filter calc(var(--dg-theme-duration, 800ms) * 0.6) ease;
   }
@@ -668,6 +705,18 @@
     animation: dg-ambience-flicker 4.6s ease-in-out infinite alternate;
   }
   .dg-ambience-particles { display: block; }
+
+  /* ---------- exam mode: calm, legible, distraction-free (§6.8) ---------- */
+  .dg-board[data-dg-exam='true'] .dg-camera {
+    transform: none !important;
+    transition: none !important;
+  }
+  .dg-board[data-dg-exam='true'] .dg-node-inner,
+  .dg-board[data-dg-exam='true'] .dg-node * {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+  .dg-board[data-dg-exam='true'] .dg-camera-reset { display: none; }
 
   /* ---------- status, empty and fallback states (§7.5) ---------- */
   .dg-status {

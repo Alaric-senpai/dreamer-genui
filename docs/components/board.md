@@ -14,6 +14,7 @@
 | `live-region` | `board` | `dg-board-live-region` |
 | `status` | `board` | `dg-board-status` |
 | `empty` | `board` | `dg-board-empty` |
+| `camera-reset` | `board` | `dg-board-camera-reset` |
 
 Every part is addressable through `partClassNames` / `partStyles`:
 
@@ -46,6 +47,7 @@ Every part is addressable through `partClassNames` / `partStyles`:
 - `thinking`
 - `listening`
 - `speaking`
+- `exam`
 
 ## Data attributes
 
@@ -56,6 +58,11 @@ Every part is addressable through `partClassNames` / `partStyles`:
 - `data-dg-detour-open`
 - `data-dg-density`
 - `data-dg-status`
+- `data-dg-camera`
+- `data-dg-camera-controls`
+- `data-dg-camera-user`
+- `data-dg-ambience`
+- `data-dg-exam`
 
 ## Events
 

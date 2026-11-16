@@ -1,7 +1,8 @@
 import { useMemo, useRef, useSyncExternalStore } from 'react';
 import { BoardResolver, type BoardAssessments, type ResolverOptions, type ReplyLike } from '../core/resolver';
 import type { BoardSnapshotFile, SnapshotMigrations, OpsLog } from '../core/persistence';
-import type { BoardState, LibraryError, ResolvedOp, CameraMove } from '../core/types';
+import type { BoardState, LibraryError, ResolvedOp } from '../core/types';
+import type { CameraOp } from '../schema/ops';
 import type { LayoutTransition } from '../schema/layout';
 import type { UIEvent } from '../schema/events';
 import type { Reply } from '../schema/envelope';
@@ -58,7 +59,7 @@ export interface BoardStore {
   /** Theme-change bus: emits the resolved theme on theme changes (§6.8). */
   readonly themeChangeBus: EventSink<import('../core/theme').ResolvedTheme>;
   /** Camera bus: validated explicit camera ops, presentation-only (§6.10). */
-  readonly cameraBus: EventSink<CameraMove>;
+  readonly cameraBus: EventSink<CameraOp>;
   /** Layout bus: re-flow transition knobs from `layout` ops (§6.4). */
   readonly layoutBus: EventSink<LayoutTransition>;
   /** UIEvents emitted by rendered components (focus/select/answer/action). */

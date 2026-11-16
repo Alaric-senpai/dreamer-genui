@@ -335,7 +335,9 @@ describe('M4 camera (§6.10)', () => {
         ],
       });
     });
-    await waitFor(() => expect(cameraEl(container).style.transform).toBe('scale(1)'));
+    await waitFor(() =>
+      expect(cameraEl(container).style.transform).toBe('translate(0px) scale(1)'),
+    );
   });
 
   test('reduced motion replaces the push-in with scroll-into-view', async () => {
@@ -353,7 +355,7 @@ describe('M4 camera (§6.10)', () => {
       });
     });
     await waitFor(() => expect(scroll).toHaveBeenCalled());
-    expect(cameraEl(container).style.transform).toBe('scale(1)');
+    expect(cameraEl(container).style.transform).toBe('translate(0px) scale(1)');
   });
 });
 

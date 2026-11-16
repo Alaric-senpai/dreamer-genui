@@ -108,7 +108,9 @@ describe('M4 resolver: camera bus', () => {
     const after = resolver.getState();
 
     expect(results[0]?.status).toBe('applied');
-    expect(moves).toEqual([{ to: 'n1', zoom: 1.35, duration: 1200, ease: 'snappy' }]);
+    // The bus carries the whole validated camera op so paths, tilt, dolly and
+    // cue triggers reach the renderer (§6.12).
+    expect(moves).toEqual([{ op: 'camera', to: 'n1', zoom: 1.35, duration: 1200, ease: 'snappy' }]);
     expect(after.nodes).toBe(before.nodes);
     expect('camera' in after).toBe(false);
   });
@@ -118,6 +120,6 @@ describe('M4 resolver: camera bus', () => {
     const moves: unknown[] = [];
     resolver.cameraBus.subscribe((move) => moves.push(move));
     resolver.applyOps({ v: 1, ops: [{ op: 'camera', to: 'overview' }] });
-    expect(moves).toEqual([{ to: 'overview', zoom: undefined, duration: undefined, ease: undefined }]);
+    expect(moves).toEqual([{ op: 'camera', to: 'overview' }]);
   });
 });
