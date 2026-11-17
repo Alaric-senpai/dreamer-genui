@@ -455,16 +455,6 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 
 **Tests:** `tests/react/headless.test.tsx` covers node/entry/cue/layout/status/registry plus the provider error; `tests/react/devtools.test.tsx` covers node tree, cue firing, registry counts and open/close.
 
-## M4b host render window — `visibleNodeIds`
-
-**A host viewport, not `maxMountedNodes` archiving.** `<Board>` gained an optional `visibleNodeIds?: readonly string[]` prop. When set, only those entered node ids (plus an open detour's target, so an explainer never loses its anchor) are rendered. This is deliberately a pure render filter: `BoardState` is untouched, so nodes remain in `serializeBoard`, snapshots, history, replay and the cue engine. `maxMountedNodes` (§7.6) solves a different problem — archiving finished content for memory — and must not silently hide nodes from a host that is paging beats; a host that pages needs a deterministic window while keeping the tutor's full context.
-
-**Hidden is exactly like unentered for the view.** Filtering happens before slot assignment (`orderedIds`) and before the skip count, so hidden nodes are absent from the DOM, tab order and accessibility tree. The `LiveAnnouncer` derives its newest-entered id from the visible window, the Board-level `onEnter` sink suppresses hidden ids (the engine bus still receives them for headless consumers), and the auto-camera's "freshly entered" set is visible-only, so hidden content is never announced or framed. Recede, cue and layout semantics are unchanged; `visibleNodeIds` omitted means every entered node renders, as before.
-
-**Why not a layout/region feature?** Paging beats is a host presentation concern (the playground's `/app` Continue/Prev). Encoding it in the protocol or layout spec would leak a host UI pattern into tutor-authored JSON and change narrated cue semantics. It stays a renderer prop; no schema or protocol change.
-
-**Tests:** `tests/react/viewport.test.tsx` covers filtering and state retention (`serializeBoard` still lists hidden nodes), live-region/onEnter silence, optional-prop restoration and detour-target retention.
-
 ## M4b Part C3 — camera extension rulings
 
 **Camera state separates flat framing from depth.** `CameraState` keeps `scale`/`origin`/`translate` for the board layer and adds `tiltX`/`tiltY`/`dolly`. The layer transform stays `translate() scale()` only; tilt/perspective is applied to a dedicated backdrop wrapper and, through CSS variables, to figure layers. Text blocks therefore never skew (§6.12), and a host can retheme the depth effect through CSS without touching React.
@@ -484,3 +474,13 @@ Additional fixes along the way: `rgb()/rgba()` numeric forms now re-parse in `co
 **Restore is part of the unlock path.** `resolver.assessments.restore(id, state)` now writes the restored state into `BoardState` and flushes queued ops when the restored state is already submitted. This makes autosave/reload during an exam safe: the client rehydrates into a locked board, and an already-submitted paper does not stay visually locked.
 
 **Tests:** `tests/core/exam-locks.test.ts` covers queue, reject, camera silence/release, restore and per-aspect opt-out; `tests/react/exam.test.tsx` covers board data attributes and host opt-out.
+
+## v3.0 reconciliation — baseline rulings
+
+**`AGENTS.md` v3.0 is the source of truth.** The repository-root `jifunze/AGENTS.md` still contains v2.2 and is not used for this release. The remaining order is M4c, M4d, M5, M5b, M6a, M6b, M6c, M6d, M7, M8, M9; M0–M4b stay closed.
+
+**`visibleNodeIds` is removed.** It was an unapproved M4b render-window prop, not part of any v3.0 protocol or renderer requirement. The prop, filtering, live-announcement suppression, auto-camera filter, tests and decision note are deleted; `BoardState`, snapshots, cues, `serializeBoard` and the accessibility tree return to the ordinary “entered means rendered” rule. This is renderer-only and changes no wire format.
+
+**Reference measured visually, not yet transcribed.** `docs/reference/saas-explainer-reference.mp4` (24.43 s, 1080×1920, 30 fps) was sampled at 2 fps and studied against §18. No offline STT tool is installed, so narration word timings are not available yet; cue-lead and duration defaults in `motion-default` are provisional (lead 180 ms) and will be re-measured with the M6d audio clock before the Motion and Voice gates. All values live in `motion-default` for one-edit retuning.
+
+**The reference is behaviour, not content.** The showreel replicates scene structure, type contrast, palette flips, morph/iris/pointer/push behaviour and pacing using protocol ops only. No reference brand, product or text is copied into `packages/`.

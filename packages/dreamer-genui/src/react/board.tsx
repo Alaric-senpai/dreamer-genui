@@ -124,15 +124,12 @@ function nodeText(node: Node): string {
 function LiveAnnouncer({
   state,
   entry,
-  visible,
   className = 'dg-live-region',
   style,
   dataPart,
 }: {
   state: BoardState;
   entry: EntryPlan;
-  /** Render window (§7.6): hidden nodes are never announced. */
-  visible?: ReadonlySet<string> | null;
   className?: string;
   style?: CSSProperties;
   dataPart?: string;
@@ -145,11 +142,8 @@ function LiveAnnouncer({
   });
 
   // Announce the last newly-entered node id in document order — covers append,
-  // replace (node count can drop) and cue-gated entrances. A host render window
-  // (`visibleNodeIds`) also silences nodes outside the window.
-  const announced = visible === null || visible === undefined
-    ? entry.entered
-    : entry.entered.filter((id) => visible.has(id));
+  // replace (node count can drop) and cue-gated entrances.
+  const announced = entry.entered;
   const lastEnteredId = announced[announced.length - 1];
   useEffect(() => {
     if (lastEnteredId === undefined || lastEnteredId === announcedRef.current) return;
@@ -206,15 +200,6 @@ export interface BoardProps {
   ambience?: 'auto' | 'off' | 'lite';
   /** Recede previously entered scenes (§9.2). Defaults to true. */
   recede?: boolean;
-  /**
-   * Host-controlled render window (§7.6): when set, only these entered node ids
-   * (plus an open detour's target) are rendered. Hiding a node is purely a view
-   * concern — it stays in `BoardState`, snapshots, history and `serializeBoard`,
-   * so the tutor keeps full context. Hidden nodes are absent from the DOM, the
-   * accessibility tree, live announcements and the auto camera, exactly like
-   * unentered nodes. Omit to render every entered node (default).
-   */
-  visibleNodeIds?: readonly string[];
   /** Optional board-level sinks. Both provider-level and board-level sinks fire. */
   onEvent?: (event: UIEvent) => void;
   onError?: (err: LibraryError) => void;
@@ -248,7 +233,6 @@ export function Board({
   examLocks,
   ambience = 'auto',
   recede = true,
-  visibleNodeIds,
   onEvent,
   onError,
   onEnter,
@@ -281,7 +265,6 @@ export function Board({
   const effectivePacing = examActive ? 'auto' : (pacing ?? defaultPacing(state));
   const entry = computeEntryPlan(state, effectivePacing);
   const enteredKey = entry.entered.join('\u0000');
-  const visibleKey = visibleNodeIds ? visibleNodeIds.join('\u0000') : '\u0000all';
 
   const prefersReduced = useReducedMotion() === true;
 
@@ -309,12 +292,8 @@ export function Board({
   const entered = new Set(entry.entered);
   const detour = state.detours[state.detours.length - 1];
   const detourTargetId = detour?.targetNodeId;
-  // Render window (§7.6): state stays authoritative; only the view is filtered.
-  const visible = visibleNodeIds ? new Set(visibleNodeIds) : null;
-  const orderedIds = Object.keys(state.nodes).filter(
-    (id) => entered.has(id) && (visible === null || visible.has(id) || id === detourTargetId)
-  );
-  const pending = visible === null ? entry.pending : entry.pending.filter((id) => visible.has(id));
+  const orderedIds = Object.keys(state.nodes).filter((id) => entered.has(id));
+  const pending = entry.pending;
 
   // ---- layout engine (§6.4): regions from the active spec; slots the layout
   // does not define fall back to the primary region (never fatal) ----
@@ -329,11 +308,10 @@ export function Board({
         })),
         layoutModel
       ),
-    // orderedIds/state.nodes change together with entry or the host window;
-    // recomputing per render is fine (pure, cheap) — the memo only avoids
-    // reallocating maps.
+    // orderedIds/state.nodes change together with entry; recomputing per
+    // render is fine (pure, cheap) — the memo only avoids reallocating maps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enteredKey, visibleKey, layoutModel]
+    [enteredKey, layoutModel]
   );
   const narrow = isNarrow(boardWidth);
 
@@ -404,8 +382,6 @@ export function Board({
   // Latest sinks without re-subscribing the buses per render (synced before
   // the bus-bridge effect below, declaration order).
   const sinksRef = useRef({ onEvent, onError, providerOnEvent, providerOnError, onEnter, onCue, onThemeChange });
-  const visibleRef = useRef(visible);
-  visibleRef.current = visible;
   useEffect(() => {
     sinksRef.current = { onEvent, onError, providerOnEvent, providerOnError, onEnter, onCue, onThemeChange };
   });
@@ -423,9 +399,6 @@ export function Board({
       sinksRef.current.onError?.(err);
     });
     const offEnter: () => void = store.enterBus.subscribe((id) => {
-      // Hidden nodes are not announced to the host either (render window, §7.6).
-      const window = visibleRef.current;
-      if (window !== null && !window.has(id)) return;
       sinksRef.current.onEnter?.(id);
     });
     const offCue: () => void = store.cueBus.subscribe((id) => {
@@ -661,9 +634,7 @@ export function Board({
   useEffect(() => {
     const previously = prevEnteredRef.current;
     const next = new Set(entry.entered);
-    const fresh = entry.entered.filter(
-      (id) => !previously.has(id) && (visible === null || visible.has(id))
-    );
+    const fresh = entry.entered.filter((id) => !previously.has(id));
     prevEnteredRef.current = next;
     if (fresh.length === 0) return;
 
@@ -1040,7 +1011,6 @@ export function Board({
             <LiveAnnouncer
               state={state}
               entry={entry}
-              visible={visible}
               className={liveRegionPart.className}
               dataPart={liveRegionPart['data-dg-part']}
               style={liveRegionPart.style}

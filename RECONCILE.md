@@ -1,355 +1,438 @@
-# RECONCILE — M4b: retrofit and foundations (v2.1 + v2.2 items)
+# RECONCILE — v3.0 audit and plan for M4c to M9
 
-**Status:** draft for human approval. **No M4b code has been written.** Per `AGENTS.md` §0 and §15.3, implementation starts only after this document is approved.
+**Status:** audit and implementation plan for the remaining `1.0.0` milestones. Written against `AGENTS.md` v3.0 (1404 lines), which supersedes v2.2 and every earlier brief. M0 to M4b are complete and approved and are **not** reopened; where v3 touches their output, the work is scheduled in the first remaining milestone that owns the area.
 
-**Baseline:** M0–M3 approved; M4 complete and pushed (`08cad0b`). Working tree contains only the human's uncommitted `AGENTS.md` v2.2 edit (not ours to commit). Current gates: 379 tests green, `tsc` clean, library and playground builds green, no product strings in `packages/`.
+**Baseline:** `HEAD` is `f63d8d8` (`feat(playground): C5 layout and camera showcase`). The working tree contains the uncommitted removal of the unapproved `visibleNodeIds` prop (renderer-only; see §1.1), the copied reference video at `docs/reference/saas-explainer-reference.mp4`, and unrelated in-flight playground playback work by another session. The post-removal baseline is **604 tests across 54 files**, `tsc --noEmit` clean (verified after stripping `visibleNodeIds`); the playground build is re-checked before M4c starts.
 
-**Purpose:** enumerate every M4b item with the files/modules it touches, the intended change and its risks, so the human can approve or amend scope before any retrofit begins.
-
----
-
-## 0. Baseline inventory (what M4b retrofits)
-
-| Area | Current shape | M4b impact |
-| :--- | :--- | :--- |
-| Protocol | `src/schema/{ops,blocks,figures,inline,theme,events,errors,motion,envelope,json-schema}.ts` — single-column, no layout, no questions/assessment, no model schemas | **Heavy additive change** (Part A) |
-| Registry | `src/core/registry.ts` — a block-type map with `TypeManifest`, plus ad-hoc mood/ambience/surface maps | **Replace with the plugin SDK + registries** (Part B) |
-| Reducer/state | `src/core/{reducer,cues,validator,resolver,theme,events,types}.ts` — no layout, assessments, persistence or middleware | **Extended** (Part B) |
-| Generators | `src/core/generators/{json-schema,capabilities,prompt-guide,serialize-board}.ts` — single profile, no models/assessments/layout | **Extended** (Part B) |
-| Renderer | `src/react/{board,provider,use-board}.tsx` + `components/{block-renderer,blocks,inline,detour}.tsx`, `kinetic/`, `motion/`, `ambience/` | **Layout engine + component anatomy + camera** (Part C) |
-| Presets | `src/theme/presets.ts` (moods/ambience/surfaces), `src/motion/presets.ts`, `src/ambience/particles.ts` | **Moved behind default plugins** (Part B) |
-| Styling | `styles/base.css` (`@layer dreamer-genui`), `styles/tailwind.css`, v3 preset | **Layout/density/RTL/component tokens** (Part C) |
-| Fixtures | 21 files: 13 valid, 8 invalid | **~30 new valid/invalid** (Part A) |
-| Tests | 36 files / 379 tests | **New suites** for layout, assessment, persistence, middleware, profiles, connectors, customization surface |
-| Playground | `/`, `/m1`–`/m4`, `/plain-css`, `/showreel` | **`/m4b` gate route** (Part D) |
-
-Empty leftover directories `src/builtins/`, `src/figures/` exist and are unused; M4b may delete them (no public API).
+**Consent:** the human granted conditional early consent: “i am giving earlier consent after reaching the ask point if the reconcile is true to the agents.md you are to proceed i will be away from console.” This document is the reconcile. If it is faithful, work proceeds into M4c without a separate RECONCILE approval; the **Motion gate (M4c), 3D showcase (M5b), Exam run-through (M6b), Voice sync gate (M6d) and the final `1.0.0` publish remain [ASK]**.
 
 ---
 
-## Part A — Protocol amendment (pre-release, no version bump)
+## 1. Baseline audit
 
-Treat as v1: additive except `diagram.flow` removal and camera extension. Every schema stays Zod-first; `schema` must remain free of React/DOM imports.
+### 1.1 The `visibleNodeIds` deviation (removed)
 
-### A1. Ops and layout
+M4b shipped a `<Board visibleNodeIds>` render window that is not in v3.0 or any approved protocol. It has been stripped:
 
-| Files | Change | Risk |
+- `packages/dreamer-genui/src/react/board.tsx`: prop, visibility filtering in `orderedIds`/`pending`, live-announcer filtering, `onEnter` suppression, auto-camera filtering and memo dependency removed.
+- `tests/react/viewport.test.tsx`: deleted.
+- `DECISIONS.md`: the “M4b host render window” ruling removed.
+- `apps/playground/app/(tailwind)/app/page.tsx`: the prop usage removed; that file also carries another session’s unrelated playback work and is not committed as part of this change.
+
+No protocol, reducer or snapshot semantics change: `BoardState` never contained a window, so removal is renderer-only and returns the renderer to the brief.
+
+### 1.2 Repository shape
+
+| Area | Current shape | Gap against v3.0 |
 | :--- | :--- | :--- |
-| `src/schema/ops.ts` | Add `layout` op (`LayoutSpec`, transition). Add `slot?` to `append`. Add `layout?` to `replace`. Add `theme?` to `attach`. Extend `camera` to the `CameraMove` shape and `path` form (A9). | Low–medium: op union consumers (`reducer`, validator, generators, playground inspector) must handle a new op; camera is a **breaking shape change** to the existing `camera` op fields (consumers must be updated in lockstep). |
-| `src/schema/layout.ts` (new) | `Gap`, `Ratio`, `LayoutSpec` (`flow`, `split`, `grid`, `stage`), region/slot enums, `Slot`. | Low. |
-| `src/schema/common.ts` | Export `SlotSchema` / `NodeRef` refinements if needed. | Low. |
-| `src/core/reducer.ts` | Handle `layout` op: pure set + history entry semantics. | Low. |
+| Version | `0.1.0` | Must become `1.0.0` at M9; rc on `next` first. |
+| Licence | No `LICENSE`, no `THIRD_PARTY_NOTICES.md` | MIT licence files and dependency audit at M9. |
+| Schema (`src/schema/`) | `assessment, blocks, common, connector, envelope, errors, events, figures, index, inline, json-schema, layout, model, motion, node, ops, question, theme` | Missing narration/turn, transition, pointer, `key`, cue `lead`, new effects, UI-kit blocks, `orbit`, glow, drift. |
+| Core (`src/core/`) | `assessment, assets, cues, errors, events, generators, index, layout, middleware, model, mounted, persistence, plugin, profiles, reducer, registry, resolver, strings, theme, types, validator` | Missing transitions registry, cue lead/reading, end-of-turn flush, turn validation, tutor/voice registries. |
+| Built-in plugins | No `src/plugins/` at all; `src/builtins/` and `src/figures/` are empty; preset code lives in `src/theme` and `src/motion` | Every §9.2 plugin is unbuilt: `math, code, table, chart, lottie, diagrams, labeled, model3d, scene3d, questions, assessment, ui-kit, transitions-default`, plus plugin folders for `themes-default, ambience-default, motion-default, layouts-default, icons-default`. |
+| Registries (`core/plugin.ts`) | `blocks, marks, figures, questions, effects, layouts, moods, ambience, surfaces, themes, motionPresets, iconSets, assetPacks, modelConnectors, primitives, strings, renderers, middleware, profiles, devtoolsPanels` | Missing `transitions`, `tutorConnectors`, `voiceProviders`; `CORE_PLUGIN_NAMES` missing `ui-kit`, `transitions-default`, `strings-default` is present. |
+| Default registry (`core/registry.ts`) | Registers only `CORE_BLOCK_PLUGIN, THEME_PLUGIN, MOTION_PLUGIN, LAYOUT_PLUGIN, PROFILES_PLUGIN, STRINGS_PLUGIN` | Must register the full §9.2 set lazily; built-ins must move to `src/plugins/` and dogfood the SDK. |
+| Renderer (`src/react/`) | `anatomy, anatomy-meta, board, emit-context, headless, index, provider, store-context, use-board`; empty `components/`, `kinetic/`, `layout/`, `motion/` are populated | Missing transitions, pointer, morph, UI-kit blocks, figures, question widgets, voice/tutor UI. |
+| Subpaths | `.`, `./schema`, `./schema/*`, `./core`, `./react`, `./headless`, `./devtools`, styles/Tailwind | Missing `./plugins/*`, `./packs/*`, `./connectors`, `./ui`, `./voice` (+ engines/providers), `./tutor`, `./server`, `./testing`. |
+| Build | `tsup` single config; `files: ["dist","styles"]` | Needs entry points, lazy chunks, subpath size budgets, `sideEffects`, `"use client"` handling. |
+| Playground routes | `/`, `/m1`–`/m4`, `/m4b`, `/showreel`, `/app`, `/plain-css` | Missing `/m4c`, `/m4d`, `/m5`, `/m5b`, `/m6a`–`/m6d`, `/m7`–`/m9`. |
+| Fixtures | 50 files (38 valid, 12 invalid) | All v3 fixtures missing: narration/turn, text-morph, scene-transitions, pointer-tour, reference-saas-explainer, ui-kit-blocks, plus invalid orphan/duplicate beat/unknown transition/malformed turn. |
+| Docs | `docs/components/*.md` for 12 core components; `docs/showreel/`; `docs/reference/` video | No Storybook, no `docs/authoring/`, no `docs/components/PARITY.md`, no 3D/voice/tutor guides, no API report. |
+| Network | Core, schema and renderer perform no fetches | Correct; keep it that way. All network lands only in `connectors`, `tutor`, `server` and remote voice providers. |
 
-**Deviation to log:** the existing `camera` op stores `{ to, preset, zoom, duration, ease }`; M4b replaces it with `CameraMove` (`pan`, `tilt`, `dolly`, `trigger`, `path`). This is not additive for that one op but is pre-release and required by §6.12; M4 camera code is updated in the same change. Old `camera-moves.json` is migrated to the new shape.
+### 1.3 What v3.0 adds on top of M4b
 
-### A2. Node placement and richer `group`
-
-| Files | Change | Risk |
+| Area | New in v3.0 | Scheduled |
 | :--- | :--- | :--- |
-| `src/schema/blocks.ts` | Add to `NodeBase`: `slot`, `span`, `align`, `justify`, `size`, `reserve`. Expand `group` with `layout: stack\|row\|grid`, `direction`, `wrap`, `align`, `justify`, `gap`, `columns`, `minItemWidth`, `ratio`, `reverseOnNarrow`. | Medium: `NodeBase` widens every block; strict schemas may now accept fields that the renderer ignores until Part C. Acceptable (additive), but the renderer must warn rather than mis-render. |
-| `src/react/components/blocks.tsx` | Implement `group` vocabulary (Part C). | Medium. |
+| Narration | `Beat`, `LessonTurn`, `StudentTurn`, cue `lead`, `[[cue:id]]`, safety nets, reading pacing | M4c schema/core; M6d Conductor |
+| Scene motion | `SceneTransition`, `update.transition`, `key`, `pointer` op, `tilt-rise`, `assemble`, `iris`, `caret`, `blur`, `drift`, `orbit`, `blueprint-grid`/`rings`, glow, `night`/`paper` | M4c |
+| UI kit | shadcn-parity host kit + tutor-addressable blocks, Radix, `ui-kit` plugin, `dreamer-genui/ui` | M4d |
+| Figures | Real figure runtimes and flowchart/timeline/labeled | M5 |
+| 3D | Runtime, model connectors, model tools, mock registry | M5b |
+| Content | Math, chart, table, Lottie, code plugins | M6a |
+| Questions/assessment | Widgets and shell on the UI kit, 3D questions | M6b |
+| Tutor | `TutorConnector`, HTTP/AI SDK/OpenAI-compatible adapters, server helper, eval harness | M6c |
+| Voice | Narrator/Listener/Conductor, OSS engines, remote providers, captions, privacy | M6d |
+| Static/offline | `toMarkdown`, `toHTML`, offline recipes | M7 |
+| Release | MIT, notices, API report, provenance, rc/final publish | M8/M9 |
 
-### A3. New blocks
+### 1.4 Reference study (Section 18)
 
-| Files | Change | Risk |
+`docs/reference/saas-explainer-reference.mp4` is the supplied 24.43 s, 1080×1920, 30 fps H.264/AAC file. Frames were extracted at 2 fps to `/tmp/opencode/ref-frames/` (49 frames), with a contact sheet and a nine-frame grid; the scene breakdown in §18 was verified visually.
+
+**No offline speech-to-text tool is installed** (`whisper`, `whisper.cpp`, `faster-whisper`, Vosk and Whisper caches are absent). Narration transcription is therefore **not yet done**; visual timing is measured at 0.5 s frame precision. Exact word-to-visual lead will be measured in M6d with the chosen local engine and a forced-alignment pass, and the defaults below will be re-tuned at the Motion gate. This limitation is recorded in `DECISIONS.md`.
+
+Observed visual timings (initial defaults for `motion-default`; all overridable):
+
+| Behaviour | Observation | Proposed default |
 | :--- | :--- | :--- |
-| `src/schema/blocks.ts` | Add `list` (rendered in M4b), `compare` (schema now, renderer M5), `question`, `flashcards`, `assessment` (schema now, widgets M6b). | Medium: `BlockSchema` discriminated union grows; every exhaustive `switch` in the renderer/validator/generators must gain a default path. The per-node error boundary must catch unimplemented kinds gracefully. |
-| `src/schema/question.ts` (new) | `Question`, all `QuestionKind` variants, `AnswerValue`, `status`/`feedback`, `blank` constraints. | Medium: large surface; validation rules (A10). |
-| `src/schema/assessment.ts` (new) | `Assessment`, modes, timer, sections, navigation, shuffle, submit, result. | Medium. |
-| `src/react/components/blocks.tsx` | Render `list` only in M4b. | Low. |
-
-### A4. Inline `blank` mark
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/inline.ts` | Add `blank` mark (`id`, `options`, `width`). | Low–medium: validator must reject `blank` outside a `cloze` question (`blank-outside-cloze` → `invalid-node`). |
-| `src/core/validator.ts` | Cross-node rule: blank marks only inside cloze; ids unique per question. | Medium. |
-
-### A5. Figures
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/figures.ts` | **Remove `flow` from `diagram`.** Add `flowchart` (nodes/shapes/lanes/edges/inputs/outputs/numbered/flow/narrow/reveal/focusable), `timeline`. Add `model3d` and `scene3d` to the union (A10). | Medium: removing `flow` breaks `tests/schema/figures.test.ts` (loops over `tree|radial|flow|cycle`), the prompt-guide enum text and its snapshot; no fixture uses it (`diagram-radial.json` is `radial`). Migrate all three in Part A. |
-| `fixtures/diagram-radial.json` | Verify/normalise against the new schema. | Low. |
-
-### A6. ThemeSpec
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/theme.ts` | Add `motionPreset`; `density` to `ThemeTokens`; `components` component-level tokens. | Low–medium: resolver must validate component tokens against component metadata; until Part C metadata exists, validation is permissive with a warning. |
-| `src/theme/tokens.ts` | Emit density/component token variables. | Medium. |
-
-### A7. Events
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/events.ts` | Add `answer.meta`, `assessment` event, `action.detail`, namespaced plugin events. | Low. |
-| `src/core/events.ts` | Ensure the bus accepts the new event union. | Low. |
-
-### A8. Errors
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/errors.ts` | Add `layout-invalid`, `assessment-invalid`, `key-in-exam`, `plugin-conflict`, `plugin-incompatible`, `middleware-error`, `model-not-found`, `model-load-failed`, `unknown-part`, `unknown-view`, `webgl-unavailable`, `connector-error`, `model-budget-exceeded`, `bad-slot`, `blank-outside-cloze`, `flowchart-dangling-edge`. | Low. |
-
-### A9. Camera extension (v2.2)
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/ops.ts` (or new `camera.ts`) | `CameraMove { to, preset, zoom, pan?, tilt?, dolly?, duration?, ease?, trigger? }`; op forms: single move and `{ path: CameraMove[] }`. Bounds: zoom 1–1.6, tilt ±15°, dolly bounded. | Medium: renderer camera bus/reducer validator must accept both forms; existing M4 camera tests migrate. |
-| `src/core/validator.ts` | Validate bounds/path length/trigger references; `camera` stays out of `BoardState` (M4 ruling). | Medium. |
-| `src/react/board.tsx` | Consume the extended move (Part C). | **High** — see C3. |
-
-### A10. 3D and connector schemas (v2.2, **types only**)
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/model.ts` (new) | `PartId`, `ViewRef`, `Model3D`, `TourStep`, `Scene3D`, `ModelManifest`, `ModelSummary`, `ModelQuery`, `AssetRef`. Strict limits (64 scene objects, tube ≤16 points). | Medium: large schema; must not import `three` or DOM. |
-| `src/schema/connector.ts` (new) | `ModelConnector` **type** contract (`getManifest`, `getAsset`, `search?`, `getVersion?`, `prefetch?`, `map?`), `ConnectorContext`. Interface only; no fetch implementation in M4b. | Low. |
-| `src/schema/index.ts` | Export new modules. | Low. |
-| `src/schema/figures.ts` | Include `model3d`/`scene3d` in `FigureSchema` (gated advertisement later). | Low. |
-
-**Not in M4b:** any loader, three.js, decoder, connector implementation, poster loading, picking. Those are M5b. M4b ships schemas + registry hooks + mock connector tests.
-
-### A11. JSON Schema, fixtures, schema tests
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/schema/json-schema.ts`, `src/core/generators/json-schema.ts` | Export the new unions; registry-aware enums for layouts/effects/moods/ambience/surfaces. | Medium: unsupported Zod constructs (discriminated unions with transforms) need explicit handling. |
-| `fixtures/*` | Add: `split-explanation-question`, `split-reversed`, `layout-change-animated`, `group-flex-grid`, `process-flowchart`, `timeline`, `compare`, `list`, `question-kinds`, `assessment-practice`, `assessment-exam`, `assessment-review`, `flashcards`, `camera-tilt-path`, `model3d-basic`, `model3d-tour`, `model3d-hotspot-question`, `model3d-label-question`, `scene3d-solids`. Invalid: `invalid-bad-slot`, `invalid-key-in-exam`, `invalid-blank-outside-cloze`, `invalid-flowchart-dangling-edge`, `invalid-plugin-collision`, `invalid-unknown-part`, `invalid-unknown-view`, `invalid-model-not-found`, `invalid-model-over-budget`, `invalid-model-manifest`. | Medium: fixtures whose renderers are later milestones will validate but render a graceful fallback; the `/m4b` fixture picker must label them "schema only". |
-| `tests/schema/*` | One test per new schema + invalid fixture → exact error code. | Medium. |
-
-**Acceptance mapping (Part A):** `pnpm test` green; `schema` imports with no React/DOM; old fixtures migrated; invalid fixtures yield the specified codes.
+| Headline rise with tilt | ~0.5–0.7 s, settles with slight overshoot | `tilt-rise` 620 ms, `overshoot` |
+| Letter/word morph | ~1.0–1.3 s; accent letters persist | `morph` 700 ms; per-letter stagger 18 ms |
+| Grid/guide draw | ~0.8 s, lines precede content | `draw` 800 ms, `smooth` |
+| Icon cluster pop | 5–7 items, visibly staggered | `pop` 380 ms, stagger 60 ms |
+| UI cards slide | Fast, slight motion blur | `push` 520 ms; blur peak ~6 px |
+| Typed headline | ~1.4 s per short line with caret | 45–65 ms per grapheme, caret blink 900 ms |
+| Hard cuts | Only three in 24 s | `cut` reserved; `fade`/motion default |
+| Iris reveal | ~0.9–1.1 s from a point | `iris` 900 ms, origin point |
+| Counter/rings | Rings expand ~0.9 s; badges orbit continuously | ring stagger 120 ms; orbit 18–24 s/rev |
+| Pointer dot travel | ~0.5–0.7 s between words; small ripple on tap | travel 600 ms, ripple 400 ms |
+| Scene length | ~4–6 s per idea | prompt-guide guidance |
+| Cue lead (visual before word) | Visuals lead speech by roughly 0.1–0.3 s | `lead: 180 ms` (tune at M6d) |
+| Drift camera | Slow continuous push over a static scene | 10 s, 1.0 → 1.06 scale |
+| Palette flip | Navy/cyan ↔ light grey/blue at scene midpoint | transition `theme` applied at 50 % |
 
 ---
 
-## Part B — Core
+## 2. Cross-cutting foundations
 
-### B1. Plugin SDK and registries (the largest structural change)
+These land incrementally in the milestone that first needs them; they are listed once here so no milestone silently forks the architecture.
 
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/registry.ts` | Replace the block-map with a registry keyed by kind (`blocks`, `marks`, `figures`, `questions`, `effects`, `layouts`, `moods`, `ambience`, `surfaces`, `themes`, `motionPresets`, `iconSets`, `assetPacks`, `modelConnectors`, `modelPacks`, `primitives`, `strings`, `renderers`, `middleware`, `profiles`, `devtoolsPanels`). Add `use`, `override`, `disable`, `enable`, `list`, `get`. Keep `getManifest`, `resolve`, `getCapabilities` behaviour. | **High.** Every consumer of the current registry (`resolver`, `validator`, generators, provider, playground) must migrate. Mitigation: compatibility facade + migrate consumers in the same PR; registry tests first. |
-| `src/core/sdk.ts` (new) | `definePlugin`, `defineBlock`, `defineMark`, `defineFigure`, `defineQuestion`, `defineEffect`, `defineLayout`, `defineMood`, `defineAmbience`, `defineSurface`, `defineTheme`, `defineMotionPreset`, `defineIconSet`, `defineAssetPack`, `defineModelConnector`, `defineModelPack`, `definePrimitive`, `defineStrings`, `defineRenderer`, `defineMiddleware`, `defineProfile`, `defineDevtoolsPanel`; manifest vs lazy `load`; namespacing; `engine` range; `requires`; conflict/priority rules; dev throw vs prod warn. | **High.** Public API surface; type ergonomics; lazy-loading contract. Mitigation: the toy third-party plugin acceptance test drives the API before built-ins migrate. |
-| `src/plugins/{themes-default,ambience-default,motion-default,layouts-default,icons-default}/` (new) | Move `theme/presets.ts`, `motion/presets.ts`, layout descriptors and a first icon set behind `definePlugin` manifests. Keep temporary re-exports from the old paths. | Medium: circular imports possible; plugin manifests must stay tiny (no React). |
-| `src/core/index.ts`, `src/index.ts` | Export the SDK; keep existing named exports working. | Medium. |
+### 2.1 Protocol and schema (`packages/dreamer-genui/src/schema/`)
 
-**Reserved names:** core names (`text`, `flow`, `split`, `grain`, …) are reserved; third-party must be `vendor:name`. Duplicate without `override` = `plugin-conflict`.
+- **New `narration.ts`:** `BeatSchema`, `LessonTurnSchema` (`v`, `ops`, `narration?`, `meta?`), `StudentTurnSchema`, `NarrationStateSchema` (`spokenUpTo`, `interrupted`). `ReplySchema` becomes an alias of `LessonTurnSchema`; existing `{v, ops}` replies remain valid.
+- **`ops.ts`:** `replace.transition`, `update.transition`, `pointer` op, cue `lead`.
+- **`motion.ts`:** new effect names (`tilt-rise`, `assemble`, `iris`), `caret`, `blur`, camera preset `drift`.
+- **`node.ts` / `inline.ts`:** `key?: string` on nodes and marks; `speakable?: boolean`; richer `term.detail`.
+- **`blocks.ts`:** UI-kit block schemas (M4d).
+- **`figures.ts`:** `orbit` diagram layout (M4c schema; M5 rendering).
+- **`theme.ts`:** `texture.glow`, density/typography additions for `night`/`paper`.
+- **`errors.ts`:** `cue-orphan`, `turn-invalid`, `tutor-connector-error`, `voice-error`, `voice-unsupported`, `transition-unknown`.
+- **`json-schema.ts`:** registry-aware export must include transitions, new effects, UI-kit blocks and narration; profiles must exclude disabled plugins.
+- Every change is additive at `v: 1` and logged in `DECISIONS.md`.
 
-### B2. Middleware
+### 2.2 Registries and plugins
 
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/middleware.ts` (new) | Ordered pipeline (`priority`, stable registration order), `onOp` (op → op/op[]/null), `onEvent`, `onThemeResolve`, `onNodeResolve`; isolation (`middleware-error`, continue). | Medium: op expansion interacts with reducer ordering/history; event suppression must not swallow assessment events. Tests: ordering + isolation. |
-| `src/core/reducer.ts`, `src/core/events.ts`, `src/core/resolver.ts` | Route through middleware before/after the pure step. Keep the reducer itself pure (middleware runs in the store wrapper). | Medium. |
+- `RegistryKind` gains `transitions`, `tutorConnectors`, `voiceProviders`; `REGISTRY_KINDS`, `RegistryValueMap`, `KIND_ORDER`, `provides` typing and `providedNames` follow.
+- Helpers: `defineTransition`, `defineTutorConnector`, `defineVoiceProvider`.
+- `CORE_PLUGIN_NAMES` and reserved names gain `ui-kit`, `transitions-default`; existing names stay reserved.
+- Built-in plugin folders move to `src/plugins/<name>/` with `manifest` (schema/metadata/prompt guide, always loaded) and lazy `load: () => import(...)` implementations. Preset code moves behind `themes-default`, `ambience-default`, `motion-default`, `layouts-default`, `icons-default`, `strings-default`.
+- `DEFAULT_PLUGINS` becomes the full §9.2 set, lazily. `model3d` is registered but not advertised without a connector.
+- Conformance suite and customization-surface test must run against every built-in plugin from M6a onward; the CI import-boundary check forbids `src/plugins/**` importing private core internals.
 
-### B3. Layout model
+### 2.3 Exports and build
 
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/layout.ts` (new) | Resolve `LayoutSpec` → regions; assign nodes to slots; unslotted → primary; undefined slot → primary + `layout-invalid` warning; responsive collapse decision (container width vs breakpoints, `narrow`, `narrowOrder`, `pin`); `layout` op diffing for shared-layout animation. | **High** — layout correctness is a gate criterion. Mitigation: pure model with exhaustive unit tests before the React engine. |
-| `src/core/types.ts` | `BoardState.layout`; detour layout; history snapshots include layout. | Medium (state shape/serialization). |
-| `src/core/reducer.ts` | `layout` op, `replace.layout`, slot assignment passthrough. | Medium. |
+Target exports (additions only; existing paths unchanged):
 
-### B4. Assessment state machine
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/assessment.ts` (new) | Headless state machine: modes (`practice`/`quiz`/`exam`/`review`), answers, flags, visited, current question, navigation (`free`/`linear`/`locked-after-answer`), deterministic shuffle, timer with injectable clock, `extendTime`/`pause`/`resume`, submit/confirm, snapshot/restore, mode-transition rules. | **High.** Many rules; must be UI-free in M4b. Mitigation: fake-clock unit tests first; no rendering in Part B. |
-| `src/core/types.ts` | `BoardState.assessments`. | Medium. |
-| `src/core/reducer.ts` | `assessment`/`question` node handling, updates (`status`, `feedback`, `result`), exam locks and op queueing. | High. |
-| `src/core/validator.ts` | `key-in-exam`, `assessment-invalid`, `blank-outside-cloze`, size limits. | Medium. |
-| `src/core/cues.ts` | Exam mode ignores cue triggers (`pacing: "auto"`). | Medium. |
-
-**Not in M4b:** the assessment/question *widgets* (M6b). M4b exposes the store API and state only.
-
-### B5. Persistence and replay
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/persistence.ts` (new) | `snapshot()`, `restore()`, `exportOps()`, `replay(log, { speed })`, `migrate()`, versioned `BoardSnapshot`; cue timeline with relative timestamps; restore settles without entrance animation. | Medium–high: replay determinism, timers/cues, assessment state. Round-trip tests. |
-| `src/react/use-board.ts` | Expose `snapshot`, `restore`, `exportOps`, `replay`, `assessments`. | Medium. |
-| `src/react/board.tsx` | Hydration/restore path skips entrance animations. | Medium. |
-
-### B6. Mounted-node cap, asset resolver, limits
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/react/board.tsx` | `maxMountedNodes` (default 80): archive older finished content into an expandable compact summary; state untouched; focus/a11y handled. | Medium: archiving must not break detours or assessment nodes. |
-| `src/react/provider.tsx` | `resolveAsset(id)` with cache; `{ asset }` references in image/lottie/labeled. | Medium: async resolution + SSR safety. |
-| `src/core/limits.ts` (new) | Configurable limits: nodes/board, text length, diagram/flowchart size, assessment size, ambience intensity, scene objects. | Low. |
-
-### B7. Strings, i18n and direction
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/strings.ts` (new) | `defineStrings`, locale bundles (`en`, `sw` minimal), lookup with fallbacks. | Low. |
-| `src/react/provider.tsx` | `locale`, `dir`, strings wiring; remove hard-coded UI strings from components. | Medium: every built-in control must use the registry. |
-| `src/react/*` | `Intl` number/date formatting helpers. | Low. |
-
-### B8. Profiles and generators
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/profiles.ts` (new) | `lesson`, `assessment`, `minimal`; `defineProfile`; include/exclude; plugin visibility. | Medium: profile output must remain honest as plugins are added. |
-| `src/core/generators/prompt-guide.ts` | Registry-aware, profile-aware; layout/camera/model/assessment instructions; `guideOverrides`; compact/language. | Medium. |
-| `src/core/generators/serialize-board.ts` | Layout, entered/pending, assessments, models in use, history. | Medium. |
-| `src/core/generators/capabilities.ts` | All registries, profiles, connector support, 3D gating. | Low. |
-| `tests/core/__snapshots__` | Update/add per-profile snapshots. | Low. |
-
-### B9. Connector registry and model tools (v2.2 contract)
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/core/connectors.ts` (new) | Register connectors; id resolution (`modelId` in priority order, `connectorId:modelId` explicit); `getManifest` → `map` → Zod validation; `connector-error`; budget checks; `allowedOrigins`; abort signals. | Medium–high: contract correctness while runtime is M5b. Mitigation: mock connectors only, no network. |
-| `src/core/model-tools.ts` (new) | `getModelTools(registry)` → `find_models`, `get_model` (framework-agnostic, Zod inputs, executors bound to connectors); `getModelContext(summaries)`. | Medium: tool shape must work with Vercel AI SDK or plain executors. |
-| `src/core/generators/*` | Advertise `model3d` only with a connector; `scene3d` always; compact `ModelSummary` only. | Low. |
-| `src/schema/model.ts` | Manifest validation used by the registry. | Medium. |
-
-**Not in M4b:** `createStaticModelConnector`, `createHttpModelConnector`, cache/prefetch wrappers, poster/model loading, three.js (all M5b). M4b tests use mock connectors returning raw shapes.
-
-**Acceptance mapping (Part B):** exhaustive layout/slot reducer tests; assessment fake-clock tests incl. reload restore and key rejection; snapshot/replay round-trips; middleware ordering/isolation; prompt snapshots per profile; toy third-party plugin (block + effect + mood + layout) via public SDK; mock connector mapping/validation with `connector-error`.
-
----
-
-## Part C — Renderer and styling
-
-### C1. Layout engine and region-aware board
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/react/layout/` (new: `LayoutRoot`, `FlowRegion`, `SplitLayout`, `GridLayout`, `StageLayout`, `Region`) | Render the layout model; slots; span/align/justify/size; container-query collapse (stack/tabs, `narrowOrder`, `pin`); shared-layout animation on `layout` changes via `motion`; reduced-motion instant. | **High** — art-direction gate. Mitigation: `/m4b` demos every layout; Playwright visual checks; reduced-motion tests. |
-| `src/react/board.tsx` | Render region tree instead of the current single column; region-aware receding, attach placement, spotlight and camera. | **High.** Refactor of the M4 board shell; regression risk for `/m1`–`/m4`. Mitigation: keep M4 tests green throughout; `/m4` remains the regression page. |
-| `styles/base.css` | Layout grid/flex classes, container query breakpoints, region/slot hooks, `group` vocabulary. | Medium. |
-| `src/react/components/blocks.tsx` | `list` block; `group` flex/grid. | Medium. |
-
-### C2. Component anatomy contract
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| Every `src/react/components/*` and chrome component | Export metadata `{ name, parts, tokens, variants, dataAttrs, events, effects }`; `data-dg-part` + `dg-<component>-<part>`; `--dg-<component>-*` tokens; `classNames`/`styles`; replaceable via `components` prop with the documented override signature. | **High** and broad: many components, subtle CSS coupling. Mitigation: contract test enumerates parts and overrides every one; token-only lint. |
-| `src/react/components/registry.tsx` (new) | Slot/part/type override resolution (host override > type replacement). | Medium. |
-| `src/react/provider.tsx` | `components`, `middleware`, `themePolicy`, `density`, `locale`, `dir`, `resolveAsset`, `strings` props. | Medium. |
-| `styles/base.css` | Component tokens for all existing components; remove non-token colours/fonts/radii/durations. | **High** visual-regression risk. Mitigation: visual capture before/after; token map documented. |
-| `docs/components/` generator (`tools/`) | Generate docs from metadata in CI; fail on missing metadata/non-token styling. | Medium. |
-| `tests/react/customization-surface.test.tsx` (new) | For every component: metadata present, every part rendered, every part overridable. | Medium. |
-
-### C3. 2D camera extension
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/react/camera/` (new: `CameraLayer`, `CameraController`, `useCameraPath`, `CameraControls`) | Pan, zoom, tilt/perspective (figure layers + backdrop only), dolly, presets, cue-triggered moves, `path`, bounds, reduced-motion → scroll-into-view, exam off. | **High.** Transform composition, tilt isolation from text, path sequencing, user override/reset. Mitigation: pure camera math tests + browser probes. |
-| `src/react/board.tsx` | Replace M4's zoom-only wrapper with the camera layer; keep `camera="auto"|"off"`. | High. |
-| `src/react/provider.tsx` / `board.tsx` | `cameraControls="none" | "pinch-pan"` with reset control; user input temporarily overrides auto camera; released on next tutor move/reset. | Medium. |
-| `styles/base.css` | Camera layers, perspective, controls, reset. | Medium. |
-
-### C4. Exam-mode enforcement
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/react/board.tsx` | Distraction-free lock driven by core assessment state: camera off, ambience off, theme/layout/camera ops from outside queued or rejected per host config, calm motion preset, locked theme policy. | Medium–high: interaction with middleware/queueing. |
-| `src/react/ambience/AmbienceLayer.tsx` | Off in exam mode. | Low. |
-| `src/react/motion/*` | Calm preset downgrade. | Medium. |
-
-### C5. States, density, RTL, SSR, headless, devtools
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/react/components/board-chrome/*` (new) | `status` indicator (`idle`/`thinking`/`listening`/`speaking`), empty/loading/error states, skip/flush control — all customizable parts. | Medium. |
-| `src/react/provider.tsx`, `styles/base.css` | Density (`compact`/`comfortable`/`large`), min target ≥44 px (≥56 px at `large`); `dir`/RTL mirroring of `left`/`right`; logical properties. | Medium. |
-| SSR/hydration | Stable ids (`useId`), no random render values, no entrance animation during hydration, client-only ambience/camera/devtools. | Medium: Next build + hydration warnings. |
-| `src/react/headless.ts` (new) + package export `dreamer-genui/core` hooks | `useBoardStore`, `useNode`, `useNodeEnter`, `useCue`, `useTheme`, `useLayout`, `useAssessment`, `useRegistry`, `useBoardStatus` — no default components/CSS import. | Medium. |
-| `src/react/devtools/` (new, dev-only) | Initial overlay: node tree, cues, theme/contrast, layout regions, registry, plugin load status, perf, logs, snapshot export; panel registry. | Medium; must tree-shake from production. |
-| `src/react/components/*` | Per-node error boundaries + fallback rendering. The current renderer has resolver-level fallbacks but **no React error boundary**, so this is new (a class component around each node, reporting `load-failed`/render errors, keeping the rest of the board alive). | Medium: React error boundaries only catch render/lifecycle errors, not async; pair with the resolver fallback. |
-
-### C6. Starter packs
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `src/packs/starter/` (new) | Move/define example asset packs and the demo 3D model placeholder; **not registered by default**; playground-only registration. | Low: currently no packs exist in core, so this is mostly a new home + docs. |
-
-**Acceptance mapping (Part C):** `split-*` render (incl. RTL); `layout-change-animated` re-flows smoothly/instantly; narrow collapse; customization-surface test; headless demo; SSR no warnings; density `large` ≥56 px; `camera-tilt-path` cue-synced pan/zoom/tilt + user pinch/pan reset + text never skewed + reduced-motion fallback.
-
----
-
-## Part D — Layout showcase gate
-
-| Files | Change | Risk |
-| :--- | :--- | :--- |
-| `apps/playground/app/(tailwind)/m4b/page.tsx` (new) | Description; demos of every layout, slot, responsive collapse, layout transition, RTL, density, camera pan/tilt/path; fixture picker scoped to M4b; event/error/cue logs; acceptance checklist linking tests. | Medium: fixture import depth (`../../../../../fixtures/...`) and build. |
-| `apps/playground/app/(tailwind)/m4b/layout.tsx` (new) | Route metadata. | Low. |
-| `apps/playground/app/(tailwind)/page.tsx` | Mark `/m4b` shipped and link it. | Low. |
-| `docs/showreel/m4b/` (new) | Captures (layout, reflow, RTL, density, camera path) + `SELF_REVIEW.md` honesty grades. | Low–medium. |
-
-**Gate:** `/m4b` works, checklist filled with pass/fail + test links, captures saved, self-review honest. **STOP for human approval [ASK].**
-
----
-
-## 2. Migration and compatibility plan
-
-1. **Protocol first, behind tests.** Add schemas + fixtures + validation tests before touching the reducer/renderer. Old fixtures must keep validating (except the documented `camera` shape and `diagram.flow` removal).
-2. **Registry facade.** Introduce the SDK alongside the old registry API, migrate consumers one at a time, then delete the old shape. Keep `createRegistry()` and its existing methods working until Part C is done.
-3. **Presets move without behaviour change.** `theme/presets.ts` and `motion/presets.ts` become default-plugin data; old import paths re-export for one milestone. No preset values change in M4b (visual regression must be zero).
-4. **Renderer refactor in slices.** Layout shell → group/list → camera → component anatomy → states/density/RTL → headless/devtools. Run `pnpm test`, `tsc --noEmit`, library build and playground build after each slice; `/m1`–`/m4` are regression pages.
-5. **No new runtime dependencies in M4b** beyond what already exists (`motion`, Zod, React Aria focus/interactions). Flowchart layout engine, three.js, drag-and-drop, KaTeX etc. are later milestones. This keeps the bundle budget check meaningful.
-6. **Fixtures for later milestones** validate and render a graceful fallback; `/m4b` labels them "schema only".
-7. **Generic-library check** after every slice: grep for product/curriculum/subject strings in `packages/`; all examples stay in fixtures/docs.
-
-## 3. Decisions to record in `DECISIONS.md` during M4b
-
-- Plugin registry shape, namespacing, conflict/priority rules, manifest-vs-implementation boundary.
-- `components` override typing (generic per-part map vs discriminated union).
-- Middleware ordering/expansion semantics and isolation.
-- Snapshot/ops-log formats and version/migration strategy.
-- Layout breakpoints + container-query strategy; tab vs stack defaults; `pin` behaviour.
-- Camera transform composition, tilt isolation, pan/dolly bounds, path sequencing, user-override release.
-- Exam lock policy: queue vs reject default; host opt-outs.
-- Density scale values and min-target enforcement.
-- Icon set source/licence; strings bundle shape; RTL logical-property strategy.
-- Connector manifest versioning/caching contract (implementation M5b).
-- Browserlist and bundle budget thresholds after first M4b measurement.
-- Flowchart layout engine: **deferred to M5** (schema only in M4b), recorded as a deferral.
-- Headless primitives: **continue with React Aria focus/interactions only** (no new primitive library) unless a specific need appears.
-
-## 4. Top risks and mitigations
-
-| Risk | Mitigation |
+| Subpath | Owner milestone |
 | :--- | :--- |
-| Registry refactor breaks M1–M4 | Facade + slice-by-slice migration + full suite after each slice; `/m1`–`/m4` regression routes. |
-| Layout refactor regresses M4 detours/camera/receding | Keep M4 tests; region-aware detour placement tests; `/m4` regression page. |
-| Component anatomy sweep causes visual drift | Zero preset/token value changes; before/after captures; token-only lint; customization-surface test. |
-| Camera tilt harms legibility | Tilt applied only to figure/backdrop layers; text in a flat plane; browser probes at 320–1440 px. |
-| Assessment state machine grows into UI | M4b ships headless state only; widgets are M6b; tests use fake clock and no DOM. |
-| Fixtures for later milestones look "broken" | `/m4b` labels schema-only fixtures; fallback rendering tested. |
-| Scope creep into M5/M5b | Explicit non-goals below; no three.js/flowchart layout/question widgets/connector implementations. |
+| `./plugins/*` | M6a (content), M5/M5b (figures/3D), M4d (`ui-kit`) |
+| `./packs/*` | M5b (`packs/starter` demo model) |
+| `./connectors` | M5b (network-capable, opt-in) |
+| `./ui` | M4d |
+| `./voice`, `./voice/engines/*`, `./voice/providers/*` | M6d |
+| `./tutor` | M6c |
+| `./server` | M6c |
+| `./testing` | M7 (published test utilities) |
 
-## 5. Execution order (after approval)
+`tsup` gains entry points and lazy chunking; `package.json` gains `sideEffects` for CSS, explicit `types`, `engines`, optional peers (`ai`, `openai`, `tailwind-merge`), and per-subpath size limits at M8/M9. `"use client"` boundaries are handled in the build, not by hand-editing dist.
 
-1. **A** — schemas, fixtures, validation, JSON Schema, schema tests; old fixtures migrated.
-2. **B1–B2** — SDK/registries + middleware; toy third-party plugin test; built-ins moved behind manifests.
-3. **B3, B5, B6, B7** — layout model, persistence, cap/assets, strings.
-4. **B4, B8, B9** — assessment state machine, profiles/generators, connector registry + model tools (mocks).
-5. **C1–C2** — layout engine, group/list, component anatomy, docs generation, customization-surface test.
-6. **C3–C4** — camera extension, exam enforcement.
-7. **C5–C6** — states/density/RTL/SSR/headless/devtools, starter packs.
-8. **D** — `/m4b` showcase, captures, self-review; full gates; **stop for approval**.
+### 2.4 Fixtures and tests
 
-Each step ends with tests + `tsc` + both builds; commits per coherent slice (not one giant commit).
+- All new fixtures are authored in the milestone that implements them; invalid fixtures assert exact error codes.
+- Test suites: schema snapshots, reducer/ops, cue lead/reading/flush, transitions (midpoint theme, exam restriction), pointer travel/reduced motion, keyed morph, UI-kit interactions, figures/flowchart layout, 3D connectors and fallbacks, question kinds and assessment, tutor connectors, Conductor with `FakeVoice`, static render, SSR, axe, tree-shaking, size budgets.
+- Every visual component gets a Storybook story and `docs/components/<name>.md` generated from metadata.
 
-## 6. Explicit non-goals for M4b
+### 2.5 Network, privacy and genericity
 
-- Flowchart/timeline/compare **rendering** (M5); flowchart layout engine (M5).
-- Question and assessment **widgets**, flashcards UI, navigator UI, exam simulator (M6b).
-- `model3d`/`scene3d` **runtime**, three.js, loaders/decoders, picking, WebGL fallback (M5b).
-- Reference connector **implementations** (`static`, `http`, cache, prefetch) — M5b. M4b: contract, registry, mock tests.
-- Storybook, authoring docs, full devtools, BoardControls polish (M7).
-- Any new first-party opt-in plugin; any model-preparation CLI (requires separate **[ASK]**).
+- Core, schema, `ui` and renderer never fetch. `connectors`, `tutor`, `server`, remote voice providers and voice-engine weight loading are the only network code, each opt-in and host-configured.
+- No analytics or telemetry anywhere. Voice defaults: local processing, `allowRemoteAudio: false`, `retainAudio: false`.
+- No subject, curriculum, exam board, voice vendor or product names in `packages/`; example content lives only in fixtures, presets and docs.
+- No model weights in the npm package.
 
-## 7. Approval requested
+---
 
-Approve this reconcile (or amend scope) so M4b can start at Part A. On approval I will:
+## 3. M4c — Motion language upgrade
 
-1. Log the M4b rulings in `DECISIONS.md` as they land.
-2. Execute A → D in the order above, keeping M1–M4 green.
-3. Build `/m4b` and its Layout showcase, capture evidence, self-grade honestly.
-4. **Stop at the Layout showcase gate for human approval** before M5.
+**Goal:** make the board feel like the reference video: scene transitions, keyed text morph/assemble, a travelling pointer, structural decor, glow, drift camera, and cue timing that can follow narration. Route `/m4c`; Motion gate at the end.
+
+**Existing pieces:** effect presets in `src/motion/presets.ts`; kinetic text in `src/react/kinetic/`; ambience particles in `src/ambience/particles.ts`; camera in `src/react/motion/` and `board.tsx`; cue engine in `src/core/cues.ts`/`resolver.ts`; theme tokens in `src/theme/`.
+
+**Schema**
+- `Beat`, `LessonTurn`, `StudentTurn`, narration state, `[[cue:id]]` marker parsing (strip before display/synthesis).
+- `SceneTransition` on `replace`; `update.transition` (`morph | fade | none`); `key` on nodes and marks.
+- `pointer` op with `to: NodeRef | "hide"`, `style`, `trigger`, `duration`, `ease`.
+- `lead` on cue triggers; `reading` pacing enum.
+- Effects `tilt-rise`, `assemble`, `iris`; `caret`, `blur`; `diagram.layout: "orbit"`; `texture.glow`; camera preset `drift`; new error codes.
+- JSON Schema, prompt guide (pacing, pointer, transitions, one-idea scenes, narration beats) and `serializeBoard` (`spokenUpTo`, pending cues, scene title/keys).
+
+**Core**
+- Cue engine: `lead` offsets, beat-level fallback, orphan detection (`cue-orphan`), end-of-turn flush after the last beat or `maxWaitMs`, reading-speed estimation from beat text.
+- `pacing: "reading"` timing source with a configurable words-per-minute default and deterministic tests.
+- Transition registry and resolution: unknown kind → `transition-unknown` and `fade`; exam mode only `cut`/`fade`; midpoint theme flip.
+- Pointer is transient presentation state, **not** `BoardState`: a pointer bus/state slice outside snapshots, replayable from the ops log; one pointer per board; hide on replace/back.
+- Text morph support: keyed span matching is core-adjacent (a pure matcher that returns old→new pairs); rendering is React.
+- `serializeBoard` and prompt guide updated; no new network.
+
+**Renderer/plugins**
+- `transitions-default` plugin with `cut, fade, wipe, push, iris, morph`; shared-layout-style morph for matching keys, cross-fade for the rest; FLIP/`motion` layout animation; reduced motion → instant; mid-transition theme applied without a flash.
+- `motion-default` gains the new effects, caret typewriter, cheap velocity blur (CSS filter/transform approximation; disabled for reduced motion, low-end devices and exam mode), and the measured timings above.
+- Text morph/assemble: grapheme-safe split (Intl.Segmenter), keyed spans, persistent accent spans, `aria-live` output stable during morph, DOM text remains selectable and screen-reader correct at rest.
+- Pointer renderer: dot/hand/arrow from tokens, eased travel, ripple tap, `data-dg-part`, reduced-motion highlight ring, exam off, pointer hidden on scroll/narrow fallback if it would obscure content.
+- `orbit` layout: pure ring-placement algorithm + schema; diagram rendering itself lands in M5. M4c tests the algorithm and registers the layout name so `diagram` can use it later.
+- `ambience-default`: `blueprint-grid` (SVG/CSS guide lines drawn on) and `rings` (structural, slow), with lite mode and static reduced-motion; frame-budget tests.
+- Glow token applied to accent text/borders/figures; `night` and `paper` example moods (navy/cyan, light grey/blue) with strong weight contrast and a light italic secondary face.
+- `drift` camera preset: slow continuous push-in within bounds; pauses offscreen/hidden; reduced motion → none; exam off.
+- Showreel v2: five reference-like scenes authored **only** in protocol ops, driven by the mock narrator cue timeline; no one-off renderer code.
+
+**Fixtures/tests**
+- Valid: `lesson-turn-narration.json`, `text-morph.json`, `scene-transitions.json`, `pointer-tour.json`, `reference-saas-explainer.json`.
+- Invalid: `invalid-cue-orphan.json`, `invalid-duplicate-beat.json`, `invalid-unknown-transition.json`, `invalid-malformed-turn.json`.
+- Tests: turn parsing/validation; marker stripping; cue lead/reading/flush; transition kinds + midpoint theme + exam restriction; keyed morph matching; pointer travel/ripple/reduced motion/exam; drift bounds; orbit placement; glow contrast; showreel fixture snapshot.
+
+**Risks**
+- Text morph and assemble are the highest-complexity renderer work: keyed span matching, RTL/grapheme safety, stable accessibility. Mitigation: start with word-level morph, then letters; fall back to a cross-fade when matching is ambiguous.
+- Cross-browser shared-layout animation (View Transitions vs FLIP) must be chosen and recorded; Safari behaviour needs explicit tests.
+- Blur can be expensive; keep it optional and device-gated.
+- Pointer and camera can fight for attention; enforce one focal point and pointer visibility rules.
+- Exact cue lead cannot be measured until M6d (no STT now); default 180 ms is provisional and must be re-tuned at the gate.
+
+**Gate:** side-by-side capture against the reference in `docs/showreel/`, `SELF_REVIEW.md` honesty pass, 60 fps throttled profile, all §11.3 items. **STOP for human approval.**
+
+---
+
+## 4. M4d — UI kit (shadcn parity)
+
+**Goal:** a token-themed, density-aware, tap-first UI kit with shadcn capability parity: a host-only kit and a tutor-addressable block subset. Route `/m4d`.
+
+**Existing pieces:** component anatomy in `src/react/anatomy*` and `COMPONENT_META`; tokens/density in `src/theme`; strings registry; existing question/assessment state machines that will consume the kit later.
+
+**Inventory**
+- Snapshot the current shadcn/ui component list from its documentation into `docs/components/PARITY.md` with, per component: board counterpart, status (`tutor-addressable`, `host-only`, `not applicable` + reason), notes.
+- Tutor-addressable: `card`, `alert`, `accordion`, `collapsible`, `tabs`, `badge`, `progress`, `counter`, `avatar`, `separator`, `carousel`, `kbd`, plus `term` tooltip/hover card.
+- Host-only: button, input, textarea, select, checkbox, radio group, switch, slider, label, form, dialog, alert dialog, sheet, drawer, popover, dropdown/context menu, command/combobox, navigation menu, menubar, breadcrumb, pagination, calendar/date picker, resizable, scroll area, sidebar, toast, spinner, empty, input OTP, toggle/toggle group, aspect ratio, typography, and the remainder of the inventory.
+
+**Implementation**
+- Radix primitives (confirmed in DECISIONS; deviation only with justification), tree-shakeable per component; no Tailwind dependency; plain CSS in `@layer dreamer-genui` using `--dg-*` (including component tokens).
+- `src/ui/` components with metadata, parts, `data-dg-*`, `classNames`/`styles`, replaceable through `components`, RTL-safe, density-aware (≥44 px default, ≥56 px at `large`), focus-visible, keyboard and screen-reader complete.
+- Tutor blocks registered by the default `ui-kit` plugin with schemas, prompt guides, fallbacks and nested `blocks`; `enter`/triggers/slots; events: accordion/collapsible `action: "toggle"`, tabs/carousel `select`, interactive card `select`.
+- Animated `progress` and `counter` (cue-driven); `term` tooltip/hover card with real text, not raw HTML.
+- `dreamer-genui/ui` subpath, individually importable; `ui` must not appear in the core bundle.
+- Stories per component (mood/density/RTL variants), axe and keyboard tests, customization-surface test, tree-shaking test.
+
+**Fixtures/tests:** `ui-kit-blocks.json`; interaction tests per tutor block; size report per component; docs generated.
+
+**Risks:** Radix version drift and accessibility regressions; bundle growth from a broad host kit (mitigated by per-component exports and size budgets); shadcn inventory changes over time (the parity doc is a dated snapshot); density tokens interacting with existing layout spacing.
+
+---
+
+## 5. M5 — Figures
+
+**Goal:** real figure runtimes replacing the alt-only shell: icons, images, diagrams (tree/radial/orbit/cycle), flowcharts, timelines, `compare`, labeled art, annotation strokes, charts deferred to M6a.
+
+**Existing pieces:** figure schemas in `src/schema/figures.ts`; `resolveAsset` in `core/assets.ts`; empty `src/figures/`; no GSAP/d3 dependency yet.
+
+**Implementation**
+- `diagrams` plugin: `d3-hierarchy` for tree/radial (lazy), in-repo orbit/cycle layout; sequential reveal, focusable nodes, text summaries, alt fallback.
+- `flowchart`: choose dagre or elkjs (record why in DECISIONS), layered layout with decisions, labelled branches, back-edges/recycle loops, inputs/outputs, lanes, numbering, pulse flow; narrow `stepper`/`compact` modes with camera follow; lazy layout chunk.
+- `timeline` (horizontal/vertical), `compare` block, `labeled` asset packs with part highlighting/hotspots, image/icon with asset resolver.
+- Annotation primitives: hand-drawn SVG strokes (circle/underline/box/bracket/strike) reused by `attach.target.annotate`; GSAP draw-on, lazy chunk.
+- Figure error boundaries: any failure renders `alt` plus a text summary.
+- Prompt guide/capabilities per figure; registry metadata; generated docs and stories.
+
+**Acceptance:** every kind renders from fixtures; `process-flowchart.json` draws sequentially with a decision and recycle loop on a phone, focusable steps emit `focus`; GSAP/flowchart/ambience are not in the initial bundle; forced failure shows alt; figures respect layout regions.
+
+**Risks:** flowchart layout quality (back-edges, long labels) is the main risk; phone legibility; GSAP licensing (verify and record); large fixture surface.
+
+---
+
+## 6. M5b — 3D figures and the Model Connector
+
+**Goal:** `model3d` and `scene3d` runtimes plus the connector contract and tutor model tools. Route `/m5b`; 3D showcase gate.
+
+**Existing pieces:** complete `ModelManifest`, `ModelConnector`, `ModelSummary`, `model3d`/`scene3d` schemas and validation tests (M4b); no runtime, no `src/connectors/`.
+
+**Implementation**
+- Lazy `three` chunk with GLTFLoader, Draco/Meshopt/KTX2 decoders bundled locally; thin in-repo wrapper for named-part picking, views, highlight/dim/isolate/explode/cutaway, tweened camera, HTML labels, flow paths, clips, LOD selection, poster, disposal, render-on-demand, pixel-ratio cap, context limit (1–2 live figures) and snapshot freezing.
+- Student controls: orbit/pinch/pan, keyboard, views bar, reset; token-driven materials/lighting; WebGL-unavailable fallback (poster + alt + parts list); `focus` events with `figureId/partId`.
+- `scene3d` primitives, `place`/`arrange`, limits, shared runtime.
+- `src/connectors/`: `createStaticModelConnector`, `createHttpModelConnector`, `withModelCache`, `withPrefetch`, `defineModelPack`; allowed origins, budgets, signed-URL retry, validation to `ModelManifest`, offline cache.
+- `getModelTools`/`getModelContext` completed; `serializeBoard` lists models in use; prompt guide tells the tutor to use only returned ids.
+- `dg:model-check <glb> <manifest>` in `tools/`.
+- Playground `/api/mock-models` with a tiny bundled demo model, connector switcher (static/HTTP/cached), model tour demo.
+
+**Acceptance:** `model3d-basic.json` and `model3d-tour.json` load identically through static and HTTP connectors; poster first; tour syncs views/highlights/isolate/labels with mock cues; part taps emit focus; unknown part/view/model degrade gracefully; WebGL fallback; offline cache; three.js not in initial bundle; idle renders no frames; smooth orbit throttled; `scene3d-solids.json`; conformance passes.
+
+**Risks:** 3D performance and GPU memory on low-end Android; decoder WASM size; signed-URL refresh; accessibility of canvas content; the demo model licence and size.
+
+---
+
+## 7. M6a — Content built-ins
+
+**Goal:** `math`, `chart`, `table`, `lottie`, `code` as lazy default plugins built only with the public SDK.
+
+**Existing pieces:** block schemas exist; no plugin folders or runtimes.
+
+**Implementation**
+- `math`: KaTeX + mhchem, block and inline, `trust: false`, lazy CSS bundled with the chunk.
+- `chart`: d3-scale/d3-shape SVG, bar/line/pie/scatter, text summary and alt.
+- `table`: column/row highlight, focusable cells, responsive overflow.
+- `lottie`: light expression-free player (choose and record), asset resolver, alt fallback.
+- `code`: lightweight lazy highlighter, default languages recorded, copy control (host string from strings registry).
+- Each plugin: manifest + lazy implementation + prompt guide + parts/tokens + conformance suite; disable/override tests; unknown-type fallback when disabled.
+
+**Risks:** dependency licences and bundle size; Lottie player behaviour; KaTeX CSS isolation; charts on narrow screens.
+
+---
+
+## 8. M6b — Questions and assessment
+
+**Goal:** question widgets and the assessment shell on the UI kit, plus 3D hotspot/label questions. Route `/m6b`; Exam run-through gate.
+
+**Existing pieces:** complete question/assessment schemas, `core/assessment.ts` state machine, exam-lock resolver and board enforcement, fixtures for kinds/practice/exam/review.
+
+**Implementation**
+- `questions` plugin: mcq, truefalse, short, numeric, cloze (`blank` mark), matching, ordering, hotspot, labelDiagram, extended; flashcards; hint ladder; status/feedback animation; keyboard equivalents for all drag interactions; screen-reader labelling and live regions.
+- `assessment` plugin: shell (title/instructions/timer/navigator/sections/marks/flag/submit confirm), modes practice/quiz/exam/review, review driven by `update` ops, local-first autosave/restore, host API, `onAssessmentState`, distraction-free presentation.
+- 3D questions: raycast part picking and part-id answers, accessible parts list as the keyboard path.
+- Prompt guide/assessment profile; host UI strings from the registry.
+- Playground exam simulator.
+
+**Acceptance:** fixtures work end to end; timer survives reload; answers restore; exam payload keys rejected; no feedback before review; all kinds keyboard/screen-reader operable; 3D hotspot and label-drag work; conformance.
+
+**Risks:** drag accessibility is the main risk; timer/clock edge cases; large UI surface; interaction with exam locks and voice silence (M6d).
+
+---
+
+## 9. M6c — Tutor connectors and server helper
+
+**Goal:** any tutor, same `LessonTurn` stream. Route `/m6c`.
+
+**Implementation**
+- `TutorConnector` and `defineTutorConnector` in the registry; `src/tutor/`:
+  - `createHttpTutorConnector` with `toRequest`/`fromResponse` for legacy/platform APIs, SSE/NDJSON parsing, abort, retry/backoff.
+  - `createAiSdkTutorConnector` (verify supported AI SDK majors; record).
+  - `createOpenAICompatibleTutorConnector` (JSON-schema structured output or tool calling; browser requires proxy/token).
+- `src/server/` `createLessonHandler`: prompt assembly from `getSystemPromptGuide`, `serializeBoard`, capabilities, `spokenUpTo`, model tools; streams `LessonTurn`; validates every op, bounded repair/retry, limits, untrusted-content delimiting, prompt-injection defence, trace hooks, server-only credentials.
+- `dg:tutor-eval` harness with mock model and validity report.
+- Playground mock endpoints for all three connectors, including a legacy-shaped API and a server-helper model path.
+
+**Acceptance:** identical fixtures through all connectors; invalid ops repaired/dropped with report; works in a Next.js route; credentials never client-side; injection tests pass; eval runs; network only in opt-in subpaths.
+
+**Risks:** AI SDK API churn; streaming parser differences; repair policy correctness (never mask protocol bugs); server helper becoming a de-facto backend (keep it optional and generic).
+
+---
+
+## 10. M6d — Voice and the Conductor
+
+**Goal:** narration and board cues in lockstep, local-first, with graceful degradation. Route `/m6d`; Voice sync gate.
+
+**Implementation**
+- `src/voice/`: `Narrator`, `Listener`, `Conductor`/`useConductor`, `<VoiceControls>`, `<Captions>`, `<SpeakButton>`, `speakable`; `defineVoiceProvider`; TTS/STT/VAD interfaces; `RealtimeVoiceAdapter` interface only (reference adapter is [ASK]).
+- Engines:
+  - Web Speech default fallback.
+  - **OSS TTS: Piper** (MIT code; per-voice licences recorded; ONNX/WASM; host `modelBaseUrl`, size consent, Cache API; Kiswahili voice availability investigated and documented — if none is usable, document the gap and fall back to Web Speech for `sw`).
+  - **OSS STT: Whisper via Transformers.js** (Apache-2.0 code, MIT weights; multilingual incl. Swahili; host-hosted quantized model; consented download and cache).
+  - **VAD: Silero VAD** (MIT; WASM/ONNX; host assets).
+  - Remote opt-in: OpenAI-compatible TTS and ElevenLabs (alignment timestamps when present); credentials via host token/proxy.
+- Conductor: speak beat 1 on completion; prefetch ~2 beats; schedule cues on the audio clock with `lead`; beat/aligned/estimated/reading modes; `[[cue:id]]` markers; barge-in/interrupt; `spokenUpTo`/`interrupted` into the next `StudentTurn`; pause/resume/replay/skip/speed 0.75–1.5×; captions with word highlight; turn-taking push-to-talk default; autoplay gesture; permission UX; degradation chain; privacy defaults; exam silent except `readAloud`.
+- `FakeVoice` and cue-timeline tests with a fake audio clock; per-engine Kiswahili behaviour in docs/DECISIONS.
+- Playground voice demo with scripted timings and a real local engine where available.
+
+**Acceptance:** cues land within documented tolerance on the audio clock; first beat speaks before the turn finishes; barge-in and `spokenUpTo`; fallback chain; remote audio blocked by default; permission/autoplay flows; Kiswahili documented; no weights in the package; budgets; exam silent.
+
+**Risks:** engine download size and low-end performance; Safari/Web Audio quirks; voice quality and Swahili coverage; autoplay policies; microphone permission UX; flaky audio tests (use fake clock and deterministic fixtures); remote provider terms.
+
+**Gate:** capture of a narrated lesson with cues landing on beats. **STOP for human approval.**
+
+---
+
+## 11. M7 — Playground, tooling and docs
+
+**Goal:** a coherent developer experience: every route, fixture picker, JSON editor, mock tutor/narrator, exam simulator, showreel, layout/3D/voice showcases, Storybook, templates, authoring docs, static render.
+
+**Implementation**
+- `/` index plus polished `/m1`–`/m9` routes with consistent checklist panels and links to tests; keep earlier routes as regression pages.
+- JSON editor → live board, fixture picker scoped per milestone, theme/mood/ambience/layout/density switchers, mock tutor and cue timeline UI, exam simulator, event/error/cue logs.
+- `<BoardControls>` (skip, replay beat, back, progress dots) customizable.
+- Devtools overlay final pass with plugin panels; published testing utilities, conformance suite, `pnpm dg:plugin-check`; templates (plugin, theme, mood+ambience).
+- Storybook story per component and fixture (mood/layout/density variants).
+- `toMarkdown`/`toHTML`, offline recipes, docs/authoring for every recipe (including 3D and connector authoring, tutor integration), README.
+- Versioned docs for voice engines, model weights, permissions and privacy.
+
+**Risks:** docs scope is large; Storybook adds build time; playground can drift from the library — keep demos fixture-driven.
+
+---
+
+## 12. M8 — Hardening
+
+**Goal:** prove the quality bars before release.
+
+- Accessibility: axe plus manual screen-reader/keyboard passes (board, exam, UI kit, 3D parts list, voice controls).
+- Performance: CPU-throttled low-end profile, 3D memory/context behaviour, voice load time and real-time factor, ambience frame budget, mounted-node cap.
+- Privacy review: audio handling, consent, retention, remote-provider gating.
+- Bundle audit: per-subpath budgets, tree-shaking, no core escalation.
+- SSR/RSC, browser matrix (current Android Chrome, Samsung Internet, Safari iOS, last ~3 years; no Opera Mini), security review (CSP, sanitization, limits, plugin boundaries), API freeze, `migrate()` coverage.
+- Clean-room installs in fresh Next.js (Tailwind and non-Tailwind) and Vite apps.
+
+**Risks:** low-end 3D/voice performance may force budget or engine changes; API freeze may surface naming issues (resolve before M9).
+
+---
+
+## 13. M9 — Release candidate and 1.0.0
+
+**Goal:** publish `dreamer-genui@1.0.0` under MIT, with the human approving the final `latest` tag.
+
+- `LICENSE` (MIT), `THIRD_PARTY_NOTICES.md` (runtime deps, fonts/icons/assets, demo model, voice engines and weights), GSAP/voice licences verified.
+- API report checked in and diffed; exports map, `files`, `sideEffects`, ESM/CJS, `"use client"`, types/source maps, `engines`, optional peers, size limits.
+- Provenance-enabled CI; lint/typecheck/unit/e2e/axe/size/licence/build matrix; Changesets and changelog.
+- Publish `1.0.0-rc.1` on `next`, clean-room installs, iterate `rc.N`; final `1.0.0` on `latest` only with explicit human approval.
+- `/m9` release checklist; README, Storybook, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue/PR templates, compatibility matrix.
+
+**Risks:** npm name availability (ASK if unavailable); trusted publishing setup; final size/licence gate; release timing.
+
+---
+
+## 14. Fixture matrix (v3 additions)
+
+| Fixture | Milestone | Purpose |
+| :--- | :--- | :--- |
+| `lesson-turn-narration.json` | M4c | Beats + ops, beat ids as cues, inline markers |
+| `text-morph.json` | M4c | Keyed spans, morph/assemble, caret |
+| `scene-transitions.json` | M4c | cut/fade/wipe/push/iris/morph + midpoint theme |
+| `pointer-tour.json` | M4c | Pointer travel, tap ripple, hide |
+| `reference-saas-explainer.json` | M4c | Five-scene reference replication, ops only |
+| `ui-kit-blocks.json` | M4d | Every tutor-addressable block and event |
+| `invalid-cue-orphan.json` | M4c | `cue-orphan` |
+| `invalid-duplicate-beat.json` | M4c | `turn-invalid` |
+| `invalid-unknown-transition.json` | M4c | `transition-unknown` |
+| `invalid-malformed-turn.json` | M4c | `turn-invalid` |
+
+Existing fixtures (`process-flowchart`, `diagram-*`, `timeline`, `compare`, `labeled-art`, `model3d-*`, `scene3d-solids`, `question-kinds`, `assessment-*`, `flashcards`) become **rendering** fixtures in M5–M6b; until then they validate only. This is expected and tracked per route.
+
+---
+
+## 15. Decision queue
+
+Recorded as work lands (all in `DECISIONS.md`):
+
+- Transition implementation (FLIP vs View Transitions), morph matching rules, blur approximation and device gate.
+- Cue lead default (provisional 180 ms) and reading-speed default; re-measured at M6d.
+- Pointer state placement (transient bus, not `BoardState`).
+- Radix confirmation, shadcn inventory date, UI-kit per-component size budget.
+- Flowchart engine (dagre vs elkjs) with justification.
+- Lottie player, code highlighter and default languages; icon set licence.
+- GSAP licence verification; browserslist; ambience lite-mode detection; visual regression tooling.
+- 3D wrapper, decoder hosting, picking, label occlusion, context strategy, connector cache/manifest versioning.
+- Voice engines and licences, weight hosting/cache, Kiswahili coverage, AI SDK majors, structured-output strategy, repair/retry policy, release tooling.
+- Every protocol deviation, however small.
+
+**ASK points:** Motion gate (M4c), 3D showcase (M5b), Exam run-through (M6b), Voice sync gate (M6d), final publish (M9), plus the §15.3 optional items (opt-in first-party plugins, model-prep/eject CLIs, realtime speech-to-speech reference adapter) if they ever come up.
+
+---
+
+## 16. Execution order and gates
+
+1. Commit the `visibleNodeIds` removal (library-only files) and the reference copy.
+2. M4c: protocol → cue engine → transition/pointer/morph → decor/glow/moods/drift → showreel v2 → `/m4c` → tests/build → **Motion gate [ASK]**.
+3. M4d → `/m4d`.
+4. M5 → `/m5`.
+5. M5b → `/m5b` → **3D showcase gate [ASK]**.
+6. M6a → `/m6a`.
+7. M6b → `/m6b` → **Exam run-through gate [ASK]**.
+8. M6c → `/m6c`.
+9. M6d → `/m6d` → **Voice sync gate [ASK]**.
+10. M7 → all routes, Storybook, docs.
+11. M8 → hardening audits.
+12. M9 → rc, clean-room installs, **final publish approval [ASK]**.
+
+Each milestone commits separately, keeps `tsc --noEmit`, the full test suite and the playground build green, and fills its acceptance checklist on its route. Completed milestones (M0–M4b) are not modified except where a later milestone explicitly owns the change (for example moving presets behind plugins in M6a, or adding registry kinds in M4c/M6c/M6d).
