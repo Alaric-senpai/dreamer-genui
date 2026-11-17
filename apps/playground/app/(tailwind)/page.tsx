@@ -10,13 +10,13 @@ const ROUTES = [
   { href: '/m2', id: 'M2', title: 'Core', status: 'done', note: 'reducer, cues, theme, prompt guide, snapshots' },
   { href: '/m3', id: 'M3', title: 'Renderer & kinetic text', status: 'done', note: 'text, marks, cues, moods, styling paths' },
   { href: '/m4', id: 'M4', title: 'Board behaviour & ambience', status: 'done', note: 'attach/return, receding, camera, streaming' },
+  { href: '/m4b', id: 'M4b', title: 'Layout & camera showcase', status: 'done', note: 'flow/split/grid/stage, slots, RTL, density, tilt/dolly paths' },
   { href: '/showreel', id: '§9.4', title: 'Showreel', status: 'done', note: 'eleven-beat motion-graphic gate' },
   { href: '/plain-css', id: 'M3', title: 'Plain-CSS host', status: 'done', note: 'no Tailwind required' },
   { href: '/app', id: 'app', title: 'Live board app', status: 'ongoing', note: "A live example of the board working in realime"}
 ] as const;
 
 const PLANNED = [
-  ['M4b', 'retrofit + layout/camera showcase (v2.1)'],
   ['M5', 'figures, diagrams, hand-drawn annotations'],
   ['M5b', '3D figures (v2.2)'],
   ['M6a/M6b', 'questions, assessment, exam run-through'],

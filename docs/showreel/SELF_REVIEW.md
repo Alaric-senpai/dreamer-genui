@@ -167,3 +167,59 @@ draw-in and hand-drawn annotation strokes are M5, item 7 is a real failure
 until then, and item 8's throttled frame-time tail is a partial pass.
 
 **Status: M4 complete, awaiting the human's spec changes before M5.**
+
+## M4b — layout and camera showcase gate
+
+The showcase lives at `/m4b` in the playground and exposes every layout, slot,
+responsive mode and camera behaviour with deterministic URL presets
+(`?scene=flow|split|split-reversed|grid|stage|group|transition|camera`,
+`&density=compact|large`, `&dir=rtl`, `&narrow=1`). Captures below were taken
+against a clean production build at 1440×1100 with the Playwright headless
+shell and a 9 s virtual-time budget.
+
+| Capture | What it demonstrates | Grade |
+|---|---|---|
+| `m4b-split.png` | `split` with an explanation in `left` and a callout + list in `right`; the tutor's composed "explanation beside a question" register | ✅ |
+| `m4b-stage.png` | all five `stage` regions populated (`top`, `left`, `center`, `right`, `bottom`), each readable at capture size | ✅ |
+| `m4b-grid.png` | four unslotted nodes laid directly into a three-column `grid`; the fourth wraps onto the next row | ✅ |
+| `m4b-rtl.png` | the same split mirrored under `dir="rtl"`; logical `left`/`right` swap without component changes | ✅ |
+| `m4b-narrow.png` | 390 px container: split collapses to a stack in `narrowOrder`, no horizontal scroll | ✅ |
+| `m4b-density-large.png` | `density="large"`: larger type and spacing with the heading wrapping at word boundaries (no mid-word break) | ✅ |
+| `m4b-camera-tilt.png` | cue-driven camera path reached its close-up step: board vars carry `tilt-x: 8deg`, `tilt-y: -4deg`, `dolly: 48px`; the text layer stays flat and legible | ✅ with note |
+
+Checklist mirroring the M4b acceptance list:
+
+- **`flow`, `split`, `split-reversed`, `grid`, `stage` render and re-flow** —
+  pass. The transition scene re-flows the same nodes between all four
+  compositions with an 850 ms layout transition (`tests/react/layout-engine.test.tsx`).
+- **All named slots** (`top`, `left`, `center`, `right`, `bottom`) — pass; the
+  stage capture populates all five.
+- **Responsive collapse and pinning** — pass at a 390 px board width; the
+  container-query path uses the board's own width, not the window.
+- **RTL** — pass; logical slots mirror and typography/quote borders follow the
+  document direction.
+- **Density** — pass. `large` writes the documented 1.18 scale and 56 px
+  minimum target token; `tests/react/c2b.test.tsx` covers the token surface.
+- **Animated layout re-flow, instant under reduced motion** — pass. FLIP is
+  transform-only and the reduced-motion driver settles immediately.
+- **Camera pan/zoom/tilt/dolly, presets and guided paths** — pass. The
+  `camera-tilt-path` fixture runs overview → target close-up (zoom 1.4, tilt
+  8/-4, dolly in) → overview, with each step triggered by a narration cue
+  (`tests/react/camera.test.tsx`). The DOM verification for the capture showed
+  the non-identity backdrop transform and the `focus-detail` cue fired.
+- **Optional student pinch-pan with reset** — pass. One-finger drag pans,
+  two-finger pinch zooms, the reset control restores the tutor's last framing,
+  and reduced motion scrolls into view instead.
+- **Exam fallback** — pass. `data-dg-exam` turns the camera and ambience off,
+  removes student camera controls and calms node motion
+  (`tests/react/exam.test.tsx`, `tests/core/exam-locks.test.ts`).
+- **Figures inside tilted layers** — not demonstrable yet: figure renderers are
+  M5 scope, so the camera capture shows zoom on real text but no figure depth.
+  Tilt/dolly are applied to the backdrop and figure hooks, verified through the
+  board CSS variables and the camera tests rather than a rendered figure.
+
+Verification at this gate: `pnpm -s test` **608/608 tests, 55 files**;
+`pnpm -s tsc --noEmit` clean; library and playground production builds green;
+all seven captures regenerated from the clean build.
+
+**Status: M4b complete, awaiting human approval before M5.**

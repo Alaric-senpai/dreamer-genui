@@ -1,6 +1,6 @@
 /** React renderer surface (M3). */
 export { DreamerProvider, useDreamer, useEmitEvent, defaultStrings } from './provider';
-export type { DreamerProviderProps, DreamerContextValue, UIStrings } from './provider';
+export type { DreamerProviderProps, DreamerContextValue, Density, UIStrings } from './provider';
 export { Board } from './board';
 export type { BoardProps } from './board';
 export { createBoardStore, useBoard, useBoardVersion } from './use-board';

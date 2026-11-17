@@ -143,6 +143,7 @@ describe('<Board> split layout', () => {
     const regions = document.querySelector('.dg-layout-regions');
     expect(regions).not.toBeNull();
     expect(regions).toHaveAttribute('data-dg-layout-regions');
+    expect(regions).toHaveAttribute('data-dg-layout', 'split');
     expect(nodeEl('explain').closest('.dg-region')).toHaveAttribute('data-slot', 'left');
     expect(nodeEl('ask').closest('.dg-region')).toHaveAttribute('data-slot', 'right');
   });
@@ -201,6 +202,24 @@ describe('<Board> grid layout with span', () => {
       ],
     } as unknown as Reply);
     expect(nodeEl('g1').closest('.dg-region-entry')).toBeNull();
+  });
+
+  test('unslotted nodes are direct grid items, not stacked in one region', () => {
+    setupBoard({
+      v: 1,
+      ops: [
+        { op: 'layout', layout: { kind: 'grid', columns: 2 } },
+        { op: 'append', blocks: [
+          { id: 'g1', type: 'text', variant: 'body', content: ['one'] },
+          { id: 'g2', type: 'text', variant: 'body', content: ['two'] },
+        ] },
+      ],
+    } as unknown as Reply);
+    const regions = document.querySelector('.dg-layout-regions') as HTMLElement;
+    expect(regions).toHaveAttribute('data-dg-layout', 'grid');
+    expect(regions.querySelector('.dg-region')).toBeNull();
+    expect(nodeEl('g1').parentElement).toBe(regions);
+    expect(nodeEl('g2').parentElement).toBe(regions);
   });
 });
 

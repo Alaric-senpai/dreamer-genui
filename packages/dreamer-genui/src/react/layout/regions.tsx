@@ -193,6 +193,23 @@ export function LayoutRegions({
     }
   })();
 
+  // Grid regions are an implementation detail upstream (all nodes fall back
+  // to the primary region), so render the nodes themselves as the grid items.
+  // Wrapping them in one flex region would make `columns` a no-op.
+  const gridItems =
+    model.kind === 'grid'
+      ? orderedIds.map((id, i) => {
+          const style = spanStyle(id);
+          return style ? (
+            <div key={id} className="dg-region-entry" style={style}>
+              {renderNode(id, i)}
+            </div>
+          ) : (
+            <Fragment key={id}>{renderNode(id, i)}</Fragment>
+          );
+        })
+      : null;
+
   const visibleSlots = tabsActive ? model.regions.filter(slot => visibleTab === slot) : narrowOrder;
   const regionsPart = p.props('regions', 'dg-layout-regions');
 
@@ -218,11 +235,12 @@ export function LayoutRegions({
       )}
       <div
         {...regionsPart}
+        data-dg-layout={model.kind}
         data-dg-layout-regions=""
         data-dg-collapsed={collapsed || undefined}
         style={regionsPart.style ? { ...regionsStyle, ...regionsPart.style } : regionsStyle}
       >
-        {visibleSlots.map(renderRegion)}
+        {model.kind === 'grid' ? gridItems : visibleSlots.map(renderRegion)}
       </div>
     </>
   );
