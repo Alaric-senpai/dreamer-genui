@@ -15,6 +15,18 @@ import {
   ListBlockSchema,
   CompareBlockSchema,
   FlashcardsBlockSchema,
+  CardBlockSchema,
+  AlertBlockSchema,
+  AccordionBlockSchema,
+  CollapsibleBlockSchema,
+  TabsBlockSchema,
+  BadgeBlockSchema,
+  ProgressBlockSchema,
+  CounterBlockSchema,
+  AvatarBlockSchema,
+  SeparatorBlockSchema,
+  CarouselBlockSchema,
+  KbdBlockSchema,
 } from '../schema/blocks';
 import { QuestionBlockSchema } from '../schema/question';
 import { AssessmentBlockSchema } from '../schema/assessment';
@@ -213,6 +225,80 @@ const CORE_BLOCK_PLUGIN = definePlugin({
   provides: { blocks: CORE_BLOCKS },
 });
 
+/**
+ * Tutor-addressable UI-kit blocks (§6.19). Every one nests arbitrary blocks,
+ * honours `enter`/triggers/slot through the normal node contract, and uses the
+ * board's motion presets. Hover affordances are tap-first on touch.
+ */
+const UI_KIT_BLOCKS: Record<string, BlockDefinition> = {
+  card: defineBlock({
+    schema: CardBlockSchema,
+    promptGuide:
+      'card block: title?, description?, media?, blocks: Block[], footer?, variant (plain|outlined|elevated|accent); interactive:true emits select. Use a card for one composed idea, not a dashboard of cards.',
+  }),
+  alert: defineBlock({
+    schema: AlertBlockSchema,
+    promptGuide:
+      'alert block: tone (info|success|warn|danger), title?, content: Inline[], icon?, dismissible?. Use for a short, consequential notice; use callout for quiet asides.',
+  }),
+  accordion: defineBlock({
+    schema: AccordionBlockSchema,
+    promptGuide:
+      'accordion block: items {id,title:Inline[],blocks:Block[],open?}[], multiple?. Toggling emits action=toggle with detail.open. Keep item content short; one or two items on a phone.',
+  }),
+  collapsible: defineBlock({
+    schema: CollapsibleBlockSchema,
+    promptGuide:
+      'collapsible block: title: Inline[], blocks: Block[], open?. Toggling emits action=toggle with detail.open. Use for optional depth that would otherwise crowd the beat.',
+  }),
+  tabs: defineBlock({
+    schema: TabsBlockSchema,
+    promptGuide:
+      'tabs block: tabs {id,label:Inline[],blocks:Block[]}[], active?. Selecting a tab emits select with the tab id as ref. Prefer two or three tabs with short labels.',
+  }),
+  badge: defineBlock({
+    schema: BadgeBlockSchema,
+    promptGuide:
+      'badge block: text: Inline[], tone (accent|info|success|warn|danger|muted). A compact status or label, not a sentence.',
+  }),
+  progress: defineBlock({
+    schema: ProgressBlockSchema,
+    promptGuide:
+      'progress block: value 0-100 (omit for indeterminate), label?, variant (bar|ring|pill). The fill animates on enter; drive changes with update ops.',
+  }),
+  counter: defineBlock({
+    schema: CounterBlockSchema,
+    promptGuide:
+      'counter block: value, from?, format (number|percent|time|currency), label?. Counts up on enter; use for a number that deserves emphasis.',
+  }),
+  avatar: defineBlock({
+    schema: AvatarBlockSchema,
+    promptGuide:
+      'avatar block: name?, src (URL or {asset}), icon?, size (xs|sm|md|lg|xl). Decorative fallback is initials or icon; alt is inherited from name.',
+  }),
+  separator: defineBlock({
+    schema: SeparatorBlockSchema,
+    promptGuide:
+      'separator block: orientation (horizontal|vertical), label?. Group a beat or label a break; do not use it as the only source of spacing.',
+  }),
+  carousel: defineBlock({
+    schema: CarouselBlockSchema,
+    promptGuide:
+      'carousel block: slides {id,blocks:Block[]}[], auto?. Moving to a slide emits select with the slide id as ref. Keep each slide to one idea; tap-first controls.',
+  }),
+  kbd: defineBlock({
+    schema: KbdBlockSchema,
+    promptGuide:
+      'kbd block: keys: string[]. Render a shortcut as keycaps, e.g. ["Ctrl", "K"]; use inline text for prose.',
+  }),
+};
+
+const UI_KIT_PLUGIN = definePlugin({
+  name: 'ui-kit',
+  version: '1.0.0',
+  provides: { blocks: UI_KIT_BLOCKS },
+});
+
 const THEME_PLUGIN = definePlugin({
   name: 'themes-default',
   version: '1.0.0',
@@ -308,6 +394,7 @@ const STRINGS_PLUGIN = definePlugin({
 
 const DEFAULT_PLUGINS = [
   CORE_BLOCK_PLUGIN,
+  UI_KIT_PLUGIN,
   THEME_PLUGIN,
   MOTION_PLUGIN,
   TRANSITIONS_PLUGIN,

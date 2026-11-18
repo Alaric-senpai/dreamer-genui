@@ -130,6 +130,30 @@ Raw "tokens" may be unavailable depending on host policy; if a theme request is 
 
 - **question**: question block: kind (mcq|truefalse|short|numeric|cloze|matching|ordering|hotspot|labelDiagram|extended), prompt: Inline[]. Never add a key inside quiz/exam assessments.
 
+- **card**: card block: title?, description?, media?, blocks: Block[], footer?, variant (plain|outlined|elevated|accent); interactive:true emits select. Use a card for one composed idea, not a dashboard of cards.
+
+- **alert**: alert block: tone (info|success|warn|danger), title?, content: Inline[], icon?, dismissible?. Use for a short, consequential notice; use callout for quiet asides.
+
+- **accordion**: accordion block: items {id,title:Inline[],blocks:Block[],open?}[], multiple?. Toggling emits action=toggle with detail.open. Keep item content short; one or two items on a phone.
+
+- **collapsible**: collapsible block: title: Inline[], blocks: Block[], open?. Toggling emits action=toggle with detail.open. Use for optional depth that would otherwise crowd the beat.
+
+- **tabs**: tabs block: tabs {id,label:Inline[],blocks:Block[]}[], active?. Selecting a tab emits select with the tab id as ref. Prefer two or three tabs with short labels.
+
+- **badge**: badge block: text: Inline[], tone (accent|info|success|warn|danger|muted). A compact status or label, not a sentence.
+
+- **progress**: progress block: value 0-100 (omit for indeterminate), label?, variant (bar|ring|pill). The fill animates on enter; drive changes with update ops.
+
+- **counter**: counter block: value, from?, format (number|percent|time|currency), label?. Counts up on enter; use for a number that deserves emphasis.
+
+- **avatar**: avatar block: name?, src (URL or {asset}), icon?, size (xs|sm|md|lg|xl). Decorative fallback is initials or icon; alt is inherited from name.
+
+- **separator**: separator block: orientation (horizontal|vertical), label?. Group a beat or label a break; do not use it as the only source of spacing.
+
+- **carousel**: carousel block: slides {id,blocks:Block[]}[], auto?. Moving to a slide emits select with the slide id as ref. Keep each slide to one idea; tap-first controls.
+
+- **kbd**: kbd block: keys: string[]. Render a shortcut as keycaps, e.g. ["Ctrl", "K"]; use inline text for prose.
+
 
 ## Worked Examples
 

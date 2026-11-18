@@ -146,6 +146,136 @@ export const GroupBlockSchema = GroupBlockSchemaBase.extend({
   blocks: z.array(z.lazy(() => BlockSchema as z.ZodType<any>)),
 });
 
+// ---------------------------------------------------------------------------
+// Tutor-addressable UI-kit blocks (§6.19)
+//
+// These are registered by the default `ui-kit` plugin rather than by the core
+// block plugin, but they validate statically like every other block so that
+// ops can be checked before a registry exists. They nest arbitrary blocks.
+// ---------------------------------------------------------------------------
+
+const NestedBlocksSchema = z.array(z.lazy(() => BlockSchema as z.ZodType<any>));
+const InlineListSchema = z.array(InlineSchema);
+
+export const CardBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('card'),
+  title: InlineListSchema.optional(),
+  description: InlineListSchema.optional(),
+  media: FigureSchema.optional(),
+  blocks: NestedBlocksSchema,
+  footer: NestedBlocksSchema.optional(),
+  variant: z.enum(['plain', 'outlined', 'elevated', 'accent']).optional(),
+  /** Whole-card tap emits `select` (`ref` = the card id). */
+  interactive: z.boolean().optional(),
+});
+
+export const AlertBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('alert'),
+  tone: z.enum(['info', 'success', 'warn', 'danger']),
+  title: InlineListSchema.optional(),
+  content: InlineListSchema,
+  icon: z.string().optional(),
+  dismissible: z.boolean().optional(),
+});
+
+export const AccordionItemSchema = z.object({
+  id: z.string().min(1),
+  title: InlineListSchema,
+  blocks: NestedBlocksSchema,
+  open: z.boolean().optional(),
+});
+export const AccordionBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('accordion'),
+  items: z.array(AccordionItemSchema).min(1),
+  multiple: z.boolean().optional(),
+});
+
+export const CollapsibleBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('collapsible'),
+  title: InlineListSchema,
+  blocks: NestedBlocksSchema,
+  open: z.boolean().optional(),
+});
+
+export const TabsBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('tabs'),
+  tabs: z.array(
+    z.object({
+      id: z.string().min(1),
+      label: InlineListSchema,
+      blocks: NestedBlocksSchema,
+    }),
+  ).min(1),
+  active: z.string().optional(),
+});
+
+export const BadgeBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('badge'),
+  text: InlineListSchema,
+  tone: z.enum(['accent', 'info', 'success', 'warn', 'danger', 'muted']).optional(),
+});
+
+export const ProgressBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('progress'),
+  value: z.number().min(0).max(100).optional(),
+  label: z.string().optional(),
+  variant: z.enum(['bar', 'ring', 'pill']).optional(),
+});
+
+export const CounterBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('counter'),
+  value: z.number(),
+  from: z.number().optional(),
+  format: z.enum(['number', 'percent', 'time', 'currency']).optional(),
+  label: z.string().optional(),
+});
+
+export const AvatarBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('avatar'),
+  name: z.string().optional(),
+  src: z.union([z.string(), z.object({ asset: z.string() })]).optional(),
+  icon: z.string().optional(),
+  size: z.enum(['xs', 'sm', 'md', 'lg', 'xl']).optional(),
+});
+
+export const SeparatorBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('separator'),
+  orientation: z.enum(['horizontal', 'vertical']).optional(),
+  label: z.string().optional(),
+});
+
+export const CarouselBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('carousel'),
+  slides: z.array(
+    z.object({
+      id: z.string().min(1),
+      blocks: NestedBlocksSchema,
+    }),
+  ).min(1),
+  auto: z.boolean().optional(),
+});
+
+export const KbdBlockSchema = NodeBaseSchema.extend({
+  type: z.literal('kbd'),
+  keys: z.array(z.string().min(1)).min(1),
+});
+
+/** UI-kit blocks (§6.19), registered by the default `ui-kit` plugin. */
+export const UiKitBlockSchema = z.discriminatedUnion('type', [
+  CardBlockSchema,
+  AlertBlockSchema,
+  AccordionBlockSchema,
+  CollapsibleBlockSchema,
+  TabsBlockSchema,
+  BadgeBlockSchema,
+  ProgressBlockSchema,
+  CounterBlockSchema,
+  AvatarBlockSchema,
+  SeparatorBlockSchema,
+  CarouselBlockSchema,
+  KbdBlockSchema,
+]);
+
 // Core blocks are a discriminated union on `type`. Question is itself a
 // discriminated union on `kind`, and assessment is a single object, so the
 // public BlockSchema is their union. A `switch (block.type)` still narrows.
@@ -164,10 +294,11 @@ export const CoreBlockSchema = z.discriminatedUnion('type', [
   FlashcardsBlockSchema,
 ]);
 
-BlockSchema = z.union([CoreBlockSchema, QuestionBlockSchema, AssessmentBlockSchema]);
+BlockSchema = z.union([CoreBlockSchema, UiKitBlockSchema, QuestionBlockSchema, AssessmentBlockSchema]);
 
 export { BlockSchema };
 export type CoreBlock = z.infer<typeof CoreBlockSchema>;
+export type UiKitBlock = z.infer<typeof UiKitBlockSchema>;
 export type Block = z.infer<typeof BlockSchema>;
 // Per-type inferred aliases (used by the React layer and consumers)
 export type TextBlock = z.infer<typeof TextBlockSchema>;
@@ -182,6 +313,18 @@ export type ListBlock = z.infer<typeof ListBlockSchema>;
 export type CompareBlock = z.infer<typeof CompareBlockSchema>;
 export type FlashcardsBlock = z.infer<typeof FlashcardsBlockSchema>;
 export type GroupBlock = z.infer<typeof GroupBlockSchema>;
+export type CardBlock = z.infer<typeof CardBlockSchema>;
+export type AlertBlock = z.infer<typeof AlertBlockSchema>;
+export type AccordionBlock = z.infer<typeof AccordionBlockSchema>;
+export type CollapsibleBlock = z.infer<typeof CollapsibleBlockSchema>;
+export type TabsBlock = z.infer<typeof TabsBlockSchema>;
+export type BadgeBlock = z.infer<typeof BadgeBlockSchema>;
+export type ProgressBlock = z.infer<typeof ProgressBlockSchema>;
+export type CounterBlock = z.infer<typeof CounterBlockSchema>;
+export type AvatarBlock = z.infer<typeof AvatarBlockSchema>;
+export type SeparatorBlock = z.infer<typeof SeparatorBlockSchema>;
+export type CarouselBlock = z.infer<typeof CarouselBlockSchema>;
+export type KbdBlock = z.infer<typeof KbdBlockSchema>;
 
 // Convenience guards for code that needs the core subset.
 export function isQuestionBlock(block: Block): block is z.infer<typeof QuestionBlockSchema> {

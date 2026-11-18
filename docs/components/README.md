@@ -4,15 +4,27 @@
 
 | Component | Parts | Override key |
 | :--- | :--- | :--- |
+| [`accordion`](./accordion.md) | `root`, `item`, `header`, `trigger`, `title`, `indicator`, `content`, `body` | `components={{ accordion: … }}` |
+| [`alert`](./alert.md) | `root`, `icon`, `body`, `title`, `content`, `dismiss` | `components={{ alert: … }}` |
 | [`ambience`](./ambience.md) | `root`, `texture`, `layer` | `components={{ ambience: … }}` |
+| [`avatar`](./avatar.md) | `root`, `image`, `fallback` | `components={{ avatar: … }}` |
+| [`badge`](./badge.md) | `root`, `text` | `components={{ badge: … }}` |
 | [`board`](./board.md) | `root`, `camera`, `content`, `title`, `skip`, `live-region`, `status`, `empty`, `camera-reset` | `components={{ board: … }}` |
 | [`callout`](./callout.md) | `root`, `title`, `content` | `components={{ callout: … }}` |
+| [`card`](./card.md) | `root`, `media`, `body`, `title`, `description`, `content`, `footer` | `components={{ card: … }}` |
+| [`carousel`](./carousel.md) | `root`, `viewport`, `slide`, `controls`, `previous`, `dots`, `dot`, `next` | `components={{ carousel: … }}` |
 | [`choices`](./choices.md) | `root`, `prompt`, `item`, `item-icon`, `item-label`, `item-caption` | `components={{ choices: … }}` |
+| [`collapsible`](./collapsible.md) | `root`, `trigger`, `title`, `indicator`, `content`, `body` | `components={{ collapsible: … }}` |
+| [`counter`](./counter.md) | `root`, `value`, `label` | `components={{ counter: … }}` |
 | [`detour`](./detour.md) | `root`, `blocks`, `return`, `return-icon`, `connector` | `components={{ detour: … }}` |
 | [`fallback`](./fallback.md) | `root`, `alt` | `components={{ fallback: … }}` |
 | [`group`](./group.md) | `root` | `components={{ group: … }}` |
+| [`kbd`](./kbd.md) | `root`, `key` | `components={{ kbd: … }}` |
 | [`layout`](./layout.md) | `tabs`, `tab`, `regions`, `region` | `components={{ layout: … }}` |
 | [`list`](./list.md) | `root`, `item`, `marker`, `content` | `components={{ list: … }}` |
 | [`node`](./node.md) | `root`, `inner` | `components={{ node: … }}` |
+| [`progress`](./progress.md) | `root`, `track`, `fill`, `ring`, `ringTrack`, `ringFill`, `value`, `label` | `components={{ progress: … }}` |
+| [`separator`](./separator.md) | `root`, `line`, `label` | `components={{ separator: … }}` |
 | [`steps`](./steps.md) | `root`, `item`, `number`, `title`, `content` | `components={{ steps: … }}` |
+| [`tabs`](./tabs.md) | `root`, `list`, `trigger`, `panel`, `body` | `components={{ tabs: … }}` |
 | [`text`](./text.md) | `root` | `components={{ text: … }}` |

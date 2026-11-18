@@ -52,6 +52,8 @@ const VALID = [
   'scene-transitions.json',
   'pointer-tour.json',
   'reference-saas-explainer.json',
+  // M4d additions (v3 tutor-addressable UI kit).
+  'ui-kit-blocks.json',
 ];
 
 const INVALID = [

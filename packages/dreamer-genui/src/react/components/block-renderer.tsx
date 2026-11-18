@@ -9,6 +9,20 @@ import { BoardErrorContext } from '../emit-context';
 import { useParts } from '../anatomy';
 import { Animated } from '../motion/animated';
 import { TextBlockView, ChoicesView, CalloutView, StepsView, GroupView, ListView } from './blocks';
+import {
+  CardView,
+  AlertView,
+  AccordionView,
+  CollapsibleView,
+  TabsView,
+  BadgeView,
+  ProgressView,
+  CounterView,
+  AvatarView,
+  SeparatorView,
+  CarouselView,
+  KbdView,
+} from './ui-kit';
 import { renderInline } from './inline';
 
 /** Fallback render for invalid/unknown/failed nodes — never blank, never crash. */
@@ -82,6 +96,18 @@ function renderErrorFor(node: Node, nested: boolean): LibraryError | null {
     case 'steps':
       return null;
     case 'list':
+    case 'card':
+    case 'alert':
+    case 'accordion':
+    case 'collapsible':
+    case 'tabs':
+    case 'badge':
+    case 'progress':
+    case 'counter':
+    case 'avatar':
+    case 'separator':
+    case 'carousel':
+    case 'kbd':
       return null;
     case 'figure':
     case 'table':
@@ -109,6 +135,16 @@ function DefaultBlockView({ node, nested }: { node: Node; nested: boolean }): Re
 
   if (node.state === 'error') return <FallbackView node={node} />;
 
+  const renderBlocks = (blocks: Block[]): ReactNode =>
+    blocks.map((child: Block, i: number) => (
+      <NodeView
+        key={child.id}
+        node={{ id: child.id, block: child, state: 'complete', altText: child.alt }}
+        docIndex={i}
+        nested
+      />
+    ));
+
   switch (node.block.type) {
     case 'text':
       return <TextBlockView block={node.block} />;
@@ -120,6 +156,30 @@ function DefaultBlockView({ node, nested }: { node: Node; nested: boolean }): Re
       return <StepsView block={node.block} />;
     case 'list':
       return <ListView block={node.block} />;
+    case 'card':
+      return <CardView block={node.block} renderBlocks={renderBlocks} />;
+    case 'alert':
+      return <AlertView block={node.block} />;
+    case 'accordion':
+      return <AccordionView block={node.block} renderBlocks={renderBlocks} />;
+    case 'collapsible':
+      return <CollapsibleView block={node.block} renderBlocks={renderBlocks} />;
+    case 'tabs':
+      return <TabsView block={node.block} renderBlocks={renderBlocks} />;
+    case 'badge':
+      return <BadgeView block={node.block} />;
+    case 'progress':
+      return <ProgressView block={node.block} />;
+    case 'counter':
+      return <CounterView block={node.block} />;
+    case 'avatar':
+      return <AvatarView block={node.block} />;
+    case 'separator':
+      return <SeparatorView block={node.block} />;
+    case 'carousel':
+      return <CarouselView block={node.block} renderBlocks={renderBlocks} />;
+    case 'kbd':
+      return <KbdView block={node.block} />;
     case 'group': {
       if (nested) return <FallbackView node={node} />;
       return (

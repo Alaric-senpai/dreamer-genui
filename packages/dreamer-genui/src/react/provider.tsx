@@ -17,6 +17,17 @@ export interface UIStrings {
   explainer: string;
   /** Visible skip control that flushes pending entries (§6.3/§7.7). */
   skip: string;
+  /** Dismiss control on a dismissible alert (§6.19). */
+  dismiss: string;
+  /** Carousel navigation. */
+  previous: string;
+  next: string;
+  slide: string;
+  carousel: string;
+  /** Accessible name for an unlabelled interactive card. */
+  card: string;
+  /** Fallback accessible name for an unlabelled progress bar. */
+  progress: string;
 }
 
 export const defaultStrings: UIStrings = {
@@ -25,6 +36,13 @@ export const defaultStrings: UIStrings = {
   hint: 'Hint',
   explainer: 'Explainer',
   skip: 'Skip',
+  dismiss: 'Dismiss',
+  previous: 'Previous',
+  next: 'Next',
+  slide: 'Slide',
+  carousel: 'Carousel',
+  card: 'Card',
+  progress: 'Progress',
 };
 
 export type ColorScheme = 'auto' | 'light' | 'dark';
@@ -122,6 +140,13 @@ export function DreamerProvider({
       hint: strings?.hint ?? t('board.hint'),
       explainer: strings?.explainer ?? defaultStrings.explainer,
       skip: strings?.skip ?? t('board.skip'),
+      dismiss: strings?.dismiss ?? defaultStrings.dismiss,
+      previous: strings?.previous ?? defaultStrings.previous,
+      next: strings?.next ?? defaultStrings.next,
+      slide: strings?.slide ?? defaultStrings.slide,
+      carousel: strings?.carousel ?? defaultStrings.carousel,
+      card: strings?.card ?? defaultStrings.card,
+      progress: strings?.progress ?? defaultStrings.progress,
     }),
     [strings, t]
   );

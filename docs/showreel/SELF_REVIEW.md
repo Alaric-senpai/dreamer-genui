@@ -278,3 +278,65 @@ source and scene; all five captures regenerated from the clean build.
 **Status: M4c implementation complete. Stopped at the Motion gate, awaiting
 human approval before M4d. Known gaps: Storybook (M7) and formal 60 fps
 measurement (M8).**
+
+## M4d — tutor-addressable UI kit and shadcn parity
+
+Captures: `m4d-kit.png`, `m4d-interactions.png`, `m4d-night.png`,
+`m4d-narrow.png` (headless Chromium, raw CDP `Page.captureScreenshot`,
+`/m4d` on the Next dev server at `localhost:3100`; desktop 1440×1200,
+narrow 390×844). Verification used `localhost`, not `127.0.0.1`: Next 16 dev
+blocks its `/_next` resources under the latter, so React never hydrates and the
+board stays empty — a host/verification note, not a library defect.
+
+Graded against the M4d acceptance list:
+
+- **PARITY.md complete** — pass. `docs/components/PARITY.md` maps all 68
+  components from the `https://ui.shadcn.com/docs/components` base-variant
+  inventory (snapshot 2026-11-18) to Tutor / Host / Board / N-A, with a
+  verification section and known gaps.
+- **Blocks render from `ui-kit-blocks.json`, honour enter effects** — pass.
+  The desktop capture shows all 12 block types (11 top-level nodes plus the
+  nested card children) with their effects (`rise`, `pop`, `sweep`, `reveal`,
+  `draw`, `count-up`, `wipe`). A few strings in `m4d-kit.png` are caught
+  mid-stagger because the still lands while effects settle; `m4d-night.png`
+  shows the settled board.
+- **Blocks emit events** — pass. The interaction capture's event log shows
+  `select` (`ui-carousel`, `ref: slide-two`), `action:dismiss` (`ui-alert`),
+  and `action:toggle` (`ui-accordion`, `itemId: acc-two`, `open: true`).
+  The Air tab was clicked by the script but produced no `select` in this run —
+  a synthetic-`.click()` limitation with the Radix tabs trigger, not a product
+  failure; the jsdom keyboard/pointer tests assert that event directly.
+- **Hover becomes tap on touch** — pass. All interactive parts are real
+  buttons with ≥44 px targets, and a new `@media (hover: none)` rule in
+  `base.css` makes the card affordance persistent and adds `:active` feedback
+  for dismiss/accordion/collapsible/carousel controls. Pinned by
+  `tests/styles/base-css.test.ts`. `m4d-narrow.png` shows no hover-dependent
+  affordance and `scrollWidth == clientWidth == 390` (no horizontal scroll).
+- **Every component themable/replaceable, customization-surface + keyboard +
+  screen-reader + axe pass** — pass in tests. `pnpm dg:component-docs`
+  generated 24 component pages from metadata; the host-kit suite (8 tests)
+  covers accordion/tabs/dialog/combobox/calendar/sidebar/command keyboard
+  flows and axe (0 violations); the ui-kit suite (9 tests) covers events,
+  enter triggers, override and axe. **Caveat:** this is automated jsdom/axe
+  coverage, not a manual screen-reader pass; the M8 audit still owns that.
+- **Single-component imports don't pull others; `ui` absent from core** —
+  pass. `tests/build/tree-shaking.test.ts` (12 tests) verifies every `ui/`
+  entry, leaf isolation, the composition graph, no `ui/` imports from
+  core/schema/react, exports map and separated stylesheets. Measured gzip
+  bytes for `dist/ui/button.js` are 397 vs. 8,002 for `ui/index`.
+- **Sizes recorded** — pass with disclosure. `DECISIONS.md` records the
+  measured table: index 82,592, react 66,785, core 50,637, ui/index 8,002;
+  largest per-component chunks resizable 4,198, input-otp 4,113,
+  dropdown-menu 3,716. Core and react **exceed** the 45 KB pre-lazy target
+  from §13; that budget is not met at M4d and is carried into M8.
+
+Verification at this gate: `pnpm lint` clean; `pnpm test` 59 files / 680 tests
+passing (including the new touch-CSS test); library build emits all 54
+`dist/ui/*` entries plus ESM/CJS/dts (the dts step needed a 2 GB heap on this
+machine because the default 6 GB request was SIGTERM'd under memory pressure);
+`/m4d` renders 11 nodes with event/error logs; four captures regenerated from
+the live route.
+
+**Status: M4d implementation complete. Known gaps carried forward: Storybook
+stories (M7), formal 60 fps measurement and the pre-lazy bundle budget (M8),
+manual screen-reader audit (M8).**

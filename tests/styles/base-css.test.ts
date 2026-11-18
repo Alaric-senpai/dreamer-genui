@@ -46,4 +46,13 @@ describe('base.css (§7.6 styling architecture)', () => {
     expect(css).toMatch(/\.dg-annotate-circle\s*\{[^}]*border-radius:\s*999px/);
     expect(css).toMatch(/\.dg-annotate-bracket\s*\{[^}]*border-inline:\s*2px solid/);
   });
+
+  test('touch devices get persistent affordances and tap feedback (M4d)', () => {
+    const touch = css.match(/@media \(hover: none\)\s*\{([\s\S]*?)\n  \}/)?.[1];
+    expect(touch).toBeDefined();
+    expect(touch).toMatch(/\.dg-card\[data-interactive='true'\]\s*\{[^}]*border-color/);
+    for (const part of ['alert-dismiss', 'accordion-trigger', 'collapsible-trigger', 'carousel-next']) {
+      expect(touch, `${part} needs a tap state`).toMatch(new RegExp(`\\.dg-${part}:active`));
+    }
+  });
 });

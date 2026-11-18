@@ -1,0 +1,164 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "ui-card",
+          "type": "card",
+          "title": ["A composed card"],
+          "description": ["Cards group one idea and can be tapped when interactive."],
+          "variant": "outlined",
+          "enter": { "effect": "rise" },
+          "blocks": [
+            {
+              "id": "ui-card-badge",
+              "type": "badge",
+              "text": ["New"],
+              "tone": "success",
+              "enter": { "effect": "pop" }
+            },
+            {
+              "id": "ui-card-text",
+              "type": "text",
+              "variant": "body",
+              "content": [
+                "Water moves across a membrane by ",
+                { "mark": "term", "text": "osmosis", "definition": "Movement of water across a semi-permeable membrane.", "detail": ["From a dilute solution to a concentrated one."] },
+                "."
+              ]
+            }
+          ],
+          "footer": [
+            {
+              "id": "ui-card-kbd",
+              "type": "kbd",
+              "keys": ["Ctrl", "K"]
+            }
+          ]
+        },
+        {
+          "id": "ui-alert",
+          "type": "alert",
+          "tone": "warn",
+          "title": ["Before you continue"],
+          "content": ["Check the units before entering your answer."],
+          "icon": "!",
+          "dismissible": true,
+          "enter": { "effect": "sweep" }
+        },
+        {
+          "id": "ui-accordion",
+          "type": "accordion",
+          "multiple": true,
+          "enter": { "effect": "reveal" },
+          "items": [
+            {
+              "id": "acc-one",
+              "title": ["What is a cell?"],
+              "open": true,
+              "blocks": [
+                { "id": "acc-one-text", "type": "text", "variant": "body", "content": ["The smallest unit of life."] }
+              ]
+            },
+            {
+              "id": "acc-two",
+              "title": ["What is a tissue?"],
+              "blocks": [
+                { "id": "acc-two-text", "type": "text", "variant": "body", "content": ["A group of similar cells working together."] }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ui-collapsible",
+          "type": "collapsible",
+          "title": ["Show the worked step"],
+          "enter": { "effect": "rise" },
+          "blocks": [
+            { "id": "collapsible-text", "type": "text", "variant": "note", "content": ["Divide both sides by the same value."] }
+          ]
+        },
+        {
+          "id": "ui-tabs",
+          "type": "tabs",
+          "active": "tab-water",
+          "enter": { "effect": "reveal" },
+          "tabs": [
+            {
+              "id": "tab-water",
+              "label": ["Water"],
+              "blocks": [
+                { "id": "tab-water-text", "type": "text", "variant": "body", "content": ["A polar solvent."] }
+              ]
+            },
+            {
+              "id": "tab-air",
+              "label": ["Air"],
+              "blocks": [
+                { "id": "tab-air-text", "type": "text", "variant": "body", "content": ["A mixture of gases."] }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ui-progress",
+          "type": "progress",
+          "value": 72,
+          "label": "Revision covered",
+          "variant": "bar",
+          "enter": { "effect": "draw" }
+        },
+        {
+          "id": "ui-counter",
+          "type": "counter",
+          "value": 87,
+          "from": 0,
+          "format": "percent",
+          "label": "Accuracy",
+          "enter": { "effect": "count-up" }
+        },
+        {
+          "id": "ui-avatar",
+          "type": "avatar",
+          "name": "Amina",
+          "icon": "A",
+          "size": "lg",
+          "enter": { "effect": "pop" }
+        },
+        {
+          "id": "ui-separator",
+          "type": "separator",
+          "label": "Next section",
+          "enter": { "effect": "wipe" }
+        },
+        {
+          "id": "ui-kbd",
+          "type": "kbd",
+          "keys": ["Shift", "?"],
+          "enter": { "effect": "pop" }
+        },
+        {
+          "id": "ui-carousel",
+          "type": "carousel",
+          "enter": { "effect": "rise" },
+          "slides": [
+            {
+              "id": "slide-one",
+              "blocks": [
+                { "id": "slide-one-text", "type": "text", "variant": "body", "content": ["First idea."] }
+              ]
+            },
+            {
+              "id": "slide-two",
+              "blocks": [
+                { "id": "slide-two-text", "type": "text", "variant": "body", "content": ["Second idea."] }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

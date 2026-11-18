@@ -11,6 +11,8 @@ const ROUTES = [
   { href: '/m3', id: 'M3', title: 'Renderer & kinetic text', status: 'done', note: 'text, marks, cues, moods, styling paths' },
   { href: '/m4', id: 'M4', title: 'Board behaviour & ambience', status: 'done', note: 'attach/return, receding, camera, streaming' },
   { href: '/m4b', id: 'M4b', title: 'Layout & camera showcase', status: 'done', note: 'flow/split/grid/stage, slots, RTL, density, tilt/dolly paths' },
+  { href: '/m4c', id: 'M4c', title: 'Motion language', status: 'done', note: 'reference scenes, transitions, text morph, pointer, reading pacing' },
+  { href: '/m4d', id: 'M4d', title: 'UI kit (shadcn parity)', status: 'done', note: '12 tutor-addressable blocks, host-only kit, themable and tree-shakeable' },
   { href: '/showreel', id: '§9.4', title: 'Showreel', status: 'done', note: 'eleven-beat motion-graphic gate' },
   { href: '/plain-css', id: 'M3', title: 'Plain-CSS host', status: 'done', note: 'no Tailwind required' },
   { href: '/app', id: 'app', title: 'Live board app', status: 'ongoing', note: "A live example of the board working in realime"}
