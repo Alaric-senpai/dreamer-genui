@@ -24,7 +24,10 @@
   --dg-color-bg: var(--color-background, var(--color-white, #f7f7f5));
   --dg-color-surface: var(--color-surface, var(--color-white, #ffffff));
   --dg-color-ink: var(--color-foreground, #1f1f1d);
-  --dg-color-muted: var(--color-muted, var(--color-gray-500, #565650));
+  /* shadcn uses --color-muted for a light *background* and --color-muted-foreground
+   * for text; prefer the foreground so board "muted" text stays legible. Hosts
+   * that only define --color-muted as a text colour still work via the fallback. */
+  --dg-color-muted: var(--color-muted-foreground, var(--color-muted, var(--color-gray-500, #565650)));
   --dg-color-accent: var(--color-primary, var(--color-blue-600, #2e5dc4));
   --dg-color-info: var(--color-info, var(--color-blue-500, #2563eb));
   --dg-color-success: var(--color-success, var(--color-green-600, #15803d));

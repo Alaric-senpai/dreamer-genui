@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import type { Inline, Mark, TermMark as TermMarkValue } from '../../schema/inline';
 import type { UIEvent } from '../../schema/events';
 import { useEmitEvent } from '../provider';
+import { Annotated } from './annotations';
 
 function markText(t: string | string[] | undefined): string {
   if (Array.isArray(t)) return t.join(' ');
@@ -66,15 +67,18 @@ export function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
         </button>
       );
     case 'annotate': {
-      const style: CSSProperties = { textDecorationColor: 'var(--dg-color-accent)' };
-      if (mark.kind === 'underline') style.textDecoration = 'underline';
-      else if (mark.kind === 'strike') style.textDecoration = 'line-through';
-      else if (mark.kind === 'box') style.border = '2px solid var(--dg-color-accent)';
-      // circle/bracket get their shapes from CSS here; the hand-drawn SVG
-      // stroke primitives (and draw-on sequencing) are the M5 pass.
+      // Hand-drawn SVG strokes (M5). The deterministic seed keeps the jitter
+      // identical on server and client; a coloured token keeps it themeable.
+      const seed = markText(mark.text).slice(0, 48) || mark.kind;
       return (
-        <span className={`dg-mark-annotate dg-annotate-${mark.kind}`} data-color={mark.color} style={style}>
-          {markText(mark.text)}
+        <span
+          className={`dg-mark-annotate dg-annotate-${mark.kind}`}
+          data-color={mark.color ?? 'accent'}
+          style={{ '--dg-annotation-color': `var(--dg-color-${mark.color ?? 'accent'})` } as CSSProperties}
+        >
+          <Annotated kind={mark.kind} seed={seed}>
+            {markText(mark.text)}
+          </Annotated>
         </span>
       );
     }

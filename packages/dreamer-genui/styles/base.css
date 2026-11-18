@@ -1276,6 +1276,127 @@
     }
   }
 
+  /* ---------- M5: figures and hand-drawn annotation strokes ---------- */
+  .dg-annotation {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .dg-annotation path {
+    fill: none;
+    stroke: var(--dg-annotation-color, var(--dg-color-accent, #2e5dc4));
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: dg-annotation-draw var(--dg-theme-duration, 520ms) ease-out forwards;
+  }
+  @keyframes dg-annotation-draw {
+    to { stroke-dashoffset: 0; }
+  }
+  .dg-annotated {
+    position: relative;
+    display: inline-block;
+    isolation: isolate;
+  }
+  .dg-figure {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dg-gap-sm, 0.5rem);
+    container-type: inline-size;
+  }
+  .dg-figure-surface {
+    position: relative;
+    width: 100%;
+    /* GraphView publishes the measured layout height as --dg-figure-h. */
+    min-height: var(--dg-figure-h, 360px);
+  }
+  .dg-figure-edges,
+  .dg-figure-nodes {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .dg-figure-edges path {
+    fill: none;
+    stroke: var(--dg-color-muted, #565650);
+    stroke-width: 2;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: dg-annotation-draw var(--dg-theme-duration, 520ms) ease-out forwards;
+  }
+  .dg-figure-edge-pulse {
+    stroke: var(--dg-color-accent, #2e5dc4) !important;
+    stroke-dasharray: 6 8 !important;
+    stroke-dashoffset: 0 !important;
+    animation: dg-figure-flow 1.4s linear infinite !important;
+  }
+  @keyframes dg-figure-flow {
+    to { stroke-dashoffset: -28; }
+  }
+  .dg-figure-node {
+    position: absolute;
+    box-sizing: border-box;
+    margin: 0;
+    padding: var(--dg-gap-sm, 0.5rem);
+    border: 1px solid var(--dg-color-border, #e2e2dc);
+    border-radius: var(--dg-radius-md, 8px);
+    background: var(--dg-color-surface, #ffffff);
+    color: var(--dg-color-ink, #1f1f1d);
+    font: inherit;
+    text-align: left;
+  }
+  .dg-figure-node[role='button'],
+  button.dg-figure-node { cursor: pointer; }
+  .dg-figure-node:focus-visible { outline: 2px solid var(--dg-color-accent, #2e5dc4); outline-offset: 2px; }
+  .dg-figure-node-label { display: block; overflow-wrap: anywhere; }
+  .dg-figure-lane {
+    position: absolute;
+    border: 1px dashed var(--dg-color-border, #e2e2dc);
+    border-radius: var(--dg-radius-md, 8px);
+    opacity: 0.7;
+  }
+  .dg-figure-lane-label {
+    position: absolute;
+    top: 2px;
+    left: 6px;
+    font-size: 0.75em;
+    color: var(--dg-color-muted, #565650);
+  }
+  /* A stepper is only useful on a narrow board; on wide boards the full graph shows. */
+  .dg-figure-stepper { display: none; flex-wrap: wrap; gap: var(--dg-gap-xs, 0.25rem); }
+  .dg-figure-stepper button { padding: 0.4rem 0.6rem; border-radius: var(--dg-radius-sm, 4px); }
+  .dg-figure-caption { color: var(--dg-color-muted, #565650); font-size: 0.9em; }
+  .dg-figure-poster { max-width: 100%; border-radius: var(--dg-radius-md, 8px); }
+  .dg-figure-chart-bar { fill: var(--dg-color-accent, #2e5dc4); transform-origin: bottom; }
+  .dg-figure-sr-alt {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  @container (max-width: 420px) {
+    .dg-figure-surface { min-height: 0; }
+    .dg-figure-nodes { position: static; display: flex; flex-direction: column; gap: var(--dg-gap-xs, 0.25rem); }
+    .dg-figure-node { position: static; width: 100%; }
+    .dg-figure-edges,
+    .dg-figure-lane { display: none; }
+    /* Stepper mode: reveal one layer at a time, with navigation dots. */
+    .dg-figure-surface[data-dg-stepper='true'] .dg-figure-node[data-dg-active='false'] { display: none; }
+    .dg-figure-surface[data-dg-stepper='true'] .dg-figure-stepper { display: flex; }
+    .dg-figure-step-dot[aria-current='step'] { background: var(--dg-color-accent, #2e5dc4); color: var(--dg-color-surface, #ffffff); }
+  }
+
   /* ---------- reduced motion (§7.7): calm and instant, content identical ---------- */
   @media (prefers-reduced-motion: reduce) {
     .dg-board {

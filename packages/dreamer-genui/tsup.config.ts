@@ -67,7 +67,12 @@ const uiEntries = Object.fromEntries(
 );
 
 export default defineConfig({
+  // Figure rendering is a separate lazy chunk (M5). With `splitting: false`
+  // the dynamic import must stay external or tsup would inline it into the
+  // React entry and defeat the initial-bundle budget.
+  external: ['dreamer-genui/figures'],
   entry: {
+    'figures/index': './src/figures/index.tsx',
     index: './src/index.ts',
     'schema/index': './src/schema/index.ts',
     'core/index': './src/core/index.ts',

@@ -340,3 +340,56 @@ the live route.
 **Status: M4d implementation complete. Known gaps carried forward: Storybook
 stories (M7), formal 60 fps measurement and the pre-lazy bundle budget (M8),
 manual screen-reader audit (M8).**
+
+## M5 — Figures
+
+Captures (headless Chromium 1440×1200 via raw CDP on `http://localhost:3100/m5`):
+`m5-flowchart.png`, `m5-narrow.png`, `m5-fallback.png`.
+
+- **Every M5 figure kind renders from its fixture** — pass. `/m5` was driven
+  through all nine sources with 0 errors: flowchart (6 nodes, 2 lanes + 2 lane
+  labels, decision shape, recycle edge, 6 edge pulses), `diagram-radial`,
+  `diagram-cycle`, `timeline`, `compare` (role=table + highlight),
+  `labeled-art` (`cell/animal-cell`), `chart-bar`, an inline `{asset}` image
+  resolved only through the host `resolveAsset` callback, and the model3d
+  fallback.
+- **`process-flowchart.json` draws in sequentially with a decision and a
+  recycle loop, legibly on a phone, focusable steps emitting `focus`** — pass.
+  Desktop shows all six steps, lanes 'Preparation'/'Processing', the 'Ready?'
+  decision, the 'not yet — recycle' back edge and 'yes' branch, with input
+  ('Additive') and output ('Product'). Tapping `process-map/heat` emitted
+  `{"type":"focus","nodeId":"process-map","ref":"process-map/heat","label":"Apply heat"}`.
+  On a 350 px phone-width container the stepper shows one step ('Ready?', dot
+  4 of 6) with `scrollWidth == clientWidth == 350` (no horizontal scroll).
+- **GSAP / flowchart-layout code absent from the initial bundle; figures from a
+  separate lazy chunk** — pass with a disclosed substitution. No GSAP is
+  installed; SVG draw-on uses CSS stroke-dash and reveals use `motion`.
+  `dist/figures/index.js` is a separate 5,478-byte gzip chunk importing only
+  `react` + local layout; `dist/react/index.js` holds the dynamic import as an
+  external specifier. See DECISIONS.md for the no-GSAP and custom-layout
+  rationale.
+- **Forcing a figure to fail shows mandatory `alt`, never a blank board** —
+  pass. Unbuilt 3D kinds (`model3d`/`scene3d`) fall back to the manifest-free
+  `alt` text inside a themed fallback box. After the Tailwind bridge fix the
+  alt renders in readable slate `#64748b` (was near-white `#f1f5f9`).
+- **Figures respect their layout region and enter triggers** — pass in tests.
+  `tests/react/figures.test.tsx` (12 tests) covers sequential reveal, reduced
+  motion (stagger delays removed), the responsive stepper and axe (0
+  violations); `tests/figures/layout.test.ts` (8) covers layering/back edges,
+  lanes and radial/timeline determinism; `tests/react/annotations.test.tsx`
+  (4) covers all five hand-drawn stroke kinds, deterministic jitter and
+  token-only colour; `tests/build/figure-chunk.test.ts` (8 + 1 skipped when
+  dist is absent) covers chunk isolation.
+- **Compare block themable table with highlight, keyboard/screen-reader/axe
+  pass** — pass. `CompareView` uses `data-dg-part` hooks and component tokens;
+  axe is clean in the figures suite.
+
+Verification at this gate: `pnpm lint` clean; `pnpm test` 63 files / 719 tests
+passing; JS build emits all entries including `dist/figures/index.js` (dts OOM
+on this ~1.8 GB machine, disclosed in DECISIONS.md); `/m5` route with 9-item
+checklist and event/error logs rendered against the live dev server.
+
+**Status: M5 implementation complete. Known gaps carried forward: Storybook
+stories (M7), formal 60 fps measurement and the pre-lazy bundle budget (M8),
+manual screen-reader audit (M8). No gate stop at M5 — next milestone is M5b
+(3D figures + Model Connector), which ends at a 3D showcase approval gate.**

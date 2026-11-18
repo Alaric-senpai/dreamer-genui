@@ -24,6 +24,8 @@ import {
   KbdView,
 } from './ui-kit';
 import { renderInline } from './inline';
+import { FigureView } from './figure';
+import { CompareView } from './compare';
 
 /** Fallback render for invalid/unknown/failed nodes — never blank, never crash. */
 export function FallbackView({ node }: { node: Node }): ReactNode {
@@ -110,10 +112,12 @@ function renderErrorFor(node: Node, nested: boolean): LibraryError | null {
     case 'kbd':
       return null;
     case 'figure':
+    case 'compare':
     case 'table':
     case 'math':
     case 'code':
-      // Figure rendering lands in M5, table/math/code in M6 — alt/text fallback now (placeholder, not an error).
+      // table/math/code render in M6a. Figures and compare render in M5; the
+      // fallback on a failed load is handled by their components, not here.
       return null;
     default:
       return createError('unknown-type', `No component for block type: ${(block as Block).type}`, node.id, (block as Block).type);
@@ -191,6 +195,9 @@ function DefaultBlockView({ node, nested }: { node: Node; nested: boolean }): Re
       );
     }
     case 'figure':
+      return <FigureView node={node} />;
+    case 'compare':
+      return <CompareView block={node.block} />;
     case 'table':
     case 'math':
     case 'code':

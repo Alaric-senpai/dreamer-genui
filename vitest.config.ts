@@ -9,6 +9,12 @@ export default defineConfig({
         './packages/dreamer-genui/src/schema/index.ts',
         import.meta.url,
       ).pathname,
+      // M5 figures are a separate tsup entry loaded via a dynamic import;
+      // map the published subpath to source so tests exercise the real chunk.
+      'dreamer-genui/figures': new URL(
+        './packages/dreamer-genui/src/figures/index.tsx',
+        import.meta.url,
+      ).pathname,
     },
   },
   test: {

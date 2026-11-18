@@ -253,6 +253,33 @@ export const COMPONENT_META = {
     events: [],
     effects: [],
   }),
+  annotation: defineComponentMeta({
+    name: 'annotation',
+    parts: ['root', 'stroke', 'annotated'],
+    tokens: ['--dg-color-accent', '--dg-annotation-color'],
+    variants: ['circle', 'underline', 'box', 'bracket', 'strike'],
+    dataAttrs: ['data-dg-part', 'data-dg-kind'],
+    events: [],
+    effects: ['draw'],
+  }),
+  figure: defineComponentMeta({
+    name: 'figure',
+    parts: ['root', 'surface', 'nodes', 'node', 'node-label', 'edges', 'edge', 'edge-label', 'lane', 'caption', 'poster', 'fallback'],
+    tokens: ['--dg-figure-line', '--dg-figure-node-bg', '--dg-color-accent', '--dg-color-ink', '--dg-color-muted', '--dg-radius-md'],
+    variants: ['image', 'icon', 'diagram', 'flowchart', 'timeline', 'labeled', 'chart', 'lottie'],
+    dataAttrs: ['data-node-id', 'data-dg-figure', 'data-dg-part', 'data-dg-shape', 'data-dg-ref', 'data-dg-active'],
+    events: ['focus', 'select', 'action'],
+    effects: ['draw', 'reveal', 'rise', 'stagger'],
+  }),
+  compare: defineComponentMeta({
+    name: 'compare',
+    parts: ['root', 'column', 'column-title', 'item', 'row'],
+    tokens: ['--dg-color-border', '--dg-color-accent', '--dg-color-surface', '--dg-radius-md'],
+    variants: ['highlight-col', 'highlight-row'],
+    dataAttrs: ['data-node-id', 'data-dg-col', 'data-dg-row', 'data-dg-highlight'],
+    events: [],
+    effects: [],
+  }),
 } as const satisfies Record<string, ComponentMeta>;
 
 /** Lookup form of {@link COMPONENT_META} used by docs and the conformance test. */

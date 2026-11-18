@@ -11,6 +11,8 @@
     "./schema/*": "./dist/schema/*.js",
     "./core": "./dist/core/index.js",
     "./react": "./dist/react/index.js",
+    "./figures": "./dist/figures/index.js",
+    "./figures/*": "./dist/figures/*.js",
     "./headless": "./dist/headless/index.js",
     "./devtools": "./dist/devtools/index.js",
     "./ui": "./dist/ui/index.js",

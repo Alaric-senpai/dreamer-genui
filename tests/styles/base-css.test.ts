@@ -47,6 +47,25 @@ describe('base.css (§7.6 styling architecture)', () => {
     expect(css).toMatch(/\.dg-annotate-bracket\s*\{[^}]*border-inline:\s*2px solid/);
   });
 
+  test('M5 annotation strokes draw themselves and are static under reduced motion', () => {
+    expect(css).toMatch(/\.dg-annotation path\s*\{[^}]*stroke-dasharray:\s*1/);
+    expect(css).toMatch(/\.dg-annotation path\s*\{[^}]*animation:\s*dg-annotation-draw/);
+    expect(css).toMatch(/@keyframes dg-annotation-draw/);
+    expect(css).toMatch(/--dg-annotation-color/);
+  });
+
+  test('M5 figures reserve layout height and collapse edges on narrow containers', () => {
+    expect(css).toMatch(/\.dg-figure-surface\s*\{[^}]*min-height:\s*var\(--dg-figure-h/);
+    expect(css).toMatch(/@container \(max-width: 420px\)/);
+    expect(css).toMatch(/\.dg-figure-edge-pulse\s*\{[^}]*dg-figure-flow/);
+    expect(css).toMatch(/\.dg-figure-node:focus-visible\s*\{[^}]*outline/);
+    expect(css).toMatch(/\.dg-figure-sr-alt\s*\{[^}]*clip:/);
+    // Stepper mode is responsive: hidden on wide boards, one layer at a time on narrow boards.
+    expect(css).toMatch(/\.dg-figure-stepper\s*\{\s*display:\s*none/);
+    expect(css).toMatch(/\[data-dg-stepper='true'\]\s*\.dg-figure-node\[data-dg-active='false'\]\s*\{\s*display:\s*none/);
+    expect(css).toMatch(/\[data-dg-stepper='true'\]\s*\.dg-figure-stepper\s*\{\s*display:\s*flex/);
+  });
+
   test('touch devices get persistent affordances and tap feedback (M4d)', () => {
     const touch = css.match(/@media \(hover: none\)\s*\{([\s\S]*?)\n  \}/)?.[1];
     expect(touch).toBeDefined();

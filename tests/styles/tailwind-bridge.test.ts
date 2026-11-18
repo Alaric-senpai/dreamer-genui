@@ -24,6 +24,13 @@ describe('tailwind bridge (§7.6)', () => {
     }
   });
 
+  test('muted text prefers the shadcn foreground token over its light background token', () => {
+    // shadcn defines --color-muted as a pale background and --color-muted-foreground
+    // as the readable text colour; the bridge must prefer the latter so board
+    // "muted" text (captions, fallbacks, notes) keeps AA contrast (§7.9).
+    expect(bridge).toMatch(/--dg-color-muted:\s*var\(--color-muted-foreground,\s*var\(--color-muted,/);
+  });
+
   test('adopts host fonts and radii with library fallbacks', () => {
     for (const key of ['--dg-font-display', '--dg-font-body', '--dg-font-mono']) {
       expect(bridge, key).toMatch(new RegExp(`${key}:\\s*var\\(--font-[a-z0-9-]+,\\s*[^)]`));

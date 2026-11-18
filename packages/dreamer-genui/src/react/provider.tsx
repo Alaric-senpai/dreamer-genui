@@ -7,6 +7,8 @@ import { MotionProvider } from './motion/animated';
 import { BoardEmitContext } from './emit-context';
 import type { ComponentOverride } from './anatomy';
 import { createTranslator } from '../core/strings';
+import { createAssetResolver } from '../core/assets';
+import type { AssetResolveFunction, AssetResolver } from '../core/assets';
 
 /** UI strings — all overridable for i18n. */
 export interface UIStrings {
@@ -68,6 +70,8 @@ export interface DreamerContextValue {
   onError?: (err: LibraryError) => void;
   /** Component overrides (§8.5.4): built-in component name → replacement. */
   components: Record<string, ComponentOverride | undefined>;
+  /** Cached asset resolver (§7.6); always present, no-op when host supplies nothing. */
+  assets: AssetResolver;
 }
 
 const DreamerContext = createContext<DreamerContextValue | null>(null);
@@ -93,6 +97,10 @@ export interface DreamerProviderProps {
    *  (see `docs/components/`). Overrides receive `renderDefault()` plus the
    *  component's own props. */
   components?: Record<string, ComponentOverride | undefined>;
+  /** Host asset callback for `{ asset: id }` references (§7.6). The library
+   *  never fetches: this callback owns all network access; results are cached
+   *  and deduplicated. */
+  resolveAsset?: AssetResolveFunction;
   children: ReactNode;
 }
 
@@ -129,10 +137,12 @@ export function DreamerProvider({
   dir = 'ltr',
   density = 'comfortable',
   components,
+  resolveAsset,
   children,
 }: DreamerProviderProps) {
   const scheme = useMediaScheme(colorScheme === 'auto');
   const t = useMemo(() => createTranslator(registry, locale), [registry, locale]);
+  const assets = useMemo(() => createAssetResolver(resolveAsset ?? (() => undefined)), [resolveAsset]);
   const mergedStrings = useMemo<UIStrings>(
     () => ({
       return: strings?.return ?? t('board.return'),
@@ -163,8 +173,9 @@ export function DreamerProvider({
       density,
       t,
       components: components ?? {},
+      assets,
     }),
-    [registry, colorScheme, scheme, onEvent, onError, mergedStrings, locale, dir, density, t, components]
+    [registry, colorScheme, scheme, onEvent, onError, mergedStrings, locale, dir, density, t, components, assets]
   );
   return (
     <DreamerContext.Provider value={value}>
