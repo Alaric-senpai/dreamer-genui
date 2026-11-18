@@ -44,7 +44,7 @@ export interface AmbiencePreset {
   particles?: AmbienceParticleConfig;
 }
 
-export type AmbienceLayerKind = 'grain' | 'vignette' | 'haze' | 'flicker' | 'particles';
+export type AmbienceLayerKind = 'grain' | 'vignette' | 'haze' | 'flicker' | 'particles' | 'blueprint-grid' | 'rings';
 
 export type AmbienceColorRole = 'ink' | 'muted' | 'accent' | 'info' | 'success' | 'warn' | 'danger';
 
@@ -151,6 +151,48 @@ export const EXAMPLE_MOODS: MoodPreset[] = [
     },
     ambience: 'flicker',
   },
+  {
+    name: 'night',
+    description: 'Deep navy technical register with cyan accents and a faint grid.',
+    tokens: {
+      color: {
+        bg: '#081120',
+        surface: '#0e1a2e',
+        ink: '#e8f1ff',
+        muted: '#8fa4c4',
+        accent: '#38e1ff',
+        info: '#4aa8ff',
+        success: '#57d9a3',
+        warn: '#f0b45a',
+        danger: '#ff6b6b',
+      },
+      radius: { sm: 2, md: 6, lg: 10 },
+      motion: { speed: 1, ease: 'snappy' },
+      texture: { grain: 0.08, vignette: 0.4, glow: 0.35 },
+    },
+    ambience: 'blueprint-grid',
+  },
+  {
+    name: 'paper',
+    description: 'Pale, editorial register for quiet reading and worked examples.',
+    tokens: {
+      color: {
+        bg: '#eef1f4',
+        surface: '#fbfcfd',
+        ink: '#111820',
+        muted: '#5b6673',
+        accent: '#1c64d8',
+        info: '#1f6fd0',
+        success: '#1f7a4d',
+        warn: '#a86500',
+        danger: '#b53030',
+      },
+      radius: { sm: 2, md: 5, lg: 8 },
+      motion: { speed: 0.95, ease: 'smooth' },
+      texture: { grain: 0.04, vignette: 0.12, glow: 0 },
+    },
+    surface: 'paper',
+  },
 ];
 
 /** Example ambience presets — data + generic layer kind; the runtime is in react/ambience. */
@@ -177,6 +219,8 @@ export const EXAMPLE_AMBIENCE: AmbiencePreset[] = [
     particles: { count: 56, color: 'ink', minSize: 0.8, maxSize: 1.8, speed: 0, drift: 0, twinkle: true, direction: 'static' },
   },
   { name: 'flicker', description: 'Unsteady, candle-like light.', layer: 'flicker', intensity: 0.85 },
+  { name: 'blueprint-grid', description: 'Faint technical grid with a soft horizon glow.', layer: 'blueprint-grid', intensity: 0.55 },
+  { name: 'rings', description: 'Slow concentric rings radiating from the centre.', layer: 'rings', intensity: 0.6 },
 ];
 
 /** Example board surfaces. */

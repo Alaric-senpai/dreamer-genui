@@ -9,7 +9,11 @@ import { boardReducer, back as reduceBack, createBoard, applyResolvedTheme, clos
 import type { Registry } from './registry';
 import { createRegistry } from './registry';
 import { createThemeResolver, type ThemeContext, type ThemePolicy, type ResolvedTheme } from './theme';
-import { computeEntryPlan, fireCue, flushAll, seekTo, signalEvent, newlyEntered, type EntryPlan, type Pacing } from './cues';
+import { computeEntryPlan, fireCue, flushAll, seekTo, signalEvent, newlyEntered, orphanCues, type EntryPlan, type Pacing } from './cues';
+import { parseBeats } from '../schema/narration';
+import type { Beat } from '../schema/narration';
+import type { SceneTransition } from '../schema/transition';
+import type { PointerOp } from '../schema/ops';
 import {
   createAssessmentMachine,
   examLocksFor,
@@ -80,6 +84,22 @@ export interface BoardAssessments {
 export interface ReplyLike {
   v?: number;
   ops: readonly unknown[];
+  narration?: unknown;
+  meta?: Record<string, unknown>;
+}
+
+/** Narration announced for a turn (§6.17); the Conductor/reading scheduler drives cues. */
+export interface NarrationEvent {
+  beats: Beat[];
+  /** Pending cue ids this turn never mentions; already fired at turn end. */
+  orphanCueIds: string[];
+}
+
+/** A validated scene transition with the theme captured from the outgoing board. */
+export interface SceneTransitionEvent {
+  transition: SceneTransition;
+  /** Resolved theme before the swap (the renderer freezes it until midpoint). */
+  fromTheme?: ResolvedTheme;
 }
 
 /**
@@ -105,6 +125,9 @@ export class BoardResolver {
   private readonly _themeChangeBus: EventBus<ResolvedTheme>;
   private readonly _cameraBus: EventBus<CameraOp>;
   private readonly _layoutBus: EventBus<LayoutTransition>;
+  private readonly _transitionBus: EventBus<SceneTransitionEvent>;
+  private readonly _pointerBus: EventBus<PointerOp>;
+  private readonly _narrationBus: EventBus<NarrationEvent>;
   private entryPlan: EntryPlan = { entered: [], pending: [], pendingCues: [] };
   private readonly onError?: (err: LibraryError) => void;
   private readonly pipeline?: MiddlewarePipeline;
@@ -148,6 +171,9 @@ export class BoardResolver {
     this._themeChangeBus = new EventBus<ResolvedTheme>();
     this._cameraBus = new EventBus<CameraOp>();
     this._layoutBus = new EventBus<LayoutTransition>();
+    this._transitionBus = new EventBus<SceneTransitionEvent>();
+    this._pointerBus = new EventBus<PointerOp>();
+    this._narrationBus = new EventBus<NarrationEvent>();
     this.state = createBoard();
     // UIEvents from rendered components satisfy event triggers (§6.2).
     this._events.subscribe(ev => this.signalEvent(ev));
@@ -186,6 +212,21 @@ export class BoardResolver {
   /** Layout-op bus: the renderer animates the re-flow with these knobs (§6.4). */
   get layoutBus(): EventBus<LayoutTransition> {
     return this._layoutBus;
+  }
+
+  /** Scene-transition bus (§6.18): the renderer plays the wipe/fade/iris/morph. */
+  get transitionBus(): EventBus<SceneTransitionEvent> {
+    return this._transitionBus;
+  }
+
+  /** Pointer bus (§6.18): validated pointer ops, presentation-only. */
+  get pointerBus(): EventBus<PointerOp> {
+    return this._pointerBus;
+  }
+
+  /** Narration bus (§6.17): beats for the turn plus orphan cues already fired. */
+  get narrationBus(): EventBus<NarrationEvent> {
+    return this._narrationBus;
   }
 
   /** Current (immutable) board state. */
@@ -275,7 +316,50 @@ export class BoardResolver {
       this.appliedKeys.add(key); // safe: after this the ledger is cleared anyway
     });
     this.appliedKeys.clear();
+    this.finishTurn(reply.narration);
     return results;
+  }
+
+  /**
+   * Close a turn (§6.17 safety nets): orphan cues fire with a warning, then
+   * every still-pending cued node enters. The renderer also calls this when the
+   * last beat of a reading schedule ends, so content can never stay hidden.
+   */
+  finishTurn(narration?: unknown): NarrationEvent | undefined {
+    const parsed = parseBeats(narration);
+    if (parsed.error) {
+      this.reportError(createError('turn-invalid', parsed.error));
+      return undefined;
+    }
+    const beats = parsed.beats;
+    if (beats.length === 0) return undefined;
+    const orphans = orphanCues(this.state, beats);
+    for (const cueId of orphans) {
+      this.reportError(
+        createError('cue-orphan', `Cue "${cueId}" is not referenced by any narration beat`),
+      );
+    }
+    for (const cueId of orphans) {
+      this._cueBus.emit(cueId);
+      this.state = fireCue(this.state, cueId);
+      appendCue(this.opsLog, cueId, this.clock.now());
+    }
+    this.refreshEntry();
+    const event: NarrationEvent = { beats, orphanCueIds: orphans };
+    this._narrationBus.emit(event);
+    return event;
+  }
+
+  /** Enter every node still pending on a cue (end-of-turn safety net, §6.17). */
+  endTurn(): void {
+    const pending = computeEntryPlan(this.state).pendingCues;
+    if (pending.length === 0) return;
+    for (const cueId of pending) {
+      this._cueBus.emit(cueId);
+      this.state = fireCue(this.state, cueId);
+      appendCue(this.opsLog, cueId, this.clock.now());
+    }
+    this.refreshEntry();
   }
 
   /**
@@ -455,11 +539,28 @@ export class BoardResolver {
         if (this.examLockStrategy === 'queue') this.examQueue.push(validated.op);
         return { op: validated.op, status: 'applied' };
       }
+      const fromTheme = this.state.theme;
       this.state = boardReducer(this.state, validated.op);
       appendOp(this.opsLog, validated.op, this.clock.now());
       if (validated.op.op === 'replace') this.machines.clear();
       if (validated.op.op === 'remove') this.machines.delete(validated.op.id);
       this.applyThemeSide(validated.op);
+      if (validated.op.op === 'replace') {
+        // Scene transition (§6.18): presentation-only; the renderer freezes the
+        // outgoing theme until the midpoint, then reveals the new board.
+        let transition = validated.op.transition ?? { kind: 'fade' };
+        if (!this.registry.get('transitions', transition.kind)) {
+          this.reportError(
+            createError('transition-unknown', `Unknown scene transition: ${transition.kind}`),
+          );
+          transition = { ...transition, kind: 'fade' };
+        }
+        this._transitionBus.emit({ transition, fromTheme });
+      }
+      if (validated.op.op === 'pointer') {
+        // Presentation-only (§6.18): executed by the renderer overlay.
+        this._pointerBus.emit(validated.op);
+      }
       if (validated.op.op === 'camera') {
         // Presentation-only (§6.10): validated here, executed by the renderer.
         this._cameraBus.emit(validated.op);

@@ -23,7 +23,7 @@ const IconFigureSchema = z.object({
 const DiagramLabelSchema = z.union([z.string(), z.array(InlineSchema)]);
 const DiagramFigureSchema = z.object({
   kind: z.literal('diagram'),
-  layout: z.enum(['tree', 'radial', 'cycle']),
+  layout: z.enum(['tree', 'radial', 'cycle', 'orbit']),
   direction: z.enum(['down', 'right']).optional(),
   root: z.string().optional(),
   nodes: z.array(z.object({

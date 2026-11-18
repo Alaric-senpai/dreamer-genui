@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "replace",
+      "title": "Teleport",
+      "transition": { "kind": "teleport", "duration": 500 },
+      "blocks": [
+        { "id": "unknown-transition-line", "type": "text", "variant": "body", "content": ["No such transition is registered."] }
+      ]
+    }
+  ]
+}

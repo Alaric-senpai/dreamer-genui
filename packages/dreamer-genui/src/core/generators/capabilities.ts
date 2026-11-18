@@ -38,6 +38,9 @@ export function getCapabilities(registry: Registry): string[] {
   for (const entry of registry.list('layouts')) {
     if (!entry.disabled) caps.push(`layout.${entry.name}`);
   }
+  for (const entry of registry.list('transitions')) {
+    if (!entry.disabled) caps.push(`transition.${entry.name}`);
+  }
   for (const e of ENTER_EFFECTS) caps.push(`enter.${e}`);
   for (const e of enumOptions(EmphasisSchema.shape.effect)) caps.push(`emphasis.${e}`);
   for (const e of enumOptions(ExitSchema.shape.effect)) caps.push(`exit.${e}`);

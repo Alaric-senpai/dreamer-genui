@@ -28,6 +28,9 @@ Reply format: { "v": 1, "ops": [...] }
 - **layout**: Change the board's composition ({ "op": "layout", "layout": { "kind": "split", "ratio": "2:1" } }). Existing content animates to its new positions; it never re-enters. Use it deliberately — for example flow → split when a question appears beside an explanation.
 - **theme**: Shift the board's mood or tokens mid-lesson ({ "op": "theme", "theme": { "mood": "…" }, "scope": "board" | "detour" }). Moods must be registered names; full theme guidance is documented separately. Use sparingly — only when the emotional register genuinely changes.
 - **camera**: Ask for a virtual-camera move to a node ref or "overview" ({ "op": "camera", "to": "some-node", "zoom": 1.4, "tilt": { "y": 8 }, "dolly": "in" }). A guided sequence is { "op": "camera", "path": [ {...}, {...} ] }; each move may carry a cue trigger so the camera follows narration. Presentation-level and bounded: the host may honour or ignore it, and text stays flat and readable.
+- **pointer**: Point at something ({ "op": "pointer", "to": "some-node", "style": "dot" }). Only one pointer exists per board; send { "op": "pointer", "to": "hide" } to dismiss it. Use it when narration directs attention to a specific part of the screen.
+- **replace.transition**: Choose how a new scene arrives ({ "kind": "fade" | "cut" | "wipe" | "push" | "iris" | "morph" }). Default is a calm fade; "morph" pairs nodes by their "key" so matching content moves into its new place. Set "theme" on the transition when the mood should change at the cut.
+- **update.transition**: "morph" lets keyed text flow to its new wording; "fade" crossfades; "none" swaps instantly.
 
 Node ids must be unique across the board (including attached detour blocks).`;
 
@@ -44,9 +47,11 @@ const PROTOCOL_GUIDE = `## Inline Marks
 
 ## Motion
 
-Use 'enter.effect' on blocks: reveal|rise|pop|sweep|draw|stagger|none, plus text/kinetic effects typewriter|words|chars|slam|wipe|scribble|zoom|count-up|morph. Enter effects that split text accept 'split' (words|chars|lines). Set 'order' to group animations (same order = simultaneous). 'delay' and 'duration' are in ms. 'emphasis' (pulse|underline|glow|shake|bounce|wobble) plays after enter. 'exit' (fade|shrink|wipe-out|none).
+Use 'enter.effect' on blocks: reveal|rise|tilt-rise|pop|sweep|draw|stagger|none, plus text/kinetic effects typewriter|words|chars|slam|wipe|scribble|zoom|count-up|morph|assemble|iris. Enter effects that split text accept 'split' (words|chars|lines). 'assemble' builds words from scattered pieces; 'iris' opens the block through a circular mask; 'tilt-rise' lifts it from a slight perspective. Typewriter accepts 'caret:true' to show a blinking caret; 'blur:true' adds a cheap motion blur where the device can afford it. Set 'order' to group animations (same order = simultaneous). 'delay' and 'duration' are in ms. 'emphasis' (pulse|underline|glow|shake|bounce|wobble) plays after enter. 'exit' (fade|shrink|wipe-out|none).
 
-Enter triggers (§6.2): by default nodes enter as soon as they arrive ('start'). Optionally set 'enter.trigger' to gate entrance — { "on": "cue", "id": "beat-2" } waits for the host to fire that cue, { "on": "after", "node": "id" } waits for another node, { "on": "event", "node": "ref", "event": "focus" | "select" | "answer" } waits for a student interaction. Marks (highlight/emphasis/term/focusable/annotate/math) may also carry 'enter' with a trigger — e.g. circle a phrase exactly when it is being discussed.
+Keyed motion: give a node or mark a stable 'key'. On 'update' with { "transition": "morph" }, content with the same key flows to its new wording instead of re-entering; use 'assemble' when a line is built word by word.
+
+Enter triggers (§6.2): by default nodes enter as soon as they arrive ('start'). Optionally set 'enter.trigger' to gate entrance — { "on": "cue", "id": "beat-2", "lead": 180 } waits for that cue (lead in ms, optional), { "on": "after", "node": "id" } waits for another node, { "on": "event", "node": "ref", "event": "focus" | "select" | "answer" } waits for a student interaction. Marks (highlight/emphasis/term/focusable/annotate/math) may also carry 'enter' with a trigger — e.g. circle a phrase exactly when it is being discussed.
 
 Text variants: 'hero' (large screen-owning statement — a few words), 'kicker' (small lead-in label), 'quote' (styled quotation). Use hero/kicker sparingly: one per screen at most.
 
@@ -54,7 +59,7 @@ Reduced motion: all effects fall back to instant/unanimated. Always show all con
 
 ## Figures
 
-- **diagram** (kind: tree|radial|cycle): no coordinates. Label nodes with nodes[].id, nodes[].label. Connect with edges[]. Set 'focusable:true' to emit 'focus' on node click.
+- **diagram** (kind: tree|radial|cycle|orbit): no coordinates. Label nodes with nodes[].id, nodes[].label. Connect with edges[]. Use 'orbit' for a centre-and-satellites composition. Set 'focusable:true' to emit 'focus' on node click.
 - **flowchart** (nodes/edges with decisions, branches, loops, inputs/outputs): use for multi-step processes. Node shapes: step|start|end|decision|io|substance|note. Labels are inline arrays, e.g. ['Brine + NH₃']. Set 'flow:"pulse"' to animate the path.
 - **timeline** (events with when/label): for chronological sequences.
 - **labeled** (pack, art): reference named parts by id (highlight and label by part id).
@@ -68,7 +73,9 @@ When streaming partial replies: include 'after' in append ops to maintain order.
 
 ## Pacing — write the board like narration
 
-Write on the board only what you are currently talking about: one idea per beat. Attach a cue to each beat's entrance so it appears as it is spoken, e.g. "enter": { "effect": "words", "trigger": { "on": "cue", "id": "beat-3" } }. Keep cue ids stable and increasing within a lesson (beat-1, beat-2, …) — the host fires each cue as the narration reaches it, and content is NOT shown until its trigger fires. An 'after' chain pairs one entrance onto another; do not create loops.
+Write on the board only what you are currently talking about: one idea per beat. Return 'narration' as an ordered list of beats, each with a unique id and its spoken text; a beat's id is also the cue id its nodes wait for. Optionally mark a point inside a beat with [[cue:some-id]] to fire another cue mid-sentence (for example another line appears as an aside). Put 'enter': { "effect": "words", "trigger": { "on": "cue", "id": "beat-3" } } on the content for beat-3. 'enter.trigger.lead' (ms) lets a node arrive slightly before its cue, useful with voice. Keep cue ids stable and increasing within a lesson (beat-1, beat-2, …). Content is NOT shown until its trigger fires.
+
+The host may pace cues itself, let the library derive them from text length ('pacing': 'reading'), or drive them from the voice conductor. Writes with no matching cue are reported as 'cue-orphan' and entered at the end of the turn, so every enter trigger should correspond to a beat or inline marker. An 'after' chain pairs one entrance onto another; do not create loops.
 
 ## Events
 

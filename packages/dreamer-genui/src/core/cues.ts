@@ -2,6 +2,8 @@ import type { BoardState } from './types';
 import type { Block } from '../schema/blocks';
 import type { Trigger } from '../schema/motion';
 import type { UIEvent } from '../schema/events';
+import { parseCueMarkers } from '../schema/narration';
+import type { Beat } from '../schema/narration';
 
 /**
  * Cue engine (§6.3, normative). Headless and pure: entry gates are DERIVED
@@ -20,7 +22,101 @@ import type { UIEvent } from '../schema/events';
  * - pacing "auto" → cue triggers ignored (play by order), for text-only hosts.
  */
 
-export type Pacing = 'cued' | 'auto';
+export type Pacing = 'cued' | 'auto' | 'reading';
+
+/**
+ * Reading-speed schedule (§6.17): approximate cue times when no audio is
+ * available. Pure and deterministic so hosts/tests can reproduce a narration
+ * timeline; the Conductor uses the real audio clock when voice is on.
+ */
+export interface ReadingOptions {
+  /** Words per minute. Defaults to 160 (calm spoken pace). */
+  wpm?: number;
+  /** Fire each beat cue this many ms before its beat starts. */
+  leadMs?: number;
+  /** Extra pause after sentence-ending punctuation. */
+  sentencePauseMs?: number;
+}
+
+export interface ReadingCue {
+  cueId: string;
+  atMs: number;
+  beatId: string;
+  /** True for an inline `[[cue:id]]` marker rather than the beat start. */
+  inline: boolean;
+}
+
+/** Estimate spoken duration of a beat text, excluding cue markers. */
+export function readingDurationMs(text: string, options: ReadingOptions = {}): number {
+  const wpm = options.wpm && options.wpm > 0 ? options.wpm : 160;
+  const sentencePause = options.sentencePauseMs ?? 220;
+  const clean = text.replace(/\[\[cue:[^\]]+\]\]/g, ' ');
+  const words = clean.trim() ? clean.trim().split(/\s+/).length : 0;
+  const sentences = (clean.match(/[.!?](\s|$)/g) ?? []).length;
+  return Math.max(0, Math.round((words / wpm) * 60_000 + sentences * sentencePause));
+}
+
+/**
+ * Schedule every beat start and inline cue marker at reading speed.
+ * Cues are ordered by time; a marker before the next word boundary stays
+ * inside its beat. `atMs` is clamped to 0 and never travels backwards.
+ */
+export function readingSchedule(beats: readonly Beat[], options: ReadingOptions = {}): ReadingCue[] {
+  const lead = Math.max(0, options.leadMs ?? 0);
+  const out: ReadingCue[] = [];
+  let cursor = 0;
+  for (const beat of beats) {
+    const duration = readingDurationMs(beat.text, options);
+    out.push({ cueId: beat.id, atMs: Math.max(0, cursor - lead), beatId: beat.id, inline: false });
+    for (const marker of parseCueMarkers(beat.text)) {
+      const clean = beat.text.replace(/\[\[cue:[^\]]+\]\]/g, ' ');
+      const before = clean.slice(0, Math.min(marker.index, clean.length));
+      const wordsBefore = before.trim() ? before.trim().split(/\s+/).length : 0;
+      const ratio = clean.trim() ? Math.min(1, wordsBefore / clean.trim().split(/\s+/).length) : 0;
+      out.push({
+        cueId: marker.cueId,
+        atMs: Math.max(0, Math.round(cursor + duration * ratio) - lead),
+        beatId: beat.id,
+        inline: true,
+      });
+    }
+    cursor += duration + Math.max(0, beat.pauseAfterMs ?? 0);
+  }
+  return out;
+}
+
+/** Every cue id mentioned by narration (beat ids and inline markers). */
+export function narratedCueIds(beats: readonly Beat[]): string[] {
+  const ids: string[] = [];
+  for (const beat of beats) {
+    if (!ids.includes(beat.id)) ids.push(beat.id);
+    for (const marker of parseCueMarkers(beat.text)) {
+      if (!ids.includes(marker.cueId)) ids.push(marker.cueId);
+    }
+  }
+  return ids;
+}
+
+/** Cue ids that pending nodes wait on but the turn's narration never mentions. */
+export function orphanCues(state: BoardState, beats: readonly Beat[]): string[] {
+  if (beats.length === 0) return [];
+  const cited = new Set(narratedCueIds(beats));
+  const pending = computeEntryPlan(state).pendingCues;
+  return pending.filter(id => !cited.has(id));
+}
+
+/** Trigger `lead` values by cue id (used by the reading scheduler). */
+export function cueLeads(state: BoardState): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const node of Object.values(state.nodes)) {
+    const trigger = nodeTrigger(node.block);
+    if (trigger?.on === 'cue' && typeof trigger.lead === 'number') {
+      out[trigger.id] = Math.max(out[trigger.id] ?? 0, trigger.lead);
+    }
+  }
+  return out;
+}
+
 
 /**
  * Board pacing when the host does not set one explicitly (§6.3):

@@ -1,0 +1,45 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "turn-kicker",
+          "type": "text",
+          "variant": "kicker",
+          "content": ["A short lesson turn"],
+          "enter": { "effect": "wipe", "trigger": { "on": "cue", "id": "beat-1" } }
+        },
+        {
+          "id": "turn-heading",
+          "type": "text",
+          "variant": "heading",
+          "content": ["Written only when it is spoken"],
+          "enter": {
+            "effect": "words",
+            "split": "words",
+            "caret": false,
+            "trigger": { "on": "cue", "id": "beat-2", "lead": 180 }
+          }
+        },
+        {
+          "id": "turn-note",
+          "type": "callout",
+          "tone": "info",
+          "title": "Inline cue",
+          "content": ["This note enters on a cue inside the second beat."],
+          "enter": { "effect": "rise", "trigger": { "on": "cue", "id": "note-cue" } }
+        }
+      ]
+    }
+  ],
+  "narration": [
+    { "id": "beat-1", "text": "Here is how a lesson turn arrives." },
+    {
+      "id": "beat-2",
+      "text": "The board writes a line as it is spoken. [[cue:note-cue]]A marker inside the sentence fires an extra cue.",
+      "pauseAfterMs": 250
+    }
+  ]
+}

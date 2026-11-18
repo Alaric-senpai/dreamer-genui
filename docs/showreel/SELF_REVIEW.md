@@ -223,3 +223,58 @@ Verification at this gate: `pnpm -s test` **608/608 tests, 55 files**;
 all seven captures regenerated from the clean build.
 
 **Status: M4b complete, awaiting human approval before M5.**
+
+## M4c — motion language, narration and transitions
+
+Captures: `m4c-scene-1.png` … `m4c-scene-5.png` (headless Chromium, 1440×1200,
+`/m4c?scene=0…4`). The five scenes replicate the reference's structure and
+palette flips through protocol ops only: navy/SaaS hero, navy "Digital tools"
+with an orbit diagram, paper "Momentum" count-up, paper typewriter headline with
+caret, and paper closing line with pointer cue. They are stills, not a video.
+
+Graded against §6.18, §11.3 and the M4c acceptance list:
+
+- **Protocol only** — pass. `reference-saas-explainer.json`, `text-morph.json`,
+  `scene-transitions.json`, `pointer-tour.json` and `lesson-turn-narration.json`
+  carry no per-scene renderer code; the route slices the same fixture.
+- **Narration beats, inline cue markers and reading pacing** — pass. Beat ids
+  are cue ids, `[[cue:id]]` is parsed, duplicate ids raise `turn-invalid`, and
+  unmatched pending cues raise `cue-orphan` then fire at turn end. Reading
+  pacing schedules at 160 wpm and honours `lead`.
+- **Scene transitions and midpoint mood flip** — pass. cut/fade/wipe/push/iris/
+  morph are registered and rendered; the outgoing theme holds until midpoint.
+  Unknown kinds report `transition-unknown` and fall back to fade.
+- **New effects** (`tilt-rise`, `assemble`, `iris`), typewriter `caret`,
+  keyed `morph` and `blur` support — pass in fixtures and kinetic tests. The
+  `key` morph preserves unchanged words rather than diffing arbitrary DOM.
+- **Pointer** — pass: dot/hand/arrow travel with ripple, `hide` clears, one per
+  board. Not visible in the scene-5 still because the capture lands before the
+  pointer beat; the cue is logged.
+- **Orbit diagram, blueprint-grid/rings, glow, `night`/`paper`, drift camera** —
+  schema, layout helper, presets, styles and unit tests pass. The orbit figure
+  is drawn only from M5, so scenes 2 shows the heading/cue rather than a
+  rendered orbit; no one-off placeholder was added.
+- **Reduced motion** — pass by design: transitions collapse to cut, pointer
+  becomes a static ring, drift is a no-op and kinetic effects settle instantly.
+- **Exam restrictions** — pass by design/tests: transitions clamp to cut/fade,
+  pointer is removed, camera and ambience are off; the existing exam tests cover
+  the shared locks.
+- **Performance** — **not formally verified at 60 fps.** No throttled profile
+  was run for this milestone; the implementation animates transform/opacity and
+  pointer schedules are timer-based, but the 60 fps requirement remains open
+  for M8. Captures were taken at virtual-time budgets, which do not measure
+  frame rate.
+- **Storybook** — not present in the repository, so the "story per effect/
+  transition/pointer" acceptance item is **not met**. This gap is recorded in
+  DECISIONS and carried to M7 rather than claimed.
+- **Visual polish** — the board title clips at the top of the playground
+  container at 1440×1200; that is a host page height issue, not a board layout
+  failure. Captures are otherwise legible and show the intended contrast.
+
+Verification at this gate: `pnpm -s test` **641 tests / 55 files**; `tsc`
+clean; library and playground production builds green; `/m4c` renders every
+source and scene; all five captures regenerated from the clean build.
+
+**Status: M4c implementation complete. Stopped at the Motion gate, awaiting
+human approval before M4d. Known gaps: Storybook (M7) and formal 60 fps
+measurement (M8).**

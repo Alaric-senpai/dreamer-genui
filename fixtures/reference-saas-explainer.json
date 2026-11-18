@@ -1,0 +1,198 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "replace",
+      "title": "SaaS",
+      "transition": { "kind": "fade", "duration": 450 },
+      "theme": { "mood": "night" },
+      "blocks": [
+        {
+          "id": "scene-1-kicker",
+          "type": "text",
+          "variant": "kicker",
+          "content": ["FULL TUTORIAL"],
+          "enter": { "effect": "wipe", "trigger": { "on": "cue", "id": "s1-kicker" } }
+        },
+        {
+          "id": "scene-1-hero",
+          "type": "text",
+          "variant": "hero",
+          "content": ["SaaS"],
+          "enter": { "effect": "slam", "trigger": { "on": "cue", "id": "s1-hero" } }
+        },
+        {
+          "id": "scene-1-sub",
+          "type": "text",
+          "variant": "body",
+          "content": ["One product. One clear promise."],
+          "enter": { "effect": "words", "trigger": { "on": "cue", "id": "s1-sub" } }
+        }
+      ]
+    },
+    {
+      "op": "replace",
+      "title": "Digital tools",
+      "transition": { "kind": "iris", "origin": "center", "duration": 900 },
+      "theme": { "mood": "night" },
+      "blocks": [
+        {
+          "id": "scene-2-heading",
+          "type": "text",
+          "variant": "heading",
+          "content": ["Digital tools"],
+          "enter": { "effect": "tilt-rise", "trigger": { "on": "cue", "id": "s2-heading" } }
+        },
+        {
+          "id": "scene-2-orbit",
+          "type": "figure",
+          "figure": {
+            "kind": "diagram",
+            "layout": "orbit",
+            "root": "core",
+            "nodes": [
+              { "id": "core", "label": "Core" },
+              { "id": "learn", "label": "Learn" },
+              { "id": "track", "label": "Track" },
+              { "id": "grow", "label": "Grow" }
+            ],
+            "edges": [
+              { "from": "core", "to": "learn" },
+              { "from": "core", "to": "track" },
+              { "from": "core", "to": "grow" }
+            ],
+            "reveal": "sequential",
+            "focusable": true,
+            "alt": "A core module with learn, track and grow around it."
+          },
+          "enter": { "effect": "iris", "trigger": { "on": "cue", "id": "s2-orbit" } }
+        },
+        {
+          "id": "scene-2-note",
+          "type": "callout",
+          "tone": "info",
+          "title": "One workspace",
+          "content": ["Everything the team needs, in one place."],
+          "enter": { "effect": "rise", "trigger": { "on": "cue", "id": "s2-note" } }
+        }
+      ]
+    },
+    {
+      "op": "replace",
+      "title": "Momentum",
+      "transition": { "kind": "wipe", "direction": "right", "duration": 600 },
+      "theme": { "mood": "paper" },
+      "blocks": [
+        {
+          "id": "scene-3-kicker",
+          "type": "text",
+          "variant": "kicker",
+          "content": ["MOMENTUM"],
+          "enter": { "effect": "wipe", "trigger": { "on": "cue", "id": "s3-kicker" } }
+        },
+        {
+          "id": "scene-3-hero",
+          "type": "text",
+          "variant": "hero",
+          "content": ["3×"],
+          "enter": { "effect": "count-up", "trigger": { "on": "cue", "id": "s3-hero" } }
+        },
+        {
+          "id": "scene-3-body",
+          "type": "text",
+          "variant": "body",
+          "content": ["Faster from first draft to launch."],
+          "enter": { "effect": "assemble", "trigger": { "on": "cue", "id": "s3-body" } }
+        },
+        {
+          "id": "scene-3-ring-a",
+          "type": "callout",
+          "tone": "success",
+          "title": "Ship",
+          "content": ["Smaller releases, more often."],
+          "enter": { "effect": "pop", "order": 1, "trigger": { "on": "cue", "id": "s3-rings" } }
+        },
+        {
+          "id": "scene-3-ring-b",
+          "type": "callout",
+          "tone": "info",
+          "title": "Learn",
+          "content": ["Every release feeds the next."],
+          "enter": { "effect": "pop", "order": 2, "trigger": { "on": "cue", "id": "s3-rings" } }
+        }
+      ]
+    },
+    {
+      "op": "replace",
+      "title": "Built for clarity",
+      "transition": { "kind": "push", "direction": "up", "duration": 650 },
+      "theme": { "mood": "paper" },
+      "blocks": [
+        {
+          "id": "scene-4-heading",
+          "type": "text",
+          "variant": "heading",
+          "content": ["Built for clarity"],
+          "enter": { "effect": "typewriter", "caret": true, "trigger": { "on": "cue", "id": "s4-heading" } }
+        },
+        {
+          "id": "scene-4-body",
+          "type": "text",
+          "variant": "body",
+          "content": ["No noise. Just the next useful step."],
+          "enter": { "effect": "words", "trigger": { "on": "cue", "id": "s4-body" } }
+        }
+      ]
+    },
+    {
+      "op": "replace",
+      "title": "Start",
+      "transition": { "kind": "morph", "duration": 700 },
+      "theme": { "mood": "paper" },
+      "blocks": [
+        {
+          "id": "scene-5-kicker",
+          "type": "text",
+          "variant": "kicker",
+          "content": ["START"],
+          "enter": { "effect": "wipe", "trigger": { "on": "cue", "id": "s5-kicker" } }
+        },
+        {
+          "id": "scene-5-hero",
+          "type": "text",
+          "variant": "hero",
+          "content": ["One step."],
+          "enter": { "effect": "chars", "trigger": { "on": "cue", "id": "s5-hero" } }
+        },
+        {
+          "id": "scene-5-body",
+          "type": "text",
+          "variant": "body",
+          "content": ["Then the next."],
+          "enter": { "effect": "words", "trigger": { "on": "cue", "id": "s5-body" } }
+        }
+      ]
+    },
+    { "op": "pointer", "to": "scene-5-body", "style": "dot", "trigger": { "on": "cue", "id": "s5-pointer" } },
+    { "op": "pointer", "to": "hide", "trigger": { "on": "cue", "id": "s5-end" } }
+  ],
+  "narration": [
+    { "id": "s1-kicker", "text": "A short product story starts with a label." },
+    { "id": "s1-hero", "text": "Then the name lands." },
+    { "id": "s1-sub", "text": "And one promise." },
+    { "id": "s2-heading", "text": "Now the tools." },
+    { "id": "s2-orbit", "text": "A core, with three capabilities around it." },
+    { "id": "s2-note", "text": "All in one workspace." },
+    { "id": "s3-kicker", "text": "The mood flips to paper." },
+    { "id": "s3-hero", "text": "Three times faster." },
+    { "id": "s3-body", "text": "From first draft to launch." },
+    { "id": "s3-rings", "text": "Two small loops: ship, learn." },
+    { "id": "s4-heading", "text": "Built for clarity." },
+    { "id": "s4-body", "text": "Nothing more than the next useful step." },
+    { "id": "s5-kicker", "text": "Start." },
+    { "id": "s5-hero", "text": "One step." },
+    { "id": "s5-body", "text": "Then the next." },
+    { "id": "s5-pointer", "text": "The pointer rests on the way forward." },
+    { "id": "s5-end", "text": "And the story ends." }
+  ]
+}

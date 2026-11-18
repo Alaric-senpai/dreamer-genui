@@ -9,6 +9,11 @@ import {
   signalEvent,
   eventKey,
   newlyEntered,
+  readingSchedule,
+  readingDurationMs,
+  narratedCueIds,
+  orphanCues,
+  cueLeads,
 } from '../../packages/dreamer-genui/src/core/cues';
 import { createBoard, boardReducer } from '../../packages/dreamer-genui/src/core/reducer';
 import type { Block } from '../../packages/dreamer-genui/src/schema/blocks';
@@ -153,5 +158,57 @@ describe('newlyEntered — diff helper', () => {
     const prev = { entered: ['a'], pending: ['b', 'c'], pendingCues: [] };
     const next = { entered: ['a', 'b', 'c'], pending: [], pendingCues: [] };
     expect(newlyEntered(prev, next)).toEqual(['b', 'c']);
+  });
+});
+
+describe('reading pacing and narration (§6.17)', () => {
+  const beats = [
+    { id: 'beat-1', text: 'One short sentence. Then another short sentence.' },
+    { id: 'beat-2', text: 'The second beat [[cue:mid]]has an inline cue.', pauseAfterMs: 300 },
+  ];
+
+  test('reading duration scales with word count and strips cue markers', () => {
+    expect(readingDurationMs('')).toBe(0);
+    const plain = readingDurationMs('one two three four', { wpm: 120 });
+    expect(plain).toBe(2000);
+    const marked = readingDurationMs('one two [[cue:x]]three four', { wpm: 120 });
+    expect(marked).toBe(plain);
+  });
+
+  test('schedule uses beat ids and inline markers as cue ids, with lead', () => {
+    const schedule = readingSchedule(beats, { wpm: 120, leadMs: 180, sentencePauseMs: 0 });
+    const ids = schedule.map(c => c.cueId);
+    expect(ids).toEqual(['beat-1', 'beat-2', 'mid']);
+    expect(schedule[0]?.atMs).toBe(0); // clamped at zero
+    expect(schedule[1]?.atMs).toBeGreaterThan(1000);
+    expect(schedule[2]?.beatId).toBe('beat-2');
+    expect(schedule[2]?.inline).toBe(true);
+  });
+
+  test('narrated ids merge beats and inline markers', () => {
+    expect(narratedCueIds(beats)).toEqual(['beat-1', 'beat-2', 'mid']);
+  });
+
+  test('orphanCues lists pending cue triggers the narration never mentions', () => {
+    const state = withNodes(
+      [
+        textBlock('a', { effect: 'words', trigger: { on: 'cue', id: 'beat-1' } }),
+        textBlock('b', { effect: 'words', trigger: { on: 'cue', id: 'beat-9' } }),
+      ],
+      createBoard()
+    );
+    expect(orphanCues(state, [{ id: 'beat-1', text: 'hello' }])).toEqual(['beat-9']);
+    expect(orphanCues(state, [])).toEqual([]);
+  });
+
+  test('cueLeads keeps the largest lead per cue id', () => {
+    const state = withNodes(
+      [
+        textBlock('a', { effect: 'words', trigger: { on: 'cue', id: 'beat-1', lead: 120 } }),
+        textBlock('b', { effect: 'words', trigger: { on: 'cue', id: 'beat-1', lead: 300 } }),
+      ],
+      createBoard()
+    );
+    expect(cueLeads(state)).toEqual({ 'beat-1': 300 });
   });
 });

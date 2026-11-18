@@ -1,0 +1,41 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "morph-line",
+          "type": "text",
+          "variant": "hero",
+          "key": "headline",
+          "content": ["Make the idea clear"],
+          "enter": { "effect": "assemble", "split": "words", "order": 1 }
+        },
+        {
+          "id": "morph-caption",
+          "type": "text",
+          "variant": "kicker",
+          "content": ["Same wording, sharper"],
+          "enter": { "effect": "iris", "order": 2 }
+        }
+      ]
+    },
+    {
+      "op": "update",
+      "id": "morph-line",
+      "transition": "morph",
+      "props": {
+        "content": ["Make the idea impossible to miss"]
+      }
+    },
+    {
+      "op": "update",
+      "id": "morph-caption",
+      "transition": "fade",
+      "props": {
+        "content": ["Words flow, they do not jump"]
+      }
+    }
+  ]
+}

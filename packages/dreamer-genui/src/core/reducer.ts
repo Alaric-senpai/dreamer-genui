@@ -151,9 +151,11 @@ export function boardReducer(state: BoardState, op: Op): BoardState {
     case 'remove': return applyRemove(state, op);
     // `theme` is reduced via applyResolvedTheme (below) AFTER policy
     // resolution in the resolver — the schema-level op alone is not enough
-    // state to apply. `camera` is presentation-only: validated, never reduced.
+    // state to apply. `camera` and `pointer` are presentation-only: validated,
+    // never reduced (the resolver pushes them onto their buses).
     case 'theme':
     case 'camera':
+    case 'pointer':
       return state;
     case 'layout':
       return applyLayout(state, op);

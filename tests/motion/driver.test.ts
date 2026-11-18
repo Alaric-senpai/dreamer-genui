@@ -12,7 +12,7 @@ describe('MotionDriver ownership contract (DECISIONS M3 batch-2 ruling)', () => 
   });
 
   test('container-level effects produce transform/opacity-only animations', () => {
-    for (const effect of ['reveal', 'rise', 'pop', 'sweep', 'zoom', 'stagger', 'draw', 'morph'] as const) {
+    for (const effect of ['reveal', 'rise', 'pop', 'sweep', 'zoom', 'stagger', 'draw'] as const) {
       const anim = driver.enter({ effect } as never, 2);
       expect(anim, effect).not.toBeNull();
       expect(anim!.initial).toHaveProperty('opacity', 0);

@@ -144,3 +144,95 @@ describe('BoardResolver', () => {
     expect(resolver.getState().id).toBeDefined();
   });
 });
+
+describe('BoardResolver — narration, transitions and pointer (§6.17–6.18)', () => {
+  const text = (id: string, cue?: string) => ({
+    id,
+    type: 'text' as const,
+    variant: 'body' as const,
+    content: [id],
+    ...(cue ? { enter: { effect: 'words' as const, trigger: { on: 'cue' as const, id: cue } } } : {}),
+  });
+
+  test('applyFinal emits narration beats from the turn', () => {
+    const resolver = new BoardResolver();
+    const seen: Array<{ beats: unknown[]; orphanCueIds: string[] }> = [];
+    resolver.narrationBus.subscribe(e => seen.push(e));
+    resolver.applyFinal({
+      v: 1,
+      ops: [{ op: 'append', blocks: [text('n1', 'beat-1')] }],
+      narration: [{ id: 'beat-1', text: 'Spoken words.' }],
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.beats).toHaveLength(1);
+    expect(seen[0]?.orphanCueIds).toEqual([]);
+  });
+
+  test('duplicate beat ids report turn-invalid and are not narrated', () => {
+    const resolver = new BoardResolver();
+    const errors: Array<{ code: string }> = [];
+    const seen: unknown[] = [];
+    resolver.errors.subscribe(e => errors.push(e));
+    resolver.narrationBus.subscribe(e => seen.push(e));
+    resolver.applyFinal({
+      v: 1,
+      ops: [],
+      narration: [
+        { id: 'beat-1', text: 'One.' },
+        { id: 'beat-1', text: 'Two.' },
+      ],
+    });
+    expect(errors.map(e => e.code)).toEqual(['turn-invalid']);
+    expect(seen).toEqual([]);
+  });
+
+  test('orphan cue triggers are reported and fired at turn end', () => {
+    const resolver = new BoardResolver();
+    const errors: Array<{ code: string; detail?: string }> = [];
+    resolver.errors.subscribe(e => errors.push(e));
+    resolver.applyFinal({
+      v: 1,
+      ops: [{ op: 'append', blocks: [text('n1', 'missing-beat')] }],
+      narration: [{ id: 'beat-1', text: 'Only this one is spoken.' }],
+    });
+    expect(errors.map(e => e.code)).toEqual(['cue-orphan']);
+    expect(resolver.getState().firedCues).toContain('missing-beat');
+  });
+
+  test('replace emits a default fade transition and an explicit transition is preserved', () => {
+    const resolver = new BoardResolver();
+    const seen: Array<{ transition: { kind: string } }> = [];
+    resolver.transitionBus.subscribe(e => seen.push(e));
+    resolver.applyFinal({ v: 1, ops: [{ op: 'replace', blocks: [text('r1')] }] });
+    resolver.applyFinal({
+      v: 1,
+      ops: [{ op: 'replace', blocks: [text('r2')], transition: { kind: 'iris' } }],
+    });
+    expect(seen.map(e => e.transition.kind)).toEqual(['fade', 'iris']);
+  });
+
+  test('unknown scene transitions report transition-unknown and fall back to fade', () => {
+    const resolver = new BoardResolver();
+    const errors: Array<{ code: string }> = [];
+    const seen: Array<{ transition: { kind: string } }> = [];
+    resolver.errors.subscribe(e => errors.push(e));
+    resolver.transitionBus.subscribe(e => seen.push(e));
+    resolver.applyFinal({
+      v: 1,
+      ops: [{ op: 'replace', blocks: [text('r3')], transition: { kind: 'teleport' } }],
+    });
+    expect(errors.map(e => e.code)).toEqual(['transition-unknown']);
+    expect(seen[0]?.transition.kind).toBe('fade');
+  });
+
+  test('pointer ops are emitted on the pointer bus', () => {
+    const resolver = new BoardResolver();
+    const seen: Array<{ op: string; to: string }> = [];
+    resolver.pointerBus.subscribe(e => seen.push(e));
+    resolver.applyFinal({
+      v: 1,
+      ops: [{ op: 'append', blocks: [text('n1')] }, { op: 'pointer', to: 'n1', style: 'hand' }],
+    });
+    expect(seen).toEqual([expect.objectContaining({ op: 'pointer', to: 'n1', style: 'hand' })]);
+  });
+});

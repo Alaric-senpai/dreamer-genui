@@ -51,6 +51,7 @@ export function TextBlockView({ block }: { block: TextBlock }): ReactNode {
       <KineticText
         content={block.content}
         effect={effect}
+        caret={block.enter.caret}
         split={block.enter.split === 'chars' ? 'chars' : block.enter.split === 'words' ? 'words' : undefined}
       />
     );

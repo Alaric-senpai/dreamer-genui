@@ -62,6 +62,14 @@ export interface BoardStore {
   readonly cameraBus: EventSink<CameraOp>;
   /** Layout bus: re-flow transition knobs from `layout` ops (§6.4). */
   readonly layoutBus: EventSink<LayoutTransition>;
+  /** Scene-transition bus: replace transitions with the outgoing theme (§6.18). */
+  readonly transitionBus: EventSink<import('../core/resolver').SceneTransitionEvent>;
+  /** Pointer bus: validated pointer ops, presentation-only (§6.18). */
+  readonly pointerBus: EventSink<import('../schema/ops').PointerOp>;
+  /** Narration bus: beats for the turn, after orphan cues have fired (§6.17). */
+  readonly narrationBus: EventSink<import('../core/resolver').NarrationEvent>;
+  /** End-of-turn safety net: every still-pending cued node enters (§6.17). */
+  endTurn(): void;
   /** UIEvents emitted by rendered components (focus/select/answer/action). */
   readonly events: EventSink<UIEvent>;
   /** Library errors (validation, unknown type...). Buffers pre-mount errors. */
@@ -205,6 +213,13 @@ export function createBoardStore(options: CreateBoardStoreOptions | BoardResolve
     themeChangeBus: resolver.themeChangeBus,
     cameraBus: resolver.cameraBus,
     layoutBus: resolver.layoutBus,
+    transitionBus: resolver.transitionBus,
+    pointerBus: resolver.pointerBus,
+    narrationBus: resolver.narrationBus,
+    endTurn() {
+      resolver.endTurn();
+      notify();
+    },
   };
   return store;
 }

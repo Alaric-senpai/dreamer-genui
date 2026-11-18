@@ -1,0 +1,32 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "replace",
+      "title": "Iris",
+      "theme": { "mood": "night", "intensity": 0.8, "transition": { "duration": 500, "ease": "smooth" } },
+      "transition": { "kind": "iris", "duration": 900, "ease": "smooth", "origin": "center" },
+      "blocks": [
+        { "id": "iris-hero", "type": "text", "variant": "hero", "content": ["Open on the idea"], "enter": { "effect": "slam" } }
+      ]
+    },
+    {
+      "op": "replace",
+      "title": "Wipe",
+      "theme": { "mood": "paper", "intensity": 0.9 },
+      "transition": { "kind": "wipe", "direction": "right", "duration": 600 },
+      "blocks": [
+        { "id": "wipe-kicker", "type": "text", "variant": "kicker", "content": ["A new scene"], "enter": { "effect": "wipe" } }
+      ]
+    },
+    {
+      "op": "replace",
+      "title": "Push",
+      "theme": { "mood": "night", "intensity": 0.7 },
+      "transition": { "kind": "push", "direction": "up", "duration": 650 },
+      "blocks": [
+        { "id": "push-note", "type": "callout", "tone": "info", "content": ["The next scene pushes the old one away."], "enter": { "effect": "rise" } }
+      ]
+    }
+  ]
+}

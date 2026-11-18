@@ -129,9 +129,19 @@ export function validateOp(state: BoardState, rawOp: unknown): ValidationResult 
       return { valid: true, op };
     }
 
-    // theme/camera ops are presentation-level (§6.8/§6.10); validity comes
-    // from the schema parse above. Theme policy enforcement (allowlists,
-    // contrast) lives in the theme resolver (M2 core).
+    // theme/camera/pointer ops are presentation-level (§6.8/§6.10/§6.18);
+    // validity comes from the schema parse above, plus an existing pointer
+    // target. Theme policy enforcement (allowlists, contrast) lives in the
+    // theme resolver (M2 core).
+    case 'pointer': {
+      if (op.to !== 'hide' && !resolveNodeRef(state, op.to)) {
+        return {
+          valid: false,
+          error: createError('bad-target', `Pointer target not found: ${op.to}`, undefined, op.to),
+        };
+      }
+      return { valid: true, op };
+    }
     case 'theme':
     case 'camera':
     case 'layout':

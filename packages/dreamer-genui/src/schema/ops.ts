@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { BlockSchema } from './blocks';
 import type { Block } from './blocks';
-import { NodeIdSchema } from './common';
+import { NodeIdSchema, NodeRefSchema } from './common';
 import { EaseNameSchema, TriggerSchema } from './motion';
 import { ThemeSpecSchema } from './theme';
 import type { ThemeSpec } from './theme';
 import { LayoutSpecSchema, LayoutTransitionSchema, SlotSchema } from './layout';
+import { SceneTransitionSchema, UpdateTransitionSchema } from './transition';
 
 // Op: append
 export const AppendOpSchema = z.object({
@@ -42,6 +43,8 @@ export const ReplaceOpSchema = z.object({
   theme: ThemeSpecSchema.optional(),
   /** New board layout; history snapshots keep theirs (§6.4). */
   layout: LayoutSpecSchema.optional(),
+  /** Scene transition into the new board; default fade (§6.18). */
+  transition: SceneTransitionSchema.optional(),
 });
 export type ReplaceOp = z.infer<typeof ReplaceOpSchema>;
 
@@ -50,6 +53,8 @@ export const UpdateOpSchema = z.object({
   op: z.literal('update'),
   id: NodeIdSchema,
   props: z.record(z.unknown()),
+  /** Animate keyed spans/nodes to their new positions (§6.18). */
+  transition: UpdateTransitionSchema.optional(),
 });
 export type UpdateOp = z.infer<typeof UpdateOpSchema>;
 
@@ -76,7 +81,7 @@ export type ThemeOp = z.infer<typeof ThemeOpSchema>;
  */
 export const CameraMoveSchema = z.object({
   to: z.union([z.literal('overview'), z.string().min(1)]).optional(),
-  preset: z.enum(['overview', 'closeup', 'wide']).optional(),
+  preset: z.enum(['overview', 'closeup', 'wide', 'drift']).optional(),
   zoom: z.number().min(0.5).max(2).optional(),
   tilt: z
     .object({
@@ -112,6 +117,18 @@ export const LayoutOpSchema = z.object({
 });
 export type LayoutOp = z.infer<typeof LayoutOpSchema>;
 
+// Op: pointer — the virtual teacher's pointer (§6.18). One per board; `hide`
+// removes it. Styling is token-based; disabled in exam mode.
+export const PointerOpSchema = z.object({
+  op: z.literal('pointer'),
+  to: z.union([NodeRefSchema, z.literal('hide')]),
+  style: z.enum(['dot', 'hand', 'arrow']).optional(),
+  trigger: TriggerSchema.optional(),
+  duration: z.number().min(0).max(10_000).optional(),
+  ease: EaseNameSchema.optional(),
+});
+export type PointerOp = z.infer<typeof PointerOpSchema>;
+
 // All ops discriminated union
 export const OpSchema = z.discriminatedUnion('op', [
   AppendOpSchema,
@@ -122,5 +139,6 @@ export const OpSchema = z.discriminatedUnion('op', [
   ThemeOpSchema,
   CameraOpSchema,
   LayoutOpSchema,
+  PointerOpSchema,
 ]);
 export type Op = z.infer<typeof OpSchema>;

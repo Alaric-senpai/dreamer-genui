@@ -19,7 +19,7 @@ import {
 import { QuestionBlockSchema } from '../schema/question';
 import { AssessmentBlockSchema } from '../schema/assessment';
 import { EXAMPLE_MOODS, EXAMPLE_AMBIENCE, EXAMPLE_SURFACES } from '../theme/presets';
-import { ENTER_PRESETS } from '../motion/presets';
+import { ENTER_PRESETS, TRANSITION_PRESETS } from '../motion/presets';
 import { BUILT_IN_PROFILES } from './profiles';
 import { DEFAULT_STRINGS, SWAHILI_STRINGS } from './strings';
 import type { MoodPreset, AmbiencePreset as AmbiencePresetEntry, SurfacePreset as SurfacePresetEntry } from '../theme/presets';
@@ -36,6 +36,7 @@ import {
   type PluginProvides,
   type RegistryKind,
   type ThemeDefinition,
+  type TransitionDefinition,
 } from './plugin';
 
 export type { MoodPreset, AmbiencePresetEntry, SurfacePresetEntry };
@@ -75,6 +76,7 @@ export interface RegistryValueMap {
   figures: import('./plugin').FigureDefinition;
   questions: import('./plugin').QuestionDefinition;
   effects: EffectDefinition;
+  transitions: TransitionDefinition;
   layouts: LayoutDefinition;
   moods: MoodPreset;
   ambience: AmbiencePresetEntry;
@@ -240,6 +242,36 @@ const MOTION_PLUGIN = definePlugin({
   },
 });
 
+const TRANSITIONS_PLUGIN = definePlugin({
+  name: 'transitions-default',
+  version: '1.0.0',
+  provides: {
+    transitions: Object.fromEntries(
+      Object.entries(TRANSITION_PRESETS).map(([kind, preset]) => [
+        kind,
+        {
+          kind,
+          duration: preset.duration,
+          ease: preset.ease,
+          reducedMotion: preset.reducedMotion,
+          description:
+            kind === 'cut'
+              ? 'Instant scene swap; used in exam mode and reduced motion.'
+              : kind === 'fade'
+                ? 'Default calm cross-fade between scenes.'
+                : kind === 'wipe'
+                  ? 'Directional wipe revealing the incoming scene.'
+                  : kind === 'push'
+                    ? 'Incoming scene pushes the outgoing one aside.'
+                    : kind === 'iris'
+                      ? 'Circular iris opening from a point or node.'
+                      : 'Shared-key morph between matching nodes.',
+        } satisfies TransitionDefinition,
+      ]),
+    ),
+  },
+});
+
 const LAYOUT_PLUGIN = definePlugin({
   name: 'layouts-default',
   version: '1.0.0',
@@ -278,6 +310,7 @@ const DEFAULT_PLUGINS = [
   CORE_BLOCK_PLUGIN,
   THEME_PLUGIN,
   MOTION_PLUGIN,
+  TRANSITIONS_PLUGIN,
   LAYOUT_PLUGIN,
   PROFILES_PLUGIN,
   STRINGS_PLUGIN,
@@ -289,21 +322,22 @@ const KIND_ORDER: Record<RegistryKind, number> = {
   figures: 2,
   questions: 3,
   effects: 4,
-  layouts: 5,
-  moods: 6,
-  ambience: 7,
-  surfaces: 8,
-  themes: 9,
-  motionPresets: 10,
-  iconSets: 11,
-  assetPacks: 12,
-  modelConnectors: 13,
-  primitives: 14,
-  strings: 15,
-  renderers: 16,
-  middleware: 17,
-  profiles: 18,
-  devtoolsPanels: 19,
+  transitions: 5,
+  layouts: 6,
+  moods: 7,
+  ambience: 8,
+  surfaces: 9,
+  themes: 10,
+  motionPresets: 11,
+  iconSets: 12,
+  assetPacks: 13,
+  modelConnectors: 14,
+  primitives: 15,
+  strings: 16,
+  renderers: 17,
+  middleware: 18,
+  profiles: 19,
+  devtoolsPanels: 20,
 };
 
 export function createRegistry(options: RegistryOptions = {}): Registry {

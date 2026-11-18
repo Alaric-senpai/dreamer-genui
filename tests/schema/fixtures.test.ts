@@ -46,6 +46,12 @@ const VALID = [
   'model3d-hotspot-question.json',
   'model3d-label-question.json',
   'scene3d-solids.json',
+  // M4c additions (v3 protocol surface).
+  'lesson-turn-narration.json',
+  'text-morph.json',
+  'scene-transitions.json',
+  'pointer-tour.json',
+  'reference-saas-explainer.json',
 ];
 
 const INVALID = [
@@ -55,6 +61,10 @@ const INVALID = [
   'invalid-cue-cycle.json',           // mutual `after` trigger cycle (cue engine, M2)
   'invalid-disallowed-mood.json',     // unregistered mood (theme policy, M2)
   'invalid-unreadable-palette.json',  // dark ink on dark bg (contrast guardrail, M2)
+  'invalid-cue-orphan.json',          // cue no beat mentions (resolver warning)
+  'invalid-duplicate-beat.json',      // duplicate beat id (parseBeats)
+  'invalid-unknown-transition.json',  // unregistered transition kind
+  'invalid-malformed-turn.json',      // beat without text (schema)
 ];
 
 describe('Valid fixtures parse correctly', () => {
@@ -88,6 +98,26 @@ describe('Invalid fixtures are rejected', () => {
   test('invalid-duplicate-id.json — duplicate ids pass schema (checked at reducer)', () => {
     const fixture = loadFixture('invalid-duplicate-id.json');
     // Schema doesn't catch duplicate ids (that's a board-state concern)
+    expect(() => ReplySchema.parse(fixture)).not.toThrow();
+  });
+
+  test('invalid-malformed-turn.json — beat without text is rejected by the schema', () => {
+    const fixture = loadFixture('invalid-malformed-turn.json');
+    expect(() => ReplySchema.parse(fixture)).toThrow();
+  });
+
+  test('invalid-duplicate-beat.json — duplicate ids pass schema (checked by parseBeats)', () => {
+    const fixture = loadFixture('invalid-duplicate-beat.json');
+    expect(() => ReplySchema.parse(fixture)).not.toThrow();
+  });
+
+  test('invalid-cue-orphan.json — an orphan cue still parses (resolver warns)', () => {
+    const fixture = loadFixture('invalid-cue-orphan.json');
+    expect(() => ReplySchema.parse(fixture)).not.toThrow();
+  });
+
+  test('invalid-unknown-transition.json — unknown kinds pass schema (registry rejects)', () => {
+    const fixture = loadFixture('invalid-unknown-transition.json');
     expect(() => ReplySchema.parse(fixture)).not.toThrow();
   });
 

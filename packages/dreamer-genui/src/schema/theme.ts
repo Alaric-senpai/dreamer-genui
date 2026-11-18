@@ -44,6 +44,8 @@ export type MotionTokens = z.infer<typeof MotionTokensSchema>;
 export const TextureTokensSchema = z.object({
   grain: z.number().min(0).max(1).optional(),
   vignette: z.number().min(0).max(1).optional(),
+  /** Bloom-like halo on accent elements for night/HUD moods (§6.18). */
+  glow: z.number().min(0).max(1).optional(),
 });
 export type TextureTokens = z.infer<typeof TextureTokensSchema>;
 

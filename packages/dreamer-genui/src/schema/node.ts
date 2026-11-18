@@ -9,6 +9,8 @@ import { SlotSchema } from './layout';
  */
 export const NodeBaseSchema = z.object({
   id: z.string().min(1).max(64),
+  /** Stable identity for morph transitions and text updates (§6.18). */
+  key: z.string().min(1).max(64).optional(),
   enter: EnterSchema.optional(),
   emphasis: EmphasisSchema.optional(),
   exit: ExitSchema.optional(),

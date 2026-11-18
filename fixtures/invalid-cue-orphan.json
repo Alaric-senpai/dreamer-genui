@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "orphan-line",
+          "type": "text",
+          "variant": "body",
+          "content": ["This line waits for a cue nobody speaks."],
+          "enter": { "effect": "words", "trigger": { "on": "cue", "id": "beat-ghost" } }
+        }
+      ]
+    }
+  ],
+  "narration": [{ "id": "beat-1", "text": "Only this beat is narrated." }]
+}

@@ -32,7 +32,7 @@ export const namedPresets: Record<ThemeName, Partial<ThemeTokens>> = {
     radius: { sm: 4, md: 8, lg: 16 },
     space: { scale: 1 },
     motion: { speed: 1, ease: 'smooth' },
-    texture: { grain: 0, vignette: 0 },
+    texture: { grain: 0, vignette: 0, glow: 0 },
   },
   dark: {
     color: {
@@ -106,6 +106,7 @@ export function tokensToVars(t: ThemeTokens): CssTokens {
   if (t.texture) {
     if (t.texture.grain !== undefined) vars['--dg-texture-grain'] = String(t.texture.grain);
     if (t.texture.vignette !== undefined) vars['--dg-texture-vignette'] = String(t.texture.vignette);
+    if (t.texture.glow !== undefined) vars['--dg-texture-glow'] = String(t.texture.glow);
   }
   return vars;
 }

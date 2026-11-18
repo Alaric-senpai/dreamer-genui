@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "tour-a",
+          "type": "text",
+          "variant": "heading",
+          "content": ["Start here"],
+          "enter": { "effect": "rise", "trigger": { "on": "cue", "id": "tour-a" } }
+        },
+        {
+          "id": "tour-b",
+          "type": "callout",
+          "tone": "info",
+          "title": "Next",
+          "content": ["The pointer leads the eye."],
+          "enter": { "effect": "pop", "trigger": { "on": "cue", "id": "tour-b" } }
+        },
+        {
+          "id": "tour-c",
+          "type": "text",
+          "variant": "body",
+          "content": ["Then it rests here."],
+          "enter": { "effect": "words", "trigger": { "on": "cue", "id": "tour-c" } }
+        }
+      ]
+    },
+    { "op": "pointer", "to": "tour-a", "style": "dot", "trigger": { "on": "cue", "id": "tour-a" } },
+    { "op": "pointer", "to": "tour-b", "style": "hand", "trigger": { "on": "cue", "id": "tour-b" } },
+    { "op": "pointer", "to": "tour-c", "style": "arrow", "trigger": { "on": "cue", "id": "tour-c" } },
+    { "op": "pointer", "to": "hide", "trigger": { "on": "cue", "id": "tour-end" } }
+  ],
+  "narration": [
+    { "id": "tour-a", "text": "Begin with the first line." },
+    { "id": "tour-b", "text": "The pointer moves to the note." },
+    { "id": "tour-c", "text": "And finally it points at the closing idea." },
+    { "id": "tour-end", "text": "Then the pointer disappears." }
+  ]
+}

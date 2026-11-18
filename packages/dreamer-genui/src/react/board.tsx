@@ -6,13 +6,17 @@ import type { EaseName } from '../schema/motion';
 import { examLocksFor, type ExamLockPolicy } from '../core/assessment';
 import type { BoardState, CameraMove, Detour, LibraryError, Node } from '../core/types';
 import type { ResolvedTheme } from '../core/theme';
+import { CUE_LEAD_MS, DRIFT_DURATION_MS, DRIFT_ZOOM, POINTER_RIPPLE_MS, POINTER_TRAVEL_MS } from '../motion/presets';
+import type { PointerOp } from '../schema/ops';
+import type { SceneTransition } from '../schema/transition';
+import type { SceneTransitionEvent, NarrationEvent } from '../core/resolver';
 import type { BoardStore } from './use-board';
 import { useBoardVersion } from './use-board';
 import { useDreamer } from './provider';
 import { BoardStoreProvider, type BoardStatus } from './store-context';
 export type { BoardStatus } from './store-context';
 import { BoardEmitContext, BoardErrorContext } from './emit-context';
-import { computeEntryPlan, defaultPacing, type EntryPlan, type Pacing } from '../core/cues';
+import { computeEntryPlan, defaultPacing, cueLeads, readingSchedule, readingDurationMs, type EntryPlan, type Pacing } from '../core/cues';
 import { assignSlots, createLayoutModel, type SlotAssignment } from '../core/layout';
 import type { Slot } from '../schema/layout';
 import { LayoutRegions, isNarrow } from './layout/regions';
@@ -253,7 +257,28 @@ export function Board({
     density,
     t,
   } = useDreamer();
-  const theme = state.theme;
+  const resolvedTheme = state.theme;
+  // A scene transition freezes the outgoing theme until its midpoint (§6.18), so the
+  // colour flip lands while the outgoing scene still covers the new one.
+  const [frozenTheme, setFrozenTheme] = useState<ResolvedTheme | undefined>(undefined);
+  const [sceneTransition, setSceneTransition] = useState<{
+    kind: string;
+    duration: number;
+    direction?: 'left' | 'right' | 'up' | 'down';
+    originX: number;
+    originY: number;
+    token: number;
+  } | null>(null);
+  const [pointer, setPointer] = useState<{
+    x: number;
+    y: number;
+    style: 'dot' | 'hand' | 'arrow';
+    visible: boolean;
+    token: number;
+  } | null>(null);
+  const sceneTimers = useRef<number[]>([]);
+  const pointerToken = useRef(0);
+  const theme = frozenTheme ?? resolvedTheme;
   // Board parts cannot read the AnatomyProvider it renders below, so bind them directly.
   const bp = (part: string, extra?: string) => partProps('board', part, partClassNames?.board, partStyles?.board, extra);
 
@@ -412,6 +437,120 @@ export function Board({
     };
   }, [store]);
 
+  // ---- scene transitions (§6.18) -------------------------------------------------
+  // The outgoing theme stays frozen until the midpoint so the colour flip happens
+  // behind the outgoing frame. Exam mode allows only cut/fade; reduced motion cuts.
+  useEffect(() => {
+    const off: () => void = store.transitionBus.subscribe((event: SceneTransitionEvent) => {
+      for (const timer of sceneTimers.current) window.clearTimeout(timer);
+      sceneTimers.current = [];
+      let kind = event.transition.kind;
+      if (examActive && kind !== 'cut' && kind !== 'fade') kind = 'cut';
+      if (prefersReduced && kind !== 'cut') kind = 'cut';
+      if (!registry.get('transitions', kind)) kind = 'fade';
+      const preset = registry.get('transitions', kind);
+      const duration = kind === 'cut' ? 0 : (event.transition.duration ?? preset?.duration ?? 450);
+      if (duration === 0) {
+        setFrozenTheme(undefined);
+        setSceneTransition(null);
+        return;
+      }
+      const board = boardRef.current;
+      const bounds = board?.getBoundingClientRect();
+      let originX = 50;
+      let originY = 50;
+      const origin = event.transition.origin;
+      if (origin && origin !== 'center' && board && bounds) {
+        const target = resolveTargetElement(board, origin);
+        if (target) {
+          const rect = target.getBoundingClientRect();
+          originX = ((rect.left + rect.width / 2 - bounds.left) / Math.max(1, bounds.width)) * 100;
+          originY = ((rect.top + rect.height / 2 - bounds.top) / Math.max(1, bounds.height)) * 100;
+        }
+      }
+      setFrozenTheme(event.fromTheme);
+      setSceneTransition({
+        kind,
+        duration,
+        direction: event.transition.direction,
+        originX,
+        originY,
+        token: Date.now(),
+      });
+      const midpoint = window.setTimeout(() => setFrozenTheme(undefined), duration / 2);
+      const end = window.setTimeout(() => setSceneTransition(null), duration);
+      sceneTimers.current = [midpoint, end];
+    });
+    return () => {
+      off();
+      for (const timer of sceneTimers.current) window.clearTimeout(timer);
+      sceneTimers.current = [];
+    };
+  }, [store, registry, examActive, prefersReduced]);
+
+  // ---- pointer (§6.18) ------------------------------------------------------------
+  // One pointer per board. Exam mode disables it outright; reduced motion keeps the
+  // ring but removes the travel animation (handled by the inline duration).
+  useEffect(() => {
+    const off: () => void = store.pointerBus.subscribe((op: PointerOp) => {
+      if (examActive) {
+        setPointer(null);
+        return;
+      }
+      if (op.to === 'hide') {
+        setPointer((previous) => (previous ? { ...previous, visible: false, token: ++pointerToken.current } : null));
+        return;
+      }
+      const board = boardRef.current;
+      if (!board) return;
+      const target = resolveTargetElement(board, op.to);
+      if (!target) return;
+      const bounds = board.getBoundingClientRect();
+      const rect = target.getBoundingClientRect();
+      const x = ((rect.left + rect.width / 2 - bounds.left) / Math.max(1, bounds.width)) * 100;
+      const y = ((rect.top + rect.height / 2 - bounds.top) / Math.max(1, bounds.height)) * 100;
+      setPointer({
+        x,
+        y,
+        style: op.style ?? 'dot',
+        visible: true,
+        token: ++pointerToken.current,
+      });
+    });
+    return off;
+  }, [store, examActive]);
+
+  // ---- reading pacing (§6.3, §6.17) ------------------------------------------------
+  // When voice is off, narration beats still drive cues: derive cue times from the
+  // beat text and fire them on a local clock, honouring each node's cue lead.
+  const narrationTimers = useRef<number[]>([]);
+  useEffect(() => {
+    const clear = () => {
+      for (const timer of narrationTimers.current) window.clearTimeout(timer);
+      narrationTimers.current = [];
+    };
+    const off: () => void = store.narrationBus.subscribe((event: NarrationEvent) => {
+      clear();
+      if (examActive || effectivePacing !== 'reading' || event.beats.length === 0) return;
+      const schedule = readingSchedule(event.beats, { leadMs: CUE_LEAD_MS });
+      const leads = cueLeads(store.getState());
+      for (const cue of schedule) {
+        const extraLead = Math.max(0, (leads[cue.cueId] ?? CUE_LEAD_MS) - CUE_LEAD_MS);
+        const at = Math.max(0, cue.atMs - extraLead);
+        narrationTimers.current.push(window.setTimeout(() => store.cue(cue.cueId), at));
+      }
+      const total = event.beats.reduce(
+        (sum, beat) => sum + readingDurationMs(beat.text) + (beat.pauseAfterMs ?? 0),
+        0
+      );
+      narrationTimers.current.push(window.setTimeout(() => store.endTurn(), total + 100));
+    });
+    return () => {
+      off();
+      clear();
+    };
+  }, [store, effectivePacing, examActive]);
+
   // Theme changes may arrive before this component mounted (ops are applied
   // outside React), so report from resolved state rather than only from the bus.
   const reportedThemeRef = useRef<ResolvedTheme | undefined>(undefined);
@@ -514,14 +653,19 @@ export function Board({
 
       // A zoom/preset with no target keeps the current focus and only changes depth.
       const current = cameraStateRef.current;
+      const drift = move.preset === 'drift';
       const next: CameraState = {
         ...current,
-        scale: clamp(move.zoom ?? presetZoom(move.preset) ?? current.scale, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM),
+        scale: clamp(
+          move.zoom ?? (drift ? current.scale * DRIFT_ZOOM : presetZoom(move.preset)) ?? current.scale,
+          MIN_CAMERA_ZOOM,
+          MAX_CAMERA_ZOOM
+        ),
         tiltX,
         tiltY,
         dolly,
-        duration,
-        ease,
+        duration: drift ? Math.max(0, move.duration ?? DRIFT_DURATION_MS) : duration,
+        ease: drift ? (move.ease ?? 'linear') : ease,
       };
       tutorCameraRef.current = next;
       userMovedRef.current = false;
@@ -973,9 +1117,16 @@ export function Board({
   const statusPart = bp('status', 'dg-status');
   const emptyPart = bp('empty', 'dg-empty');
   const cameraResetPart = bp('camera-reset', 'dg-camera-reset');
-  const boardStyle = boardPart.style
-    ? { ...style, ...cameraVars, ...boardPart.style }
-    : { ...style, ...cameraVars };
+  const boardStyle = {
+    ...(boardPart.style ? { ...style, ...cameraVars, ...boardPart.style } : { ...style, ...cameraVars }),
+    ...(sceneTransition
+      ? {
+          '--dg-transition-duration': `${sceneTransition.duration}ms`,
+          '--dg-transition-origin-x': `${sceneTransition.originX}%`,
+          '--dg-transition-origin-y': `${sceneTransition.originY}%`,
+        }
+      : {}),
+  } as CSSProperties;
 
   return (
     <BoardStoreProvider store={store} status={status}>
@@ -997,6 +1148,7 @@ export function Board({
             data-dg-recede={recede ? 'true' : undefined}
             data-dg-detour-open={detour ? placement ?? 'true' : undefined}
             data-dg-density={density}
+            data-dg-transition={sceneTransition?.kind}
             dir={dir}
             style={boardStyle}
           >
@@ -1086,6 +1238,33 @@ export function Board({
                   />
                 </div>
               </>
+            )}
+
+            {sceneTransition && (
+              <div
+                className={`dg-scene-transition dg-scene-transition-${sceneTransition.kind}`}
+                data-dg-transition-kind={sceneTransition.kind}
+                data-dg-transition-direction={sceneTransition.direction}
+                aria-hidden="true"
+                style={{
+                  '--dg-transition-duration': `${sceneTransition.duration}ms`,
+                } as CSSProperties}
+              />
+            )}
+
+            {pointer && (
+              <div
+                className={`dg-pointer dg-pointer-${pointer.style}${pointer.visible ? '' : ' dg-pointer-hidden'}`}
+                data-dg-pointer-style={pointer.style}
+                aria-hidden="true"
+                style={{
+                  left: `${pointer.x}%`,
+                  top: `${pointer.y}%`,
+                  transitionDuration: prefersReduced ? '0ms' : `${POINTER_TRAVEL_MS}ms`,
+                }}
+              >
+                <span key={pointer.token} className="dg-pointer-ripple" />
+              </div>
             )}
           </section>
         </AnatomyProvider>

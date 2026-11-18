@@ -23,6 +23,12 @@ export const ErrorCodeSchema = z.enum([
   'webgl-unavailable',
   'connector-error',
   'model-budget-exceeded',
+  'cue-orphan',
+  'turn-invalid',
+  'tutor-connector-error',
+  'voice-error',
+  'voice-unsupported',
+  'transition-unknown',
 ]);
 
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;

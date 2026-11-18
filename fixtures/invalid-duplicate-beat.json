@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        { "id": "dup-beat-line", "type": "text", "variant": "body", "content": ["Beat ids must be unique."] }
+      ]
+    }
+  ],
+  "narration": [
+    { "id": "beat-1", "text": "First reading." },
+    { "id": "beat-1", "text": "Second reading with the same id." }
+  ]
+}

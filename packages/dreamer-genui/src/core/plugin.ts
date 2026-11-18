@@ -37,9 +37,11 @@ export const CORE_PLUGIN_NAMES = [
   'themes-default',
   'ambience-default',
   'motion-default',
+  'transitions-default',
   'layouts-default',
   'icons-default',
   'strings-default',
+  'ui-kit',
 ] as const;
 
 export type CorePluginName = (typeof CORE_PLUGIN_NAMES)[number];
@@ -51,6 +53,7 @@ export type RegistryKind =
   | 'figures'
   | 'questions'
   | 'effects'
+  | 'transitions'
   | 'layouts'
   | 'moods'
   | 'ambience'
@@ -73,6 +76,7 @@ export const REGISTRY_KINDS: readonly RegistryKind[] = [
   'figures',
   'questions',
   'effects',
+  'transitions',
   'layouts',
   'moods',
   'ambience',
@@ -160,6 +164,19 @@ export interface EffectDefinition {
   phase?: 'enter' | 'emphasis' | 'exit';
   /** Driver-specific parameters (never protocol data). */
   params?: Record<string, string | number | boolean>;
+}
+
+/** A scene transition (§6.18, §8.2). Built-ins register through `defineTransition`. */
+export interface TransitionDefinition {
+  /** Preset name used by `replace.transition.kind`. */
+  kind: string;
+  /** Base duration at tempo 1, ms. */
+  duration: number;
+  ease?: EaseName;
+  /** What happens under `prefers-reduced-motion`. */
+  reducedMotion: 'instant' | 'fade';
+  description?: string;
+  load?: () => Promise<unknown>;
 }
 
 /** A board layout (§6.4, §8.2). */
@@ -269,6 +286,7 @@ export interface PluginProvides {
   figures?: Record<string, FigureDefinition>;
   questions?: Record<string, QuestionDefinition>;
   effects?: Record<string, EffectDefinition>;
+  transitions?: Record<string, TransitionDefinition>;
   layouts?: Record<string, LayoutDefinition>;
   moods?: Record<string, MoodPreset>;
   ambience?: Record<string, AmbiencePreset>;
@@ -327,6 +345,10 @@ export function defineQuestion(definition: QuestionDefinition): QuestionDefiniti
 }
 
 export function defineEffect(definition: EffectDefinition): EffectDefinition {
+  return definition;
+}
+
+export function defineTransition(definition: TransitionDefinition): TransitionDefinition {
   return definition;
 }
 

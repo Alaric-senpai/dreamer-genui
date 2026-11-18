@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        { "id": "malformed-turn-line", "type": "text", "variant": "body", "content": ["The narration beat is missing its text."] }
+      ]
+    }
+  ],
+  "narration": [{ "id": "beat-1" }]
+}

@@ -4,6 +4,8 @@
 export * from './common';
 export * from './node';
 export * from './layout';
+export * from './narration';
+export * from './transition';
 export * from './envelope';
 export * from './ops';
 export * from './blocks';
@@ -20,8 +22,10 @@ export * from './errors';
 export { schemaToJsonSchema } from './json-schema';
 
 // Generators (server-safe, no React) — full implementations in M2 core package
-export type { Reply, Version } from './envelope';
-export type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp, ThemeOp, CameraOp, CameraMove as CameraMoveSpec, CameraTarget, LayoutOp } from './ops';
+export type { Reply, Version, LessonTurn, StudentTurn, PartialLessonTurn } from './envelope';
+export type { Op, AppendOp, AttachOp, ReplaceOp, UpdateOp, RemoveOp, ThemeOp, CameraOp, CameraMove as CameraMoveSpec, CameraTarget, LayoutOp, PointerOp } from './ops';
+export type { Beat, CueMarker } from './narration';
+export type { SceneTransition, UpdateTransition } from './transition';
 export type { Block, CoreBlock, NodeBase } from './blocks';
 export type { Inline, Mark } from './inline';
 export type { Figure, FigureKind } from './figures';

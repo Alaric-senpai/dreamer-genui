@@ -20,7 +20,12 @@ export type EaseName = z.infer<typeof EaseNameSchema>;
 // Trigger: when a node (or mark) becomes eligible to enter (§6.2).
 export const TriggerSchema = z.discriminatedUnion('on', [
   z.object({ on: z.literal('start') }),
-  z.object({ on: z.literal('cue'), id: z.string().min(1) }),
+  z.object({
+    on: z.literal('cue'),
+    id: z.string().min(1),
+    /** Enter this many milliseconds before the beat starts (§6.17). */
+    lead: z.number().min(0).max(5_000).optional(),
+  }),
   z.object({ on: z.literal('after'), node: NodeIdSchema }),
   z.object({ on: z.literal('event'), node: NodeRefSchema, event: z.enum(['focus', 'select', 'answer']) }),
 ]);
@@ -31,7 +36,7 @@ export type Trigger = z.infer<typeof TriggerSchema>;
 export const EnterEffectsSchema = z.enum([
   'reveal', 'rise', 'pop', 'sweep', 'draw', 'stagger', 'none',
   'typewriter', 'words', 'chars', 'slam', 'wipe', 'scribble',
-  'zoom', 'count-up', 'morph',
+  'zoom', 'count-up', 'morph', 'tilt-rise', 'assemble', 'iris',
 ]);
 export type EnterEffect = z.infer<typeof EnterEffectsSchema>;
 
@@ -43,6 +48,10 @@ export const EnterSchema = z.object({
   duration: z.number().optional(),
   trigger: TriggerSchema.optional(),
   split: z.enum(['words', 'chars', 'lines']).optional(),
+  /** Typewriter caret while characters type in (§6.18). */
+  caret: z.boolean().optional(),
+  /** Cheap velocity blur on fast slides/pushes; off on low-end devices (§6.18). */
+  blur: z.boolean().optional(),
 });
 export type Enter = z.infer<typeof EnterSchema>;
 

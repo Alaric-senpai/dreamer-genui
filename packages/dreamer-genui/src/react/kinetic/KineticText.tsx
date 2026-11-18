@@ -122,14 +122,26 @@ function SplitRun({
         segments.push(<span key={`s${i}-${j}`}>{part.text}</span>);
         return;
       }
-      const delay = applyTempo(preset.stagger, tempo) * unitIndex++;
+      const delay = applyTempo(preset.stagger, tempo) * unitIndex;
+      const seq = unitIndex++;
       const duration = applyTempo(preset.duration, tempo) / 1000;
       const initial =
-        effect === 'slam' ? { opacity: 0, scale: 1.9, y: -12 } : { opacity: 0, y: mode === 'chars' ? 10 : 18 };
-      const animate = effect === 'slam' ? { opacity: 1, scale: 1, y: 0 } : { opacity: 1, y: 0 };
+        effect === 'slam'
+          ? { opacity: 0, scale: 1.9, y: -12 }
+          : effect === 'assemble'
+            ? { opacity: 0, scale: 0.86, y: 16, rotate: ((seq % 5) - 2) * 3 }
+            : { opacity: 0, y: mode === 'chars' ? 10 : 18 };
+      const animate =
+        effect === 'slam'
+          ? { opacity: 1, scale: 1, y: 0 }
+          : effect === 'assemble'
+            ? { opacity: 1, scale: 1, y: 0, rotate: 0 }
+            : { opacity: 1, y: 0 };
       const unit = (
         <m.span
-          key={`u${i}-${j}`}
+          // `morph` keys a unit by its text, so words shared by an `update`
+          // survive while changed words re-enter — a cheap keyed morph.
+          key={effect === 'morph' ? `u-${part.text}-${seq}` : `u${i}-${j}`}
           style={{ display: 'inline-block', willChange: 'transform, opacity' }}
           initial={initial}
           animate={animate}
@@ -176,7 +188,7 @@ function WipeRun({ content, effect, tempo, className }: { content: Inline[]; eff
 }
 
 /** Typewriter: characters type in sequentially; marks appear once their slot is typed. */
-function TypewriterRun({ content, effect, tempo, className }: { content: Inline[]; effect: KineticEffect; tempo: number; className?: string | undefined }): ReactNode {
+function TypewriterRun({ content, effect, tempo, className, caret }: { content: Inline[]; effect: KineticEffect; tempo: number; className?: string | undefined; caret?: boolean }): ReactNode {
   const preset = KINETIC[effect];
   const total = textLength(content);
   const perChar = applyTempo(preset.duration, tempo);
@@ -211,7 +223,10 @@ function TypewriterRun({ content, effect, tempo, className }: { content: Inline[
   return (
     <span className={className}>
       <SrOnlyText text={metaText(content)} />
-      <span aria-hidden="true">{pieces}</span>
+      <span aria-hidden="true">
+        {pieces}
+        {caret ? <span className="dg-typewriter-caret" /> : null}
+      </span>
     </span>
   );
 }
@@ -319,11 +334,13 @@ export function KineticText({
   effect,
   split,
   className,
+  caret,
 }: {
   content: Inline[];
   effect: KineticEffect | EnterEffect | undefined;
   split?: SplitMode;
   className?: string;
+  caret?: boolean;
 }): ReactNode {
   const prefersReduced = useReducedMotion();
   const tempo = useTempo();
@@ -360,7 +377,7 @@ export function KineticText({
     case 'wipe':
       return <WipeRun content={content} effect={effect} tempo={tempo} className={className} />;
     case 'typewriter':
-      return <TypewriterRun content={content} effect={effect} tempo={tempo} className={className} />;
+      return <TypewriterRun content={content} effect={effect} tempo={tempo} className={className} caret={caret} />;
     case 'count-up': {
       if (hasAnyMark(content)) {
         // CountUpRun renders string parts only — a mark would vanish visually
