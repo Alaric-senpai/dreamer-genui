@@ -7,7 +7,17 @@
  * `dreamer-genui/schema`; none of this is part of the published library.
  */
 import type { Reply } from 'dreamer-genui';
-import { BlockSchema, OpSchema } from 'dreamer-genui/schema';
+import type { Block } from 'dreamer-genui/schema';
+import { OpSchema } from 'dreamer-genui/schema';
+
+/**
+ * Validate one repaired block. `BlockSchema` is a recursive union, so the
+ * bundled declaration types it loosely; going through an append op gives the
+ * same validation with a fully typed result.
+ */
+function isBlock(value: unknown): value is Block {
+  return OpSchema.safeParse({ op: 'append', blocks: [value] }).success;
+}
 
 /** Remove inline reasoning tags some models emit (MiniMax M2.7 does). */
 export function tidy(text: string): string {
@@ -16,6 +26,74 @@ export function tidy(text: string): string {
   if (open !== -1) out = out.slice(0, open);
   out = out.replace(/```(?:json)?/gi, '').replace(/```/g, '');
   return out;
+}
+
+/** Remove a trailing comma before a closing bracket, ignoring whitespace. */
+function dropTrailingComma(out: string[]): void {
+  let index = out.length - 1;
+  while (index >= 0 && /\s/.test(out[index] as string)) index -= 1;
+  if (index >= 0 && out[index] === ',') out.splice(index, 1);
+}
+
+/**
+ * Repair the two JSON mistakes live models make most often: unquoted object
+ * keys (`definition":"…"`) and trailing commas. Strings are left untouched,
+ * so inline content that merely looks like JSON cannot be corrupted.
+ */
+export function repairJsonSyntax(text: string): string {
+  const out: string[] = [];
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i] as string;
+    if (inString) {
+      out.push(char);
+      if (escape) escape = false;
+      else if (char === '\\') escape = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      out.push(char);
+      continue;
+    }
+    if (char === '}' || char === ']') {
+      dropTrailingComma(out);
+      out.push(char);
+      continue;
+    }
+    if (char === '{' || char === ',') {
+      out.push(char);
+      let next = i + 1;
+      while (next < text.length && /\s/.test(text[next] as string)) next += 1;
+      if (next < text.length && /[A-Za-z_$]/.test(text[next] as string)) {
+        let end = next + 1;
+        while (end < text.length && /[\w$-]/.test(text[end] as string)) end += 1;
+        let colon = end;
+        while (colon < text.length && /\s/.test(text[colon] as string)) colon += 1;
+        if (text[colon] === ':') {
+          // Preserve the whitespace between the brace/comma and the key.
+          out.push(text.slice(i + 1, next), '"', text.slice(next, end), '"');
+          i = end - 1;
+        }
+      }
+      continue;
+    }
+    out.push(char);
+  }
+
+  return out.join('');
+}
+
+/** Parse strict JSON first, then retry after the common live-model repairs. */
+function parseJsonLoose(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return JSON.parse(repairJsonSyntax(text));
+  }
 }
 
 /** Pull every complete top-level op object out of a partially streamed `ops` array. */
@@ -52,7 +130,7 @@ export function extractOps(text: string): unknown[] {
       depth -= 1;
       if (depth === 0 && start !== -1) {
         try {
-          ops.push(JSON.parse(text.slice(start, i + 1)));
+          ops.push(parseJsonLoose(text.slice(start, i + 1)));
         } catch {
           // Not complete yet — wait for more chunks.
         }
@@ -237,12 +315,12 @@ export function repairOp(value: unknown): unknown {
         if (Array.isArray(blockRecord.blocks)) {
           blockRecord.blocks = blockRecord.blocks
             .map(repairOp)
-            .filter((child) => BlockSchema.safeParse(child).success);
+            .filter((child) => isBlock(child));
         }
       }
       return block;
     })
-    .filter((block) => BlockSchema.safeParse(block).success);
+    .filter((block) => isBlock(block));
   return value;
 }
 
@@ -273,7 +351,7 @@ export function repairReply(value: unknown, stats?: PlaygroundRepairStats): unkn
         asBlock &&
         typeof asBlock === 'object' &&
         typeof (asBlock as Record<string, unknown>).type === 'string' &&
-        BlockSchema.safeParse(asBlock).success
+        isBlock(asBlock)
       ) {
         if (stats) stats.salvagedBlocks += 1;
         looseBlocks.push(asBlock);
@@ -339,7 +417,7 @@ export function extractReplyObject(text: string): { value: unknown; jsonText: st
         if (depth === 0) {
           const jsonText = text.slice(i, j + 1);
           try {
-            const value = JSON.parse(jsonText) as unknown;
+            const value = parseJsonLoose(jsonText) as unknown;
             if (
               value &&
               typeof value === 'object' &&

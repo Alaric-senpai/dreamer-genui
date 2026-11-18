@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BlockSchema, ReplySchema } from '../../packages/dreamer-genui/src/schema/index';
 import {
+  extractOps,
   extractReplyObject,
   repairOp,
   repairReply,
@@ -74,6 +75,22 @@ describe('playground reply repair', () => {
     expect(figure.edges[1]!.label).toEqual(['CaO']);
     expect(figure.inputs[0]!.label).toEqual(['Brine']);
     expect(figure.alt).toBe('Figure');
+  });
+
+  it('repairs unquoted keys and trailing commas before parsing a reply', () => {
+    const raw =
+      '{"v":1,ops:[{"op":"append","blocks":[{"id":"a","type":"text","variant":"body",content:["Hi",],},],},],}';
+    const found = extractReplyObject(raw);
+    expect(found).not.toBeNull();
+    expect((found?.value as { ops: unknown[] }).ops).toHaveLength(1);
+  });
+
+  it('recovers complete ops from a truncated outer object', () => {
+    const raw =
+      '{"v":1,"ops":[{"op":"append","blocks":[{"id":"a","type":"text","variant":"body","content":["Hi"]}]},';
+    const ops = extractOps(raw);
+    expect(ops).toHaveLength(1);
+    expect((ops[0] as { op: string }).op).toBe('append');
   });
 
   it('salvages a block placed directly in ops as an append op', () => {
