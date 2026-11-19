@@ -1,0 +1,133 @@
+---
+title: Cues and timing
+description: Relevance-gated content, cue leads and the three pacing modes.
+---
+
+A board is not a slideshow. Nothing appears until the lesson reaches the moment it matters. Cues are the meeting point between the tutor's narration, the host's pacing and the renderer's motion.
+
+## Triggers
+
+Each block may carry an `enter` plan. Its `trigger` decides when the block becomes eligible:
+
+```ts
+type Trigger =
+  | { on: 'start' }
+  | { on: 'cue'; id: string; lead?: number }
+  | { on: 'after'; node: string }
+  | { on: 'event'; node: string; event: 'focus' | 'select' | 'answer' };
+```
+
+| Trigger | Fires when |
+| :--- | :--- |
+| `start` | The board is ready. This is the default. |
+| `cue` | The host calls `board.cue(id)`, or a narrator reaches that beat |
+| `after` | The named node has entered |
+| `event` | The student focuses/selects/answers the named node |
+
+A block whose trigger has not fired is **not mounted**. It is absent from the DOM and the accessibility tree. Reserve its space with `reserve: true` when a layout would jump on entrance.
+
+## Cue lead
+
+`lead` is the small head start that makes a visual land *with* a spoken word instead of after it. The cue engine fires the entrance `lead` milliseconds before the cue's audio position.
+
+```json
+{
+  "id": "accent-word",
+  "type": "text",
+  "variant": "hero",
+  "content": ["What is ", { "mark": "emphasis", "text": "SaaS" }, "?"],
+  "enter": {
+    "effect": "slam",
+    "trigger": { "on": "cue", "id": "b1", "lead": 180 }
+  }
+}
+```
+
+`lead` never changes cue order; it only shifts when the entrance starts. The default is `0`. Values between 120 and 250 ms work well for text; figures that need to load may use more, but the loader starts as soon as the type appears in the stream, not when the cue fires.
+
+## Fired cues are remembered
+
+If a cue fires before its block arrives, the block enters immediately on arrival. This is essential for streaming: a narrator may reach beat 3 while the reply is still producing block 3.
+
+- `replace` resets the fired-cue set.
+- History snapshots keep the cues that were fired in their board.
+- A repeated cue is idempotent.
+
+## Three pacing modes
+
+```ts
+type Pacing = 'cued' | 'auto' | 'reading';
+```
+
+| Mode | Behaviour | Use it when |
+| :--- | :--- | :--- |
+| `cued` | Honours triggers. Cue awaits the host. | A narrator or scripted timeline is driving |
+| `auto` | Ignores cue triggers; plays in document order by `order` | Previews, no-narration lessons, tests |
+| `reading` | Derives cue times from beat text at a reading speed | Voice is off, failed, or unavailable |
+
+The board defaults to `cued` when any block uses a cue and to `auto` otherwise. `<Board pacing>` overrides it; exam mode forces `auto`.
+
+### Reading speed
+
+The library ships a deterministic scheduler for hosts that need approximate timing without audio:
+
+```ts
+import { readingSchedule } from 'dreamer-genui/core';
+
+const schedule = readingSchedule(beats, {
+  wpm: 160,             // calm spoken pace
+  leadMs: 150,
+  sentencePauseMs: 220,
+});
+
+for (const cue of schedule) {
+  setTimeout(() => board.cue(cue.cueId), cue.atMs);
+}
+```
+
+Inline markers such as `[[cue:w1]]` are scheduled inside their beat at the correct word proportion. Beat and marker ids must be unique within a turn (`duplicate-beat`).
+
+## Safety nets
+
+Content must never stay hidden because a cue was lost.
+
+| Situation | Result |
+| :--- | :--- |
+| Cue references no beat in the turn | `cue-orphan` warning; block enters at turn end |
+| Last beat ends | All still-pending cued blocks enter |
+| `board.flush()` | Everything pending enters immediately |
+| `board.seek(id)` | Fires every cue up to `id`; earlier ones settle instantly |
+| `after` cycle | `cue-cycle`; affected blocks fall back to `start` |
+
+Call `board.endTurn()` when a streamed turn is complete. The store uses it to settle orphaned cues and clear per-turn narration state.
+
+## Board controls
+
+```ts
+board.cue('b2');         // fire one cue
+board.flush();           // enter everything
+board.seek('b4');        // jump to a cue
+const plan = board.getEntry('cued');
+// { entered: [...], pending: [...], pendingCues: [...] }
+```
+
+`getEntry()` is the source for progress dots, a skip button and test assertions. `plan.pendingCues` lists cues that are declared by blocks but not yet fired.
+
+## Hooks and callbacks
+
+```tsx
+<Board
+  store={board}
+  pacing="cued"
+  onEnter={(nodeId) => console.log('entered', nodeId)}
+  onCue={(cueId) => console.log('cue', cueId)}
+/>
+```
+
+For headless UIs, `useCue()` returns `{ fired, pending, fire, flush, seek }` and `useNodeEnter(id)` returns `{ entered, pending, plan }`.
+
+## Next
+
+- [Narrated lesson tutorial](/docs/guides/tutorials/narrated-lesson)
+- [Motion](/docs/concepts/motion)
+- [Layout](/docs/concepts/layout)

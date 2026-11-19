@@ -1,0 +1,4 @@
+{
+  "title": "Extensibility",
+  "pages": ["plugins", "blocks-and-figures", "effects-and-layouts", "moods-and-themes", "middleware", "headless"]
+}

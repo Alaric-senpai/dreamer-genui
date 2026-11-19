@@ -1,0 +1,128 @@
+---
+title: Provider
+description: The presentation layer — registry, strings, direction, density, assets and event sinks.
+---
+
+`DreamerProvider` makes a registry, strings, direction and density available to the board and every component. It does **not** own engine policy: theme policy, allowlists, middleware and the error sink live on the store, because operations can arrive before React mounts.
+
+```tsx
+'use client';
+
+import { Board, DreamerProvider } from 'dreamer-genui';
+import { board, registry } from '@/lib/board';
+
+export function Lesson() {
+  return (
+    <DreamerProvider
+      registry={registry}
+      colorScheme="auto"
+      locale="en"
+      dir="ltr"
+      density="comfortable"
+      resolveAsset={(id) => `/assets/${id}.webp`}
+      strings={{ return: 'Back to the lesson' }}
+      onEvent={(event) => console.log(event)}
+      onError={(error) => console.warn(error.code, error.message)}
+    >
+      <Board store={board} />
+    </DreamerProvider>
+  );
+}
+```
+
+## Props
+
+| Prop | Type | Default | Purpose |
+| :--- | :--- | :--- | :--- |
+| `registry` | `Registry` | required | Types, moods, effects, layouts, strings and plugins |
+| `colorScheme` | `'auto' \| 'light' \| 'dark'` | `'light'` | Follows the system when `auto` |
+| `onEvent` | `(event: UIEvent) => void` | — | Fallback event sink outside a `<Board>` |
+| `onError` | `(error: LibraryError) => void` | — | Presentation-level error sink |
+| `strings` | `Partial<UIStrings>` | — | Per-key overrides for built-in UI labels |
+| `locale` | `string` | `'en'` | Selects a strings bundle and `Intl` formats |
+| `dir` | `'ltr' \| 'rtl'` | `'ltr'` | Mirrors logical left/right placements |
+| `density` | `'compact' \| 'comfortable' \| 'large'` | `'comfortable'` | Type/space scale and minimum target |
+| `components` | `Record<string, ComponentOverride>` | — | Keyed replacement surface for built-in parts |
+| `resolveAsset` | `(id) => string \| Promise<string>` | — | Resolves `{ asset: id }` references |
+| `children` | `ReactNode` | — | Usually one `<Board>` |
+
+## Engine config belongs to the store
+
+Pass theme policy, allowlists, middleware, locale/direction for the engine, exam locks and the canonical error sink when you create the store:
+
+```ts
+const board = createBoardStore({
+  registry,
+  theme: {
+    policy: 'moods+tokens',
+    allowedMoods: ['calm', 'solemn', 'night', 'paper'],
+    baseline: { mood: 'calm' },
+  },
+  middleware: [houseRules],
+  locale: 'en',
+  dir: 'ltr',
+  onError: report,
+});
+```
+
+The provider may repeat presentation values (`locale`, `dir`, `density`), but it is not the source of truth for policy. Keeping policy on the store means an op that arrives at `t=0` is still validated correctly.
+
+## Strings
+
+`UIStrings` covers built-in chrome:
+
+```ts
+type UIStrings = {
+  return: string;
+  continue: string;
+  hint: string;
+  explainer: string;
+  skip: string;
+  dismiss: string;
+  previous: string;
+  next: string;
+  slide: string;
+  carousel: string;
+  card: string;
+  progress: string;
+};
+```
+
+Provider `strings` wins over the registry bundle for that locale. Inside custom components, `useDreamer().t('board.skip')` reads the active translation. See [i18n and assets](/docs/guides/configuration/i18n-and-assets).
+
+## Replacing parts
+
+`components` is keyed by built-in component name and receives the default renderer:
+
+```tsx
+<DreamerProvider
+  registry={registry}
+  components={{
+    'choices.item': ({ renderDefault }) => (
+      <div data-house-style>{renderDefault()}</div>
+    ),
+  }}
+>
+```
+
+For styling-only changes prefer `partClassNames` and `partStyles` on `<Board>`; they are stable, typed per part and do not fork behaviour. Component metadata and override coverage are listed under `docs/components/` in the repository.
+
+## Assets
+
+`resolveAsset` is called once per `{ asset: id }` reference, deduplicated and cached. The library never fetches. Return a URL, a data URI or a promise; a rejected promise produces `load-failed` and the figure's `alt`.
+
+```tsx
+<DreamerProvider
+  registry={registry}
+  resolveAsset={async (id) => {
+    const signed = await fetch(`/api/assets/${id}`).then((r) => r.json());
+    return signed.url;
+  }}
+>
+```
+
+## Next
+
+- [Board configuration](/docs/guides/configuration/board)
+- [Store configuration](/docs/guides/configuration/store)
+- [Styling](/docs/guides/configuration/styling)

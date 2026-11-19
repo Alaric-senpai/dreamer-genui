@@ -1,0 +1,111 @@
+---
+title: Diagrams
+description: Trees, radial wheels, orbits and cycles with focusable nodes.
+---
+
+`kind: "diagram"` covers relationship diagrams. Geometry is computed from the node and edge list; the tutor never supplies positions.
+
+| `layout` | Composition | Use it for |
+| :--- | :--- | :--- |
+| `tree` | Layered hierarchy | Classification, ancestry, breakdowns. |
+| `radial` | Hub in the centre, satellites on a ring | One idea with several surrounding parts. |
+| `orbit` | Concentric orbit composition | Systems, layers, HUD-style overviews. |
+| `cycle` | Nodes on a ring with directed edges | Recurring processes with no start or end. |
+
+## Schema
+
+```ts
+type DiagramFigure = {
+  kind: 'diagram';
+  layout: 'tree' | 'radial' | 'cycle' | 'orbit';
+  direction?: 'down' | 'right';    // tree only
+  root?: string;                    // hub / tree root
+  nodes: {
+    id: string;
+    label: Inline[] | string;
+    icon?: string;
+    note?: string;
+    enter?: Enter;
+  }[];
+  edges: { from: string; to: string; label?: string }[];
+  reveal?: 'sequential' | 'all';
+  focusable?: boolean;
+  alt: string;
+};
+```
+
+## Radial wheels
+
+A radial diagram with a `root` renders a **wheel-of-life composition**:
+
+- the root becomes a solid hub at the centre, labelled in the hub;
+- the remaining nodes become cards spaced evenly around a ring;
+- rings and spokes are drawn behind the cards;
+- each satellite gets a hue from the theme's accent palette, carried by its top border and dot.
+
+Satellite cards have a fixed maximum width and the ring radius is computed from the node count, so labels never collide. Notes render inside the card beneath the label.
+
+```json
+{
+  "kind": "diagram",
+  "layout": "radial",
+  "root": "theme",
+  "nodes": [
+    { "id": "theme", "label": ["One idea"] },
+    { "id": "part-a", "label": ["First aspect"], "note": "Short gloss" },
+    { "id": "part-b", "label": ["Second aspect"] },
+    { "id": "part-c", "label": ["Third aspect"] }
+  ],
+  "edges": [
+    { "from": "theme", "to": "part-a" },
+    { "from": "theme", "to": "part-b" },
+    { "from": "theme", "to": "part-c" }
+  ],
+  "alt": "A central idea surrounded by three aspects"
+}
+```
+
+Without a `root`, the nodes themselves are placed around the ring. `orbit` uses the same polar composition, which makes it a good fit for layered systems where the relationships matter more than hierarchy.
+
+## Cycles
+
+A cycle places every node on one ring and draws trimmed, arrowed edges between consecutive nodes. Edges stop short of the node cards, so arrowheads remain visible.
+
+```json
+{
+  "kind": "diagram",
+  "layout": "cycle",
+  "nodes": [
+    { "id": "one", "label": ["Collect"] },
+    { "id": "two", "label": ["Process"] },
+    { "id": "three", "label": ["Return"] }
+  ],
+  "edges": [
+    { "from": "one", "to": "two" },
+    { "from": "two", "to": "three" },
+    { "from": "three", "to": "one" }
+  ],
+  "alt": "A three-stage cycle that returns to its first stage"
+}
+```
+
+## Trees
+
+Trees use the layered graph renderer: children are centred beneath their parent, sibling groups are separated, and edges draw on with the figure. Set `direction: "right"` for a horizontal tree.
+
+## Focus and events
+
+`focusable: true` turns every node into a real button with a `data-dg-ref` of `<figure-id>/<node-id>`. Activating it emits `focus` with that ref and the node's label, exactly like a flowchart step.
+
+The radial hub is focusable too, so a tutor can attach an explainer to the central concept rather than only to its satellites.
+
+## Motion
+
+- `reveal: "sequential"` staggers nodes in document order (70 to 80 ms apart).
+- Edges and rings draw on around the nodes.
+- Reduced motion renders the whole diagram settled, with no stagger.
+- Hue colours come from theme tokens and retint when the mood changes.
+
+## Failure behavior
+
+A missing root id falls back to a rootless ring. An edge that names an unknown node is ignored with an `invalid-node` warning while the rest of the diagram renders. If the renderer fails, the mandatory `alt` text is shown.

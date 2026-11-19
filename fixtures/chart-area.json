@@ -1,0 +1,50 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-area",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "area",
+            "curve": "monotone",
+            "stacked": true,
+            "series": [
+              {
+                "name": "Cohort morning",
+                "data": [
+                  8,
+                  12,
+                  15,
+                  18,
+                  22,
+                  26
+                ]
+              },
+              {
+                "name": "Cohort evening",
+                "data": [
+                  5,
+                  9,
+                  14,
+                  17,
+                  20,
+                  25
+                ]
+              }
+            ],
+            "xLabel": "Week",
+            "yLabel": "Minutes studied",
+            "alt": "Stacked area chart of weekly study minutes for two cohorts rising together"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

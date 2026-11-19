@@ -1,0 +1,99 @@
+---
+title: 3D figures
+description: Render interactive GLB models from a direct asset link or a host-configured model connector.
+---
+
+Two figure kinds draw in 3D: `model3d` renders a glTF/GLB asset and `scene3d` composes procedural primitives. The 3D runtime is a lazy chunk — a board that never uses these kinds never downloads it.
+
+## Model sources
+
+A `model3d` figure names its asset in one of two ways. Exactly one is required.
+
+```ts
+type Model3D = {
+  kind: 'model3d';
+  /** A direct GLB/glTF URL. */
+  modelUrl?: string;
+  /** A registry reference: a bare id, `connectorId:modelId`, or `{ id, source }`. */
+  model?: string | { id: string; source: string };
+  alt: string;                 // required
+  // directives, view, tour, controls… (see below)
+};
+```
+
+### Direct asset link
+
+```json
+{
+  "kind": "model3d",
+  "modelUrl": "https://cdn.example/models/heart.glb",
+  "view": "iso",
+  "alt": "A heart model"
+}
+```
+
+`modelUrl` bypasses connectors entirely: the board loads the file and renders it. Because there is no manifest, named parts, highlights, labels and budget checks are unavailable — orbit, zoom and the views bar still work. Use this shape when the host already has a vetted asset URL.
+
+### Registry reference
+
+```json
+{
+  "kind": "model3d",
+  "model": { "id": "heart", "source": "platform-models" },
+  "alt": "A heart model"
+}
+```
+
+The host registers one or more model connectors. A bare `id` resolves across them in priority order; `connectorId:modelId` pins one; `{ id, source }` selects the connector whose id equals `source` (falling back to bare-id resolution when no connector matches). The connector returns a `ModelManifest`, which supplies named parts, views, animations, paths, cutaways and budgets.
+
+```ts
+const registry = createRegistry();
+registry.register('modelConnectors', 'platform-models', myConnector);
+```
+
+Reference connectors live in the opt-in `dreamer-genui/connectors` subpath: `createStaticModelConnector` for bundled or in-memory manifests, `createHttpModelConnector` for a JSON registry, and `withModelCache` / `withPrefetch` wrappers. Network access happens only inside these connectors and only when the host instantiates them.
+
+## Directives
+
+Manifest-backed figures accept declarative direction from the tutor: `view`, `show`, `highlight`, `dim`, `isolate`, `explode`, `cutaway`, `animation`, `flow` and `labels`. Directives that name an unknown part or view are ignored with a typed error; the rest of the figure still renders.
+
+```json
+{
+  "kind": "model3d",
+  "model": "demo:assembly",
+  "highlight": ["housing"],
+  "dim": "others",
+  "labels": [{ "part": "housing", "text": ["Housing"] }],
+  "alt": "The housing highlighted, other parts dimmed"
+}
+```
+
+## Cues and tours
+
+A `tour` applies directive steps when their trigger fires, so the 3D view follows narration on cue:
+
+```json
+{
+  "tour": [
+    { "trigger": { "on": "cue", "id": "view-top" }, "view": "top" },
+    { "trigger": { "on": "cue", "id": "show-rotor" }, "isolate": ["rotor"] }
+  ]
+}
+```
+
+Cues are board state: a cue fired before the figure loads still lands when it mounts.
+
+## Interaction and accessibility
+
+- Drag to orbit, pinch or wheel to zoom; arrow keys orbit, `+`/`-` zoom, and reset returns to the iso view.
+- Tapping a part (or a button in the parts list) emits `focus` with `ref = "<figureId>/<partId>"`.
+- The parts list is the keyboard and screen-reader equivalent of picking; every figure keeps its `alt` text.
+- Without WebGL, or when the asset fails, the figure renders its poster (when a manifest supplies one), the `alt` text and the parts list.
+
+## scene3d
+
+`scene3d` needs no asset or connector. It composes a small vocabulary of primitives (`sphere`, `cylinder`, `cone`, `torus`, `box`, `plane`, `arrow`, `ring`, `tube`) with `place`/`arrange` and simple animations. The same runtime, controls and parts list apply.
+
+## Scaffolding status
+
+This is the first, intentionally light pass. Direct links render without a manifest; registry references map parts, views and tours when the connector supplies one. Model preparation, LOD selection, texture budgets and richer editing workflows are follow-up work; the protocol already carries the fields they need.

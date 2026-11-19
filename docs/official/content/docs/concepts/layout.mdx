@@ -1,0 +1,133 @@
+---
+title: Layout
+description: Compose the board like a motion graphic — split, grid, stage and flow with responsive collapse.
+---
+
+Layout is how the board turns a list of blocks into a composition: an explanation beside a question, a stage with a pinned diagram, a three-column comparison. The tutor chooses a small vocabulary; the library owns the geometry and the re-flow.
+
+## Layout kinds
+
+```ts
+type LayoutSpec =
+  | { kind: 'flow'; gap?: Gap; align?: 'start' | 'center' }
+  | { kind: 'split'; sides?: 'left-right' | 'right-left'; ratio?: Ratio; gap?: Gap;
+      narrow?: 'stack' | 'tabs'; narrowOrder?: 'left-first' | 'right-first'; pin?: 'left' | 'right' | 'none' }
+  | { kind: 'grid'; columns?: 2 | 3 | 4; gap?: Gap; narrowColumns?: 1 | 2 }
+  | { kind: 'stage'; regions?: Array<'top' | 'left' | 'center' | 'right' | 'bottom'>; narrow?: 'stack' };
+```
+
+`Gap` is `none | xs | sm | md | lg | xl`. `Ratio` is `1:1 | 2:1 | 1:2 | 3:2 | 2:3`.
+
+| Kind | Looks like | Typical use |
+| :--- | :--- | :--- |
+| `flow` | Single vertical column | Default reading, short explanations |
+| `split` | Two columns with a ratio | Explanation + question, text + figure |
+| `grid` | Equal columns | Compare items, key facts, galleries |
+| `stage` | Named regions around a centre | A figure in the middle with labels and controls |
+
+Apply the initial layout on `replace`, or change it at any time with the `layout` op:
+
+```json
+{
+  "op": "layout",
+  "layout": { "kind": "split", "ratio": "3:2", "narrow": "stack", "pin": "right" },
+  "transition": { "duration": 520, "ease": "smooth" }
+}
+```
+
+Existing blocks animate to their new positions. Under reduced motion the re-flow is instant.
+
+## Slots and placement
+
+Every block extends `NodeBase`, so every block can claim a region and a size:
+
+```ts
+{
+  slot?: 'left' | 'right' | 'top' | 'bottom' | 'center';
+  span?: 1 | 2 | 3 | 4 | 'full';
+  align?: 'start' | 'center' | 'end' | 'stretch';
+  justify?: 'start' | 'center' | 'end' | 'between';
+  size?: 'auto' | 'sm' | 'md' | 'lg' | 'fill';
+  reserve?: boolean;
+}
+```
+
+- In a `split`, `slot: "left"` and `slot: "right"` pick a column.
+- In a `stage`, any of the five regions is valid.
+- In a `grid`, `span` controls how many columns a block covers.
+- A slot the current layout does not define falls back to the primary region with a warning — never a crash.
+- `left` and `right` are logical: under `dir="rtl"` they mirror.
+
+```json
+{
+  "op": "append",
+  "blocks": [
+    { "id": "explain", "type": "text", "slot": "left", "content": ["Photosynthesis stores energy."] },
+    { "id": "check", "type": "question", "slot": "right", "kind": "mcq", "prompt": ["Which gas is released?"],
+      "options": [{ "id": "o2", "label": ["Oxygen"] }, { "id": "co2", "label": ["Carbon dioxide"] }] }
+  ]
+}
+```
+
+## Group
+
+`group` nests blocks with a token-based flex/grid vocabulary. It is the right tool for local composition inside a slot, a card or a step.
+
+```json
+{
+  "type": "group",
+  "id": "facts",
+  "layout": "grid",
+  "columns": 2,
+  "gap": "md",
+  "reverseOnNarrow": true,
+  "blocks": [
+    { "id": "fact-1", "type": "text", "variant": "note", "content": ["Mitochondria release energy."] },
+    { "id": "fact-2", "type": "text", "variant": "note", "content": ["Ribosomes build proteins."] }
+  ]
+}
+```
+
+| Prop | Values |
+| :--- | :--- |
+| `layout` | `stack`, `row`, `grid` |
+| `direction` | `row`, `column`, `row-reverse`, `column-reverse` |
+| `wrap` | boolean |
+| `align` | `start`, `center`, `end`, `stretch` |
+| `justify` | `start`, `center`, `end`, `between`, `around` |
+| `gap` | spacing token |
+| `columns` | `2`, `3`, `4` |
+| `minItemWidth` | `xs` … `xl` (auto-fit) |
+| `ratio` | column ratio |
+| `reverseOnNarrow` | boolean |
+
+<Callout title="One nesting level" type="warn">
+  `group` blocks may contain any block except another `group`. Deeper nesting reports `depth-exceeded` and renders the inner group's children as a flat fallback.
+</Callout>
+
+## Responsive and RTL
+
+The layout responds to the **board's own width**, not the window, using container queries. That means a board inside a narrow panel collapses even on a desktop screen.
+
+| Layout | Narrow behaviour |
+| :--- | :--- |
+| `split` | Stacks in `narrowOrder`, or becomes tabs when `narrow: "tabs"` |
+| `grid` | Drops to `narrowColumns` (default 1) |
+| `stage` | Stacks the defined regions in order |
+| `group` | Wraps; `reverseOnNarrow` flips the visual order |
+
+`pin` keeps one side of a split visible while the other scrolls — useful for keeping a question on screen while the explanation grows.
+
+## Region-aware behaviour
+
+Regions are not just CSS boxes. Each region recedes finished content independently; `attach` places a detour within its target region; the camera frames a region; and the spotlight dims across regions rather than only within one.
+
+## Inspect it live
+
+The playground `/m4b` route demonstrates every layout, slot, responsive collapse and animated re-flow, including RTL and density variants. `/m5` shows figures inside split and stage layouts.
+
+## Next
+
+- [Motion](/docs/concepts/motion)
+- [Theming](/docs/concepts/theming)
+- [Custom layouts](/docs/guides/extensibility/effects-and-layouts)

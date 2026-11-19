@@ -1,0 +1,21 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "model-source",
+          "type": "figure",
+          "figure": {
+            "kind": "model3d",
+            "model": { "id": "assembly", "source": "demo" },
+            "view": "iso",
+            "controls": "both",
+            "alt": "The demo assembly resolved by model id and source through the host-configured connector."
+          }
+        }
+      ]
+    }
+  ]
+}

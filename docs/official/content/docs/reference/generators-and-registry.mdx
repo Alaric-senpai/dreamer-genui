@@ -1,0 +1,154 @@
+---
+title: Generators and registry
+description: Prompt guides, JSON Schema, board outlines, capabilities, model tools and registry inspection.
+---
+
+Generators turn the registry into everything an LLM needs to write valid ops. They are pure functions with no React dependency, so you can call them in a route handler, a CLI or a test.
+
+```ts
+import {
+  getSystemPromptGuide,
+  registryToJsonSchema,
+  serializeBoard,
+  getCapabilities,
+  getDefaultCapabilities,
+  getModelTools,
+  getModelContext,
+} from 'dreamer-genui/core';
+```
+
+## `getSystemPromptGuide(options)`
+
+```ts
+getSystemPromptGuide({
+  registry,
+  profile: 'lesson',        // 'lesson' | 'assessment' | 'minimal'
+  include: ['figures'],     // optional allow-list of sections
+  exclude: ['lottie'],      // optional deny-list
+  compact: false,           // shorter prose, same rules
+  language: 'en',
+  guideOverrides: { charts: '...' },
+}): string
+```
+
+The guide is registry-aware: disabled plugins and excluded sections disappear. It teaches the model to
+
+- write only what it is currently discussing
+- keep one idea per beat and cue every board element to a beat id
+- choose a layout deliberately, with slots
+- pick the right figure, including `flowchart` for processes
+- use `attach` for detours, `replace` for topic changes, `append` to continue
+- change mood only when the register genuinely changes
+- include `alt` on every figure and plugin node
+- never include answer keys in assessment payloads
+
+Treat the output as a snapshot-tested artefact. Any change to it changes model behaviour.
+
+## `registryToJsonSchema(options?)`
+
+```ts
+registryToJsonSchema({ registry }): object
+```
+
+Produces a JSON Schema covering the full lesson turn — narration plus ops — with enums drawn from the registry: block types, figure kinds, effects, transitions, layouts, moods, ambience, surfaces. Disabled plugins are absent, so the schema never advertises a capability the host turned off.
+
+Use it for structured output or tool definitions:
+
+```ts
+const schema = registryToJsonSchema({ registry });
+const tools = [{ name: 'write_lesson', inputSchema: schema }];
+```
+
+## `serializeBoard(state)`
+
+```ts
+serializeBoard(state): BoardOutline
+```
+
+A compact outline for the next turn:
+
+| Field | Contents |
+| :--- | :--- |
+| Board | id, title |
+| Nodes | id, type, short label, entered vs pending, `parent/item` ids |
+| Detours | open explainers and their depth |
+| Theme | mood, surface, density summary |
+| Layout | current kind and slots |
+| Assessments | mode, answered and flagged counts |
+| History | titles of `replace` snapshots |
+| Models | ids in use, current view, highlighted/isolated parts |
+| Narration | `spokenUpTo`, pending cues |
+
+Keep it compact. It is sent on every turn; long outlines cost tokens and degrade attention.
+
+## `getCapabilities(registry)` / `getDefaultCapabilities()`
+
+```ts
+getCapabilities(registry): Capabilities
+```
+
+Reports supported block types, figure kinds, question kinds, effects, transitions, layouts, moods, ambience and surfaces — plus `models3d: boolean` when at least one connector is registered. This is what a tutor connector sends as `StudentTurn.capabilities`.
+
+## `getModelTools(registry)` and `getModelContext(summaries)`
+
+```ts
+getModelTools(registry, options?): ModelToolDefinition[]   // find_models, get_model
+getModelContext(summaries): string
+```
+
+Framework-agnostic tool definitions with JSON Schema input and an executor bound to the registered connectors. Only compact `ModelSummary` data goes to the model — ids, titles, part ids and labels, views, animations, paths, cutaways. Heavy assets never do.
+
+When no connector is registered the tool list is empty and `model3d` is not advertised. `scene3d` needs no connector.
+
+## Registry inspection
+
+```ts
+registry.list();                       // every entry, every kind
+registry.list('blocks');               // one kind
+registry.listValues('effects');        // winning values only
+registry.get('moods', 'calm');
+registry.listModelConnectors();
+registry.listMiddleware();
+```
+
+Use these in devtools, in tests and when building a host's own authoring UI.
+
+## Putting them together
+
+```ts
+// app/api/tutor/route.ts
+import { getSystemPromptGuide, registryToJsonSchema, serializeBoard, getCapabilities } from 'dreamer-genui/core';
+
+export async function POST(request: Request) {
+  const turn = await request.json();
+
+  const system = getSystemPromptGuide({ registry, profile: 'lesson' });
+  const schema = registryToJsonSchema({ registry });
+
+  const user = [
+    `Board:\n${JSON.stringify(serializeBoard(turn.board))}`,
+    `Capabilities:\n${JSON.stringify(getCapabilities(registry))}`,
+    `Student said:\n${turn.input.text}`,
+  ].join('\n\n');
+
+  return streamLesson({ system, user, schema });
+}
+```
+
+The optional server helper (M6c) wraps exactly this: prompt assembly, structured output, per-op validation, repair, limits and trace hooks.
+
+## Profiles
+
+| Profile | Includes |
+| :--- | :--- |
+| `lesson` | Everything except the assessment shell; `model3d` only with a connector |
+| `assessment` | Assessment and questions plus minimal content |
+| `minimal` | Text, marks, choices and layout basics |
+
+Define your own with `defineProfile` when you need a narrower surface, for example a recap-only tutor.
+
+## Next
+
+- [Protocol](/docs/concepts/protocol)
+- [Core API](/docs/reference/core-api)
+- [Plugins](/docs/guides/extensibility/plugins)

@@ -1,0 +1,125 @@
+---
+title: Installation
+description: Add dreamer-genui, its styles and its optional UI kit to a React or Next.js app.
+---
+
+`dreamer-genui` is a React library. It runs in the browser, renders from plain JSON and never talks to a network on its own. The package ships ESM-first with a subpath for every layer so a host only pays for what it imports.
+
+## Requirements
+
+| Requirement | Version |
+| :--- | :--- |
+| Node | 20 or newer (build tooling) |
+| React | 18 or 19 (`react` and `react-dom` are peer dependencies) |
+| Next.js | 14 to 16, App Router or Pages Router |
+| Browsers | Current Chrome/Android Chrome, Samsung Internet and Safari iOS from the last three years (Opera Mini excluded) |
+
+## Install
+
+```bash
+pnpm add dreamer-genui
+# or
+npm install dreamer-genui
+```
+
+Only React and React DOM are peer dependencies. Everything the renderer uses — `zod`, `motion`, `recharts`, `lottie-web` and the Radix primitives used by the optional UI kit — is a regular dependency of the package, so there is no extra install step for figures.
+
+`tailwind-merge` is an optional peer: install it only if your host merges Tailwind classes with the library's `classNames` helpers.
+
+<Callout title="Heavy code stays lazy" type="info">
+  Charts, Lottie, the UI kit and the 3D runtime are separate lazy chunks. A host that never renders a chart never downloads `recharts`, even though it is installed as part of the package.
+</Callout>
+
+## Import the styles once
+
+```tsx
+// app/layout.tsx (Next.js App Router) or main.tsx (Vite)
+import 'dreamer-genui/styles.css';
+```
+
+The stylesheet is compiled plain CSS scoped in `@layer dreamer-genui`. It defines every `--dg-*` token with a fallback, so the board is legible before a host theme is applied. **Tailwind is not required.**
+
+If the host uses the optional UI kit (`dreamer-genui/ui`), import its stylesheet as well:
+
+```ts
+import 'dreamer-genui/ui.css';
+```
+
+### Tailwind hosts
+
+Tailwind v4 gets a bridge that maps `--dg-*` tokens onto the host's `--color-*`, `--font-*` and radius variables:
+
+```css
+/* app/globals.css */
+@import 'tailwindcss';
+@import 'dreamer-genui/tailwind.css';
+```
+
+Tailwind v3 hosts use the preset instead:
+
+```js
+// tailwind.config.js
+module.exports = {
+  presets: [require('dreamer-genui/tailwind-preset')],
+};
+```
+
+<Callout title="No content scanning" type="warn">
+  The library's own CSS is precompiled. You do **not** need to add `node_modules/dreamer-genui` to Tailwind's `content` or `@source` list. Only classes written in your own files need scanning.
+</Callout>
+
+## Subpath map
+
+Import from the narrowest entry point that fits. Everything below is tree-shakeable and independently importable.
+
+| Import | Contains | React? |
+| :--- | :--- | :--- |
+| `dreamer-genui` | Schema, core and React renderer re-exported together | Yes |
+| `dreamer-genui/schema` | Zod schemas, protocol types, JSON Schema helper | No — server-safe |
+| `dreamer-genui/core` | Reducer, resolver, registries, plugin SDK, theme/cue engines, generators | No |
+| `dreamer-genui/react` | `<Board>`, `<DreamerProvider>`, store and React hooks | Yes |
+| `dreamer-genui/headless` | Store provider and hooks only; no default components or CSS | Yes |
+| `dreamer-genui/ui` | Host-only UI kit, one component per subpath | Yes |
+| `dreamer-genui/figures` | Lazy figure renderers used by the board | Yes |
+| `dreamer-genui/devtools` | Development-only overlay | Yes |
+| `dreamer-genui/3d` | 3D runtime (M5b, opt-in) | Yes |
+| `dreamer-genui/connectors` | Reference network connectors (opt-in, M5b) | Isomorphic |
+
+<Callout title="Server components" type="info">
+  `dreamer-genui/schema` and `dreamer-genui/core` import cleanly in a server component, a route handler or a script. Keep `<Board>` and the React entry points behind a `"use client"` boundary.
+</Callout>
+
+## Verify the install
+
+The smallest possible program creates a store, applies a reply and renders the board:
+
+```tsx
+'use client';
+
+import { Board, DreamerProvider } from 'dreamer-genui';
+import { createBoardStore } from 'dreamer-genui/react';
+import { createRegistry } from 'dreamer-genui/core';
+
+const registry = createRegistry();
+const board = createBoardStore({ registry });
+
+board.applyOps({
+  v: 1,
+  ops: [
+    {
+      op: 'append',
+      blocks: [{ id: 'hello', type: 'text', variant: 'hero', content: ['Hello, board'] }],
+    },
+  ],
+});
+
+export function Demo() {
+  return (
+    <DreamerProvider registry={registry}>
+      <Board store={board} pacing="auto" camera="off" ambience="off" />
+    </DreamerProvider>
+  );
+}
+```
+
+If that renders “Hello, board” with a kinetic entrance, the install is good. Continue to the [quickstart](/docs/getting-started/quickstart) for a complete lesson loop.

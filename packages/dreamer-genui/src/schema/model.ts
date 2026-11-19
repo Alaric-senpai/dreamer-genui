@@ -59,6 +59,23 @@ export type ModelLabel = z.infer<typeof ModelLabelSchema>;
 export const ModelControlsSchema = z.enum(['orbit', 'views', 'both', 'none']);
 export type ModelControls = z.infer<typeof ModelControlsSchema>;
 
+/**
+ * How a `model3d` figure names its model:
+ * - `"modelId"` or `"connectorId:modelId"` — resolved by a registered connector;
+ * - `{ id, source }` — resolved by the connector named `source`;
+ * - `modelUrl` (sibling field) — a direct GLB/GLTF asset URL, no connector.
+ */
+export const ModelRefSchema = z.union([
+  z.string().min(1).max(256),
+  z
+    .object({
+      id: z.string().min(1).max(256),
+      source: z.string().min(1).max(256),
+    })
+    .strict(),
+]);
+export type ModelRef = z.infer<typeof ModelRefSchema>;
+
 /** Directives a `tour` step may change. Mirrors the Model3D directive fields. */
 const ModelDirectiveFields = {
   view: ViewRefSchema.optional(),
@@ -87,8 +104,10 @@ export type TourStep = z.infer<typeof TourStepSchema>;
 
 export const Model3DFigureSchema = z.object({
   kind: z.literal('model3d'),
-  /** Model id, or `"connectorId:modelId"` for an explicit connector. */
-  model: z.string().min(1).max(256),
+  /** Model id, `"connectorId:modelId"`, or `{ id, source }`. */
+  model: ModelRefSchema.optional(),
+  /** Direct GLB/GLTF URL. Mutually exclusive with `model`. */
+  modelUrl: z.string().min(1).max(2048).optional(),
   ...ModelDirectiveFields,
   tour: z.array(TourStepSchema).max(32).optional(),
   alt: z.string(),

@@ -1,0 +1,4 @@
+{
+  "title": "Configuration",
+  "pages": ["provider", "board", "store", "persistence", "i18n-and-assets", "styling"]
+}

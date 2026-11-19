@@ -50,12 +50,15 @@ function curve(a: Pt, b: Pt, down: boolean): string {
 /** Orthogonal back-edge routed around the outside of the graph. */
 function backEdge(a: Pt, b: Pt, down: boolean, extent: number): { path: string; labelPt: Pt } {
   if (down) {
-    const x = Math.max(a.x, b.x) + 62;
-    const y = a.y + NODE_H / 2;
-    const ty = b.y - NODE_H / 2;
+    // Leave and re-enter through the right-hand ports so a recycle loop never
+    // stacks its arrowhead on top of the forward edge at the top port.
+    const yA = a.y + NODE_H / 2;
+    const yB = b.y + NODE_H / 2;
+    const x = Math.max(a.x + NODE_W, b.x + NODE_W) + 48;
+    const endX = b.x + NODE_W + 6;
     return {
-      path: `M ${n(x - 30)} ${n(y)} L ${n(x)} ${n(y)} L ${n(x)} ${n(ty - 14)} L ${n(b.x)} ${n(ty - 14)} L ${n(b.x)} ${n(ty)}`,
-      labelPt: { x: x + 4, y: (y + ty) / 2 },
+      path: `M ${n(a.x + NODE_W)} ${n(yA)} L ${n(x)} ${n(yA)} L ${n(x)} ${n(yB)} L ${n(endX)} ${n(yB)}`,
+      labelPt: { x: x + 26, y: (yA + yB) / 2 },
     };
   }
   const y = Math.max(a.y, b.y) + 52 + extent * 0;
@@ -197,15 +200,16 @@ export function layoutFlowchart<T extends GraphNode>(
         ? { x: a.x + a.width / 2, y: a.y + a.height }
         : { x: a.x + a.width, y: a.y + a.height / 2 };
       const to = down
-        ? { x: b.x + b.width / 2, y: b.y }
-        : { x: b.x, y: b.y + b.height / 2 };
+        ? { x: b.x + b.width / 2, y: b.y - 5 }
+        : { x: b.x - 5, y: b.y + b.height / 2 };
       path = curve(from, to, down);
       labelPt = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
     }
     drawn.push({ from: edge.from, to: edge.to, path, back: edge.back === true, kind: edge.kind, labelPt });
   }
 
-  const width = Math.max(PAD, ...laid.map((l) => l.x + l.width + PAD / 2), ...Object.values(laneBoxes).map((b) => b.x + b.width));
+  const backExtent = drawn.reduce((max, edge) => (edge.back && edge.labelPt ? Math.max(max, edge.labelPt.x + 90) : max), 0);
+  const width = Math.max(PAD, backExtent, ...laid.map((l) => l.x + l.width + PAD / 2), ...Object.values(laneBoxes).map((b) => b.x + b.width));
   const height = Math.max(PAD, ...laid.map((l) => l.y + l.height + PAD / 2), ...Object.values(laneBoxes).map((b) => b.y + b.height));
   return { nodes: laid, edges: drawn, width, height, lanes: laneBoxes };
 }
@@ -216,20 +220,25 @@ export function layoutRadial<T>(
   edges: { from: string; to: string }[],
   idOf: (item: T) => string,
   kind: 'tree' | 'radial' | 'cycle' | 'orbit',
+  hubId?: string,
 ): LayoutResult<T> {
   const box = Math.max(360, nodes.length * 116);
   const cx = box / 2;
   const cy = box / 2;
-  const laid: LaidNode<T>[] = nodes.map((item, i) => {
-    const angle = (i / Math.max(1, nodes.length)) * Math.PI * 2 - Math.PI / 2;
+const indexOf = new Map(nodes.map((item, i) => [item, i] as const));
+  const wheel = kind === 'radial' && hubId !== undefined && nodes.some((item) => idOf(item) === hubId);
+  const satellites = wheel ? nodes.filter((item) => idOf(item) !== hubId) : nodes;
+  const laid: LaidNode<T>[] = nodes.map((item) => {
+    const isHub = wheel && idOf(item) === hubId;
+    const angle = ((satellites.indexOf(item)) / Math.max(1, satellites.length)) * Math.PI * 2 - Math.PI / 2;
     const radius = kind === 'tree' ? 0 : Math.min(160, box * 0.32);
     return {
-      id: idOf(item), item, layer: i,
-      x: kind === 'tree' ? cx - NODE_W / 2 : cx + Math.cos(angle) * radius - NODE_W / 2,
+      id: idOf(item), item, layer: 0,
+      x: kind === 'tree' ? cx - NODE_W / 2 : isHub ? cx - NODE_W / 2 : cx + Math.cos(angle) * radius - NODE_W / 2,
       y: kind === 'tree'
-        ? cy - NODE_H / 2 + i * (NODE_H + 28) - ((nodes.length - 1) * (NODE_H + 28)) / 2
-        : cy + Math.sin(angle) * radius - NODE_H / 2,
-      width: NODE_W, height: NODE_H,
+        ? cy - NODE_H / 2 + indexOf.get(item)! * (NODE_H + 28) - ((nodes.length - 1) * (NODE_H + 28)) / 2
+        : isHub ? cy - NODE_H / 2 : cy + Math.sin(angle) * radius - NODE_H / 2,
+      width: kind === 'tree' ? NODE_W : isHub ? NODE_W : NODE_W, height: NODE_H,
     };
   });
   const pos = new Map(laid.map((node) => [node.id, node]));

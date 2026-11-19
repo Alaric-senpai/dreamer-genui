@@ -1,0 +1,45 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-funnel",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "funnel",
+            "series": [
+              {
+                "name": "Learners",
+                "data": [
+                  {
+                    "x": "Started",
+                    "y": 240
+                  },
+                  {
+                    "x": "Practiced",
+                    "y": 168
+                  },
+                  {
+                    "x": "Completed",
+                    "y": 112
+                  },
+                  {
+                    "x": "Mastered",
+                    "y": 64
+                  }
+                ]
+              }
+            ],
+            "alt": "Funnel chart of learners from started to mastered"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

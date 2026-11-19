@@ -1,0 +1,135 @@
+---
+title: Effects and layouts
+description: Declare motion presets, scene transitions and layouts — and tune what the renderer plays.
+---
+
+Effects, transitions and layouts are registered as data. A definition carries the timing, the driver and the reduced-motion fallback; the protocol only ever names the preset.
+
+<Callout title="Playback support" type="warn">
+  The default renderer plays the built-in effect, transition and layout presets. Custom definitions are registered and advertised, but custom playback is not wired into `<Board>` yet. Use the built-ins plus theme tempo for production today; use the definitions below to extend metadata and to prepare host renderers.
+</Callout>
+
+## Effects
+
+```ts
+import { defineEffect } from 'dreamer-genui/core';
+
+registry.register('effects', 'acme:slide-left', defineEffect({
+  driver: 'motion',
+  duration: 360,
+  ease: 'snappy',
+  reducedMotion: 'fade',
+  phase: 'enter',
+  params: { distance: 48 },
+}));
+```
+
+| Field | Meaning |
+| :--- | :--- |
+| `driver` | `motion`, `css` or `gsap` |
+| `duration` | Base duration at tempo 1, in ms |
+| `ease` | Named easing preset |
+| `reducedMotion` | `instant`, `fade` or `none` |
+| `phase` | `enter`, `emphasis` or `exit` |
+| `params` | Driver-specific numbers, never protocol data |
+
+The schema's `EnterEffect` is a string with a known set. Registering a preset makes the name available to the validator and the prompt guide even before playback support lands.
+
+## Transitions
+
+```ts
+registry.register('transitions', 'acme:blinds', defineTransition({
+  kind: 'acme:blinds',
+  duration: 700,
+  ease: 'smooth',
+  reducedMotion: 'fade',
+  description: 'Horizontal blinds closing over the old scene.',
+  load: () => import('./BlindsTransition'),
+}));
+```
+
+| Field | Meaning |
+| :--- | :--- |
+| `kind` | The name used by `replace.transition.kind` |
+| `duration`, `ease` | Timing defaults |
+| `reducedMotion` | `instant` or `fade` |
+| `load` | Static `import()` for the implementation |
+
+Exam mode only permits `cut` and `fade`, regardless of what is registered.
+
+## Layouts
+
+```ts
+registry.register('layouts', 'acme:triptych', defineLayout({
+  regions: ['left', 'center', 'right'],
+  primary: 'center',
+  narrow: 'stack',
+  parts: { parts: ['root', 'left', 'center', 'right'] },
+  load: () => import('./TriptychLayout'),
+}));
+```
+
+| Field | Meaning |
+| :--- | :--- |
+| `regions` | Slot names the layout defines, in reading order |
+| `primary` | Region for unslotted nodes |
+| `narrow` | `stack` or `tabs` collapse |
+| `parts` | Component anatomy metadata |
+
+A layout that does not list a slot makes that slot fall back to `primary` with a warning.
+
+## Tuning what plays today
+
+### Tempo
+
+The theme's `motion.speed` scales every entrance and stagger:
+
+```json
+{ "op": "theme", "theme": { "tokens": { "motion": { "speed": 0.8 } } } }
+```
+
+Hosts can expose a motion preset instead of raw tokens:
+
+```ts
+registry.register('motionPresets', 'calm', defineMotionPreset({
+  speed: 0.8,
+  description: 'Slower, weightier playback.',
+}));
+```
+
+```json
+{ "op": "theme", "theme": { "motionPreset": "calm" } }
+```
+
+### Scene transitions
+
+The built-ins are `cut`, `fade`, `wipe`, `push`, `iris` and `morph`. Choose per `replace`:
+
+```json
+{ "op": "replace", "transition": { "kind": "push", "direction": "left", "duration": 650 }, "blocks": [] }
+```
+
+A theme on the transition flips at the midpoint.
+
+### Layouts
+
+The built-ins are `flow`, `split`, `grid` and `stage`. Change them with the `layout` op; blocks animate to their new regions.
+
+### Reduced motion
+
+Every preset declares its fallback. The renderer also removes loops, stops ambience, replaces the pointer with a ring and turns camera moves into scroll-into-view. A custom preset without a fallback is a bug.
+
+## Authoring checklist
+
+- Duration and easing chosen for the content, not for the demo
+- Reduced-motion behaviour declared
+- No layout reads outside its regions
+- No effect depends on a specific mood name
+- A fixture and a Storybook story exercise it
+- Exam-mode restrictions respected
+
+## Next
+
+- [Motion concepts](/docs/concepts/motion)
+- [Layout concepts](/docs/concepts/layout)
+- [Plugins](/docs/guides/extensibility/plugins)

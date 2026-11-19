@@ -1,0 +1,33 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-sankey",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "sankey",
+            "links": [
+              { "source": "Start", "target": "Placement", "value": 120 },
+              { "source": "Placement", "target": "Practice", "value": 96 },
+              { "source": "Placement", "target": "Catch-up", "value": 24 },
+              { "source": "Practice", "target": "Quiz", "value": 68 },
+              { "source": "Practice", "target": "Drop out", "value": 28 },
+              { "source": "Catch-up", "target": "Practice", "value": 18 },
+              { "source": "Quiz", "target": "Mastery", "value": 61 },
+              { "source": "Quiz", "target": "Revisit", "value": 7 },
+              { "source": "Revisit", "target": "Drop out", "value": 7 }
+            ],
+            "alt": "Sankey diagram of learners moving from start through placement, practice and quiz to mastery"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

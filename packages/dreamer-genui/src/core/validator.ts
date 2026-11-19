@@ -227,6 +227,7 @@ function checkSingleBlock(block: Block): LibraryError | undefined {
     const figure = block.figure;
     if (figure.kind === 'flowchart') return checkFlowchart(block.id, figure);
     if (figure.kind === 'diagram') return checkDiagram(block.id, figure);
+    if (figure.kind === 'chart') return checkChart(block.id, figure);
     // model3d directives are validated against a manifest at resolve time
     // (M5b); the schema-level rules are all that can be checked here.
     return checkNoStrayBlanks(block);
@@ -437,6 +438,49 @@ function checkFlowchart(nodeId: string, figure: FlowchartFigure): LibraryError |
     }
   }
 
+  return undefined;
+}
+
+function checkChart(nodeId: string, figure: Extract<Figure, { kind: 'chart' }>): LibraryError | undefined {
+  const hasSeries = Array.isArray(figure.series) && figure.series.length > 0;
+  const hasLinks = Array.isArray(figure.links) && figure.links.length > 0;
+  if (figure.type === 'sankey') {
+    if (!hasLinks) {
+      return createError('invalid-node', 'Sankey charts require `links` instead of `series`', nodeId, 'figure');
+    }
+    const names = new Set<string>();
+    for (const link of figure.links ?? []) {
+      if (link.source === link.target) {
+        return createError('invalid-node', `Sankey self-link "${link.source}" → "${link.target}" is not allowed`, nodeId, 'figure');
+      }
+      names.add(link.source);
+      names.add(link.target);
+    }
+    return undefined;
+  }
+  if (!hasSeries) {
+    return createError('invalid-node', `Chart type "${figure.type}" requires a non-empty \`series\``, nodeId, 'figure');
+  }
+  for (const series of figure.series ?? []) {
+    if (series.seriesType !== undefined && figure.type !== 'composed') {
+      return createError('invalid-node', '`seriesType` is only valid for `composed` charts', nodeId, 'figure');
+    }
+    if (series.data.length === 0) {
+      return createError('invalid-node', `Chart series "${series.name}" has no data`, nodeId, 'figure');
+    }
+  }
+  if (figure.stacked !== undefined && !['bar', 'area', 'composed'].includes(figure.type)) {
+    return createError('invalid-node', '`stacked` is only valid for bar, area and composed charts', nodeId, 'figure');
+  }
+  if (figure.innerRadius !== undefined && figure.type !== 'pie') {
+    return createError('invalid-node', '`innerRadius` is only valid for pie charts', nodeId, 'figure');
+  }
+  if (figure.curve !== undefined && !['line', 'area', 'composed'].includes(figure.type)) {
+    return createError('invalid-node', '`curve` is only valid for line, area and composed charts', nodeId, 'figure');
+  }
+  if (figure.links !== undefined) {
+    return createError('invalid-node', '`links` are only valid for sankey charts', nodeId, 'figure');
+  }
   return undefined;
 }
 

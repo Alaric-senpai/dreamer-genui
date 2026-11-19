@@ -110,17 +110,29 @@ const LabeledFigureSchema = z.object({
   alt: z.string(),
 });
 
-// chart
+// chart — all recharts chart kinds are supported (protocol v1 extension, additive).
+// `series` is required for every type except `sankey` (which uses `links`), and is
+// validated in core/validator.ts so this schema stays a plain discriminated union.
+const ChartSeriesSchema = z.object({
+  name: z.string(),
+  data: z.array(z.union([
+    z.number(),
+    z.object({ x: z.union([z.number(), z.string()]), y: z.number() }),
+  ])).max(400),
+  seriesType: z.enum(['bar', 'line', 'area']).optional(),   // composed charts only
+});
 const ChartFigureSchema = z.object({
   kind: z.literal('chart'),
-  type: z.enum(['bar', 'line', 'pie', 'scatter']),
-  series: z.array(z.object({
-    name: z.string(),
-    data: z.array(z.union([
-      z.number(),
-      z.object({ x: z.union([z.number(), z.string()]), y: z.number() }),
-    ])),
-  })),
+  type: z.enum(['bar', 'line', 'area', 'pie', 'radar', 'radialBar', 'scatter', 'funnel', 'treemap', 'sankey', 'composed']),
+  series: z.array(ChartSeriesSchema).min(1).max(8).optional(),
+  links: z.array(z.object({
+    source: z.string().min(1),
+    target: z.string().min(1),
+    value: z.number().nonnegative(),
+  })).max(64).optional(),                                  // sankey only
+  stacked: z.boolean().optional(),                          // bar/area/composed stacking
+  innerRadius: z.number().min(0).max(100).optional(),       // pie ring, percent of outer radius
+  curve: z.enum(['linear', 'monotone', 'step']).optional(), // line/area/composed interpolation
   xLabel: z.string().optional(),
   yLabel: z.string().optional(),
   alt: z.string(),

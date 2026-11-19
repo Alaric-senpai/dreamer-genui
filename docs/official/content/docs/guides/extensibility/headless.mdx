@@ -1,0 +1,200 @@
+---
+title: Headless mode
+description: Drive your own UI from the board store with state and hooks only.
+---
+
+The default `<Board>` is a renderer, not the board. If you need a different component tree — a native feel, a custom design system, a completely different layout — use the headless hooks. The store still validates, gates cues, resolves the theme, runs assessments and reports events.
+
+```tsx
+import { useBoardVersion } from 'dreamer-genui/react';
+import type { BoardStore } from 'dreamer-genui/react';
+import { BoardStoreProvider, useBoardStore, useNode, useNodeEnter, useCue } from 'dreamer-genui/headless';
+```
+
+Importing `dreamer-genui/headless` does not pull in the default components. You do need the CSS if you want the tokens, but nothing forces you to use the classes.
+
+## The shape
+
+```tsx
+export function MyBoard({ store }: { store: BoardStore }) {
+  return (
+    <BoardStoreProvider store={store}>
+      <BoardNodes />
+    </BoardStoreProvider>
+  );
+}
+
+function BoardNodes() {
+  const store = useBoardStore();
+  useBoardVersion(store); // re-render when ops change the board
+  const ids = Object.keys(store.getState().nodes);
+
+  return (
+    <div data-dg-density="comfortable">
+      {ids.map((id) => (
+        <MyNode key={id} id={id} />
+      ))}
+    </div>
+  );
+}
+
+function MyNode({ id }: { id: string }) {
+  const node = useNode(id);
+  const { entered } = useNodeEnter(id);
+  if (!node || !entered) return null;
+  return <pre>{JSON.stringify(node.block)}</pre>;
+}
+```
+
+`useNodeEnter` is what makes headless mode behave like the real board: a node that has not entered must not render, and must not be in the accessibility tree.
+
+## Hooks
+
+| Hook | Returns |
+| :--- | :--- |
+| `useBoardStore()` | The store in scope (not a selector hook) |
+| `useBoardStatus()` | `'idle' \| 'thinking' \| 'listening' \| 'speaking'` |
+| `useNode(id)` | The node, or `undefined` |
+| `useNodeEnter(id, pacing?)` | `{ entered, pending, plan }` |
+| `useCue()` | `{ fired, pending, fire, flush, seek }` |
+| `useTheme()` | The resolved theme |
+| `useLayout()` | The current `LayoutSpec` |
+| `useAssessment(id)` | `{ state, machine }` |
+| `useRegistry()` | The active registry |
+
+Every hook subscribes to the store's version counter, so a node re-renders when the board changes, not on a timer.
+
+## Cues without the renderer
+
+```tsx
+function Scrubber() {
+  const { fired, pending, fire, flush, seek } = useCue();
+
+  return (
+    <footer>
+      <span>{fired.length} shown</span>
+      <span>{pending.length} waiting</span>
+      <button onClick={flush}>Show everything</button>
+      {pending.map((cue) => (
+        <button key={cue} onClick={() => seek(cue)}>
+          {cue}
+        </button>
+      ))}
+    </footer>
+  );
+}
+```
+
+`flush()` is required for accessibility: content must never be permanently hidden behind a cue that never fires.
+
+## Emitting events
+
+Headless components emit through the store so middleware, error handling and bus subscribers all behave identically:
+
+```tsx
+function Choice({ nodeId, itemId, label }: { nodeId: string; itemId: string; label: string }) {
+  const store = useBoardStore();
+  return (
+    <button
+      onClick={() =>
+        store.events.emit({ type: 'select', nodeId, ref: itemId, label })
+      }
+    >
+      {label}
+    </button>
+  );
+}
+```
+
+Do not call `onEvent` yourself; the host's sink is wired to `store.events`.
+
+## Theming headlessly
+
+`useTheme()` returns the resolved theme, already validated and contrast-checked. Map it to CSS variables or to your own token system:
+
+```tsx
+function ThemeScope({ children }: { children: React.ReactNode }) {
+  const theme = useTheme();
+  if (!theme) return <>{children}</>;
+
+  const style = {
+    '--dg-color-bg': theme.tokens.color.bg,
+    '--dg-color-ink': theme.tokens.color.ink,
+    '--dg-color-accent': theme.tokens.color.accent,
+    '--dg-motion-speed': String(theme.tokens.motion.speed),
+  } as React.CSSProperties;
+
+  return <div style={style}>{children}</div>;
+}
+```
+
+Use the same `--dg-*` names and the library's own components will work inside your tree.
+
+## Layout headlessly
+
+```tsx
+function LayoutShell({ children }: { children: React.ReactNode }) {
+  const layout = useLayout();
+  return (
+    <div data-dg-layout={layout.kind} className={classesFor(layout)}>
+      {children}
+    </div>
+  );
+}
+```
+
+Container queries behave the same way they do in the default board: the board's own width decides when `split` stacks, not the viewport.
+
+## Assessments headlessly
+
+```tsx
+function ExamScreen({ id }: { id: string }) {
+  const { state, machine } = useAssessment(id);
+  if (!machine || !state) return null;
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); machine.submit(); }}>
+      <output>{machine.remainingMs() ?? '—'}</output>
+      <button type="button" onClick={() => machine.flag('q1', true)}>Flag</button>
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+The machine owns the timer, navigation and freeze semantics. You own the pixels.
+
+## What you still get
+
+- Protocol validation and typed errors
+- Cue gating and fired-cue memory
+- Theme policy, contrast and density values
+- Exam locks and queued presentation ops
+- Snapshots, ops logs and replay
+- Middleware for ops, events, themes and nodes
+- Component-level tokens, even if you do not use the components
+
+## What you give up
+
+- Built-in kinetic text and effect playback
+- The default layout engine and responsive collapse
+- Accessibility wiring for built-in parts
+- The generated component metadata and per-part overrides
+
+That trade is real. For most hosts the right answer is the default board with `partClassNames` and `classNames`; headless is for teams with an existing design system or a non-DOM target.
+
+## Checklist
+
+- Wrap the tree in `BoardStoreProvider`
+- Gate every node with `useNodeEnter`
+- Never render a node that has not entered
+- Emit through `store.events`, never directly
+- Provide a skip/flush control
+- Mirror `data-dg-*` attributes so host CSS keeps working
+- Test with cues that fire before their nodes arrive
+
+## Next
+
+- [Store](/docs/guides/configuration/store)
+- [Cues and timing](/docs/concepts/cues-and-timing)
+- [Styling](/docs/guides/configuration/styling)

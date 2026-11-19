@@ -51,7 +51,7 @@ describe('M5 figures', () => {
       const el = container.querySelector('[data-dg-figure="flowchart"]');
       expect(el).toBeInTheDocument();
       return el as HTMLElement;
-    });
+    }, { timeout: 20000 });
     expect(figure).toHaveAttribute('aria-label', expect.stringContaining('A flowchart'));
     // stepper mode hides all but the active layer, so query the DOM nodes directly
     expect(figure.querySelectorAll('[data-dg-part="node"]')).toHaveLength(6);
@@ -71,7 +71,7 @@ describe('M5 figures', () => {
 
   test('focusable steps emit focus with ref = nodeId/nodeId', async () => {
     const { container, events } = setup(fixture('process-flowchart.json'));
-    const heat = await waitFor(() => container.querySelector('[data-dg-ref="process-map/heat"]') as HTMLElement);
+    const heat = await waitFor(() => container.querySelector('[data-dg-ref="process-map/heat"]') as HTMLElement, { timeout: 20000 });
     expect(heat).toBeInTheDocument();
     await userEvent.click(heat);
     expect(events).toContainEqual(

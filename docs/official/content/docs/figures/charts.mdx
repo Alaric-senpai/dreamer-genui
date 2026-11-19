@@ -1,0 +1,148 @@
+---
+title: Charts
+description: Eleven chart types rendered through recharts in a lazy chunk.
+---
+
+Charts are `figure` blocks with `kind: "chart"`. Every chart type in the protocol renders through **recharts** inside the lazy figure chunk; no chart library code is part of the initial bundle.
+
+## Chart types
+
+| `type` | Shape of the data | Notes |
+| :--- | :--- | :--- |
+| `bar` | One or more numeric `series` | Set `stacked: true` to stack series. |
+| `line` | One or more numeric or `{ x, y }` series | `curve`: `linear`, `monotone` or `step`. |
+| `area` | One or more numeric or `{ x, y }` series | Supports `stacked` and `curve`. |
+| `pie` | One series, one numeric value per slice | `innerRadius` (0 to 100) turns it into a donut. |
+| `radar` | One or more numeric series | Good for comparing profiles across dimensions. |
+| `radialBar` | One or more numeric series | Circular progress-style comparison. |
+| `scatter` | One or more `{ x, y }` series | `x` may be a number or a category string. |
+| `composed` | Mixed series | Per-series `seriesType`: `bar`, `line` or `area`. |
+| `funnel` | One numeric series | Values become funnel stages. |
+| `treemap` | One numeric series | Values become tile areas. |
+| `sankey` | `links` instead of `series` | Flow between named nodes; cycles are rejected and fall back to `alt`. |
+
+## Schema
+
+```ts
+type ChartFigure = {
+  kind: 'chart';
+  type:
+    | 'bar' | 'line' | 'area' | 'pie' | 'radar' | 'radialBar'
+    | 'scatter' | 'composed' | 'funnel' | 'treemap' | 'sankey';
+  series?: {
+    name: string;
+    data: (number | { x: number | string; y: number })[];
+    seriesType?: 'bar' | 'line' | 'area';   // composed only
+  }[];
+  links?: { source: string; target: string; value: number }[];  // sankey only
+  stacked?: boolean;                        // bar, area, composed
+  innerRadius?: number;                     // pie only, 0 to 100
+  curve?: 'linear' | 'monotone' | 'step';   // line, area, composed
+  xLabel?: string;
+  yLabel?: string;
+  alt: string;                              // required
+};
+```
+
+Limits are enforced by the protocol validator:
+
+- at most **8 series** per chart, each with at most **400 points**;
+- at most **64 links** in a sankey;
+- `series` is required for every type except `sankey`;
+- `links` is only accepted on `sankey`;
+- `stacked` only applies to `bar`, `area` and `composed`;
+- `innerRadius` only applies to `pie`;
+- `curve` only applies to `line`, `area` and `composed`;
+- a sankey with any cycle renders its `alt` fallback instead of mounting the chart.
+
+## Examples
+
+### Bar, stacked
+
+```json
+{
+  "kind": "chart",
+  "type": "bar",
+  "stacked": true,
+  "series": [
+    { "name": "Practised", "data": [12, 18, 26] },
+    { "name": "Mastered", "data": [4, 11, 21] }
+  ],
+  "xLabel": "Week",
+  "yLabel": "Learners",
+  "alt": "Stacked bars showing practised and mastered learners rising over three weeks"
+}
+```
+
+### Line with a stepped curve
+
+```json
+{
+  "kind": "chart",
+  "type": "line",
+  "curve": "step",
+  "series": [
+    {
+      "name": "Temperature",
+      "data": [{ "x": "08:00", "y": 18 }, { "x": "12:00", "y": 27 }, { "x": "16:00", "y": 23 }]
+    }
+  ],
+  "alt": "Temperature rising to a midday peak and easing by late afternoon"
+}
+```
+
+### Donut
+
+```json
+{
+  "kind": "chart",
+  "type": "pie",
+  "innerRadius": 62,
+  "series": [
+    { "name": "Energy mix", "data": [48, 27, 16, 9] }
+  ],
+  "alt": "Donut chart splitting an energy mix into four shares"
+}
+```
+
+### Composed
+
+```json
+{
+  "kind": "chart",
+  "type": "composed",
+  "series": [
+    { "name": "Attempts", "seriesType": "bar", "data": [3, 5, 4, 7] },
+    { "name": "Accuracy", "seriesType": "line", "data": [42, 58, 66, 81] }
+  ],
+  "alt": "Bars for attempts with a line for accuracy trending upward"
+}
+```
+
+### Sankey
+
+```json
+{
+  "kind": "chart",
+  "type": "sankey",
+  "links": [
+    { "source": "Start", "target": "Placement", "value": 120 },
+    { "source": "Placement", "target": "Practice", "value": 96 },
+    { "source": "Practice", "target": "Quiz", "value": 68 },
+    { "source": "Quiz", "target": "Mastery", "value": 61 }
+  ],
+  "alt": "A cohort flowing from start through placement and practice to mastery"
+}
+```
+
+## Motion and theming
+
+- Charts enter with the figure's `enter` effect; `draw` is a good default for data.
+- Series colours come from the resolved theme tokens, so mood changes retint charts consistently.
+- Tooltips and legends use the board surface and ink tokens.
+- Under reduced motion the chart renders settled, with no animated draw-in.
+- A chart too small for its axes still renders; use the figure's `slot` and `span` to give it room in a layout.
+
+## Failure behavior
+
+If the chart type is unknown, the series is invalid or a sankey is cyclic, the figure renders its `alt` text in the standard figure fallback. It never blanks the board or throws into the host.

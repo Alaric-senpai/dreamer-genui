@@ -1,0 +1,183 @@
+---
+title: Questions and assessment
+description: Question kinds, modes, the state machine and exam-mode integrity.
+---
+
+Questions have two layers. The **question block** is a single widget usable anywhere in a lesson — a quick check, a Socratic pause, an exit ticket. The **assessment block** is a shell around many questions with modes, a timer, a navigator and a submit flow.
+
+<Callout title="Status" type="warn">
+  The protocol, schemas, validation and the headless assessment state machine are available now. The question widgets and assessment shell render in M6b; until then these blocks show a fallback. This page documents the contract you can build against today.
+</Callout>
+
+## Question kinds
+
+```ts
+type QuestionKind =
+  | { kind: 'mcq'; options: { id: string; label: Inline[] }[]; multi?: boolean; shuffle?: boolean }
+  | { kind: 'truefalse' }
+  | { kind: 'short'; placeholder?: string; maxLength?: number }
+  | { kind: 'numeric'; unit?: string; step?: number }
+  | { kind: 'cloze'; content: Inline[] }
+  | { kind: 'matching'; left: Labeled[]; right: Labeled[] }
+  | { kind: 'ordering'; items: Labeled[] }
+  | { kind: 'hotspot'; figure: Figure }
+  | { kind: 'labelDiagram'; figure: Figure; labels: { id: string; text: Inline[] }[] }
+  | { kind: 'extended'; minWords?: number; maxWords?: number };
+```
+
+| Kind | Answer value |
+| :--- | :--- |
+| `mcq` | `string` or `string[]` |
+| `truefalse` | `boolean` |
+| `short`, `extended` | `string` |
+| `numeric` | `number` or numeric string |
+| `cloze` | `Record<blankId, string>` |
+| `matching` | `Record<leftId, rightId>` |
+| `ordering` | `string[]` of item ids |
+| `hotspot` | part id |
+| `labelDiagram` | `Record<labelId, partId>` |
+
+Every question also supports `marks`, a `hints` ladder, `status`, and host-supplied `feedback`. The library does **not** grade: correctness, marks and explanations arrive through `update` ops.
+
+## A practice question
+
+```json
+{
+  "id": "q1",
+  "type": "question",
+  "kind": "mcq",
+  "prompt": ["Which organelle releases energy from glucose?"],
+  "marks": 1,
+  "options": [
+    { "id": "a", "label": ["Mitochondrion"] },
+    { "id": "b", "label": ["Ribosome"] },
+    { "id": "c", "label": ["Nucleus"] }
+  ],
+  "hints": [["Think about the “powerhouse” nickname."]]
+}
+```
+
+The student's answer emits:
+
+```ts
+{
+  type: 'answer',
+  nodeId: 'q1',
+  value: 'a',
+  meta: { questionId: 'q1', timeMs: 4200, attempt: 1 }
+}
+```
+
+## Assessment modes
+
+```ts
+type AssessmentMode = 'practice' | 'quiz' | 'exam' | 'review';
+```
+
+| Mode | Feedback | Hints | Tutor / narration | Distraction-free |
+| :--- | :--- | :--- | :--- | :--- |
+| `practice` | Instant | Yes | Active | No |
+| `quiz` | After each question | No | Active | No |
+| `exam` | None until submit | No | Silent | Enforced |
+| `review` | Full walkthrough | No | Host-driven | Calm |
+
+### Exam integrity
+
+- No answer keys are accepted in `exam` or `quiz` payloads. A key produces `key-in-exam` and the block is rejected.
+- For `practice` only, an opt-in `key` prop may enable client-side instant check.
+- Exam mode locks the camera, ambience, theme and layout; presentation ops are queued until submit by default (`examLockStrategy: 'queue'`) or rejected if the host chooses.
+- Cue triggers are ignored (`pacing: "auto"`), kinetic effects are downgraded, and the tutor goes silent.
+- Grading happens on the host/backend, never in the client.
+
+## Assessment shape
+
+```ts
+type Assessment = NodeBase & {
+  type: 'assessment';
+  mode: AssessmentMode;
+  title?: Inline[];
+  instructions?: Inline[];
+  timer?: { kind: 'countdown'; seconds: number; warnAtSeconds?: number[] } | { kind: 'elapsed' };
+  sections: { id: string; title?: Inline[]; instructions?: Inline[]; questions: Question[] }[];
+  navigation?: 'free' | 'linear' | 'locked-after-answer';
+  shuffle?: { questions?: boolean; options?: boolean; seed?: string };
+  totalMarks?: number;
+  allowFlag?: boolean;
+  submit?: { confirm?: boolean };
+  result?: { awarded?: number; total?: number; summary?: Inline[] };
+};
+```
+
+Shuffling is deterministic when `seed` is supplied, so a restored session shows the same order.
+
+## The headless state machine
+
+The machine is independent of React and uses an injectable clock, so timers are testable:
+
+```ts
+import { createAssessmentMachine, systemClock } from 'dreamer-genui/core';
+
+const machine = createAssessmentMachine({
+  block: assessmentBlock,
+  clock: systemClock,
+  onChange: (state) => saveLocally(state),
+  onWarning: (seconds) => announce(`${seconds} seconds left`),
+  onTimeout: () => submit(),
+});
+
+machine.start();
+machine.answer('q1', 'a');
+machine.flag('q2', true);
+machine.navigate('q2');
+machine.tick();
+machine.submit();
+```
+
+| Method | Purpose |
+| :--- | :--- |
+| `start()` | Begin the attempt and the timer |
+| `answer(id, value)` | Record an answer |
+| `flag(id, flagged?)` | Toggle a flag |
+| `navigate(id)` | Move the current question |
+| `tick()` | Advance the timer; returns warnings and `timedOut` |
+| `submit()` | Freeze the attempt |
+| `extendTime(ms)` | Accommodation |
+| `pause()` / `resume()` | Pause the countdown |
+| `snapshot()` / `restore(state)` | Local-first persistence |
+| `remainingMs()` | Countdown remaining, or `undefined` for elapsed |
+
+### Serializable state
+
+```ts
+type AssessmentState = {
+  id: string;
+  mode: AssessmentMode;
+  answers: Record<string, unknown>;
+  flags: string[];
+  visited: string[];
+  currentQuestionId?: string;
+  timerRemainingMs?: number;
+  startedAt?: number;
+  submittedAt?: number;
+};
+```
+
+Autosave on `onAssessmentState` (from the rendered shell) or on the machine's `onChange`. Restore with `board.assessments.restore(id, state)` once the shell is available. The state survives refresh, crash and offline; the host is responsible for syncing it anywhere.
+
+## Events
+
+```ts
+{ type: 'assessment', assessmentId: 'a1', action: 'start' | 'submit' | 'flag' | 'unflag' | 'navigate' | 'pause' | 'resume' | 'warn' | 'timeout', questionId?, state? }
+```
+
+A flag also emits the assessment event; answers emit `answer` with `meta.assessmentId` and `meta.questionId`.
+
+## Accessibility
+
+Every question kind is keyboard-operable. Drag interactions (matching, ordering, label-diagram) have non-drag keyboard equivalents: select an item, then select a target. Time warnings are announced politely, not as interruptions. Touch targets follow the density setting.
+
+## Next
+
+- [Assessment reference](/docs/reference/events-and-errors)
+- [Theming](/docs/concepts/theming)
+- [Headless mode](/docs/guides/extensibility/headless)

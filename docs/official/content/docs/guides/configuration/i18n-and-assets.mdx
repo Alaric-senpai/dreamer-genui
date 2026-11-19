@@ -1,0 +1,151 @@
+---
+title: i18n and assets
+description: Locale bundles, RTL, Intl formatting and the host-owned asset resolver.
+---
+
+All built-in UI text goes through a strings registry. All host images go through `resolveAsset`. Neither is hard-coded into a component, and neither ever reaches the network from library code.
+
+## Strings
+
+English and Kiswahili ship as examples. Add any locale with `defineStrings`:
+
+```ts
+import { defineStrings } from 'dreamer-genui/core';
+
+const french = defineStrings({
+  locale: 'fr',
+  strings: {
+    'board.skip': 'Passer',
+    'board.return': 'Retour',
+    'board.continue': 'Continuer',
+    'board.hint': 'Indice',
+    'board.loading': 'Chargement…',
+    'board.empty': 'Le tableau est encore vide.',
+    'assessment.timer': 'Temps restant',
+  },
+});
+
+registry.use({
+  name: 'acme:fr-strings',
+  version: '1.0.0',
+  engine: '^1.0.0',
+  provides: { strings: { fr: french } },
+});
+```
+
+Resolution walks the fallback chain — requested locale, then `en` — and fills gaps from the default bundle. A missing key returns the key itself, never `undefined`.
+
+### In components
+
+```ts
+import { useDreamer } from 'dreamer-genui/react';
+
+const { t, locale, dir } = useDreamer();
+t('assessment.timer');                         // "Time left"
+t('assessment.question');                      // plain key lookup
+```
+
+`{name}` placeholders are interpolated:
+
+```ts
+defineStrings({
+  locale: 'en',
+  strings: { 'lesson.progress': 'Question {current} of {total}' },
+});
+
+t('lesson.progress', { current: 2, total: 5 }); // "Question 2 of 5"
+```
+
+### Overrides
+
+Provider `strings` wins over the registry for one tree:
+
+```tsx
+<DreamerProvider registry={registry} strings={{ 'board.skip': 'Show all' }}>
+```
+
+### Direction
+
+```tsx
+<DreamerProvider registry={registry} locale="ar" dir="rtl">
+```
+
+`dir` mirrors logical slots (`left`/`right`), icons that imply direction, and animation travel. Text splitting is grapheme-safe, so Arabic, Kiswahili and mixed-script content do not break mid-grapheme.
+
+### Numbers, dates and lists
+
+Use the platform `Intl` with the active locale rather than string concatenation:
+
+```ts
+new Intl.NumberFormat(locale, { style: 'percent' }).format(0.72);
+new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
+```
+
+Charts and counters receive formatted labels; they do not guess a locale.
+
+## Assets
+
+A block references an asset by id, never by URL:
+
+```json
+{
+  "type": "figure",
+  "id": "cell-art",
+  "figure": {
+    "kind": "image",
+    "src": { "asset": "biology/cell" },
+    "alt": "A labelled animal cell"
+  }
+}
+```
+
+The host resolves it:
+
+```tsx
+<DreamerProvider
+  registry={registry}
+  resolveAsset={async (id) => {
+    const response = await fetch(`/api/assets/${encodeURIComponent(id)}`);
+    if (!response.ok) return undefined;
+    const { url } = await response.json();
+    return url;
+  }}
+>
+```
+
+### Behaviour
+
+- Results are cached in memory (default 200 entries, oldest evicted first).
+- Concurrent requests for the same id are deduplicated.
+- A missing or rejected asset resolves to `undefined`; the figure shows its `alt` and reports `load-failed`.
+- `peek(id)` returns a cached URL synchronously; `clear()` empties the cache.
+- The library never fetches. Your callback owns auth, signed URLs, retries and CDN choice.
+
+### Asset packs
+
+Labelled illustrations reference a named pack and art:
+
+```json
+{
+  "kind": "labeled",
+  "pack": "starter",
+  "art": "cell",
+  "labels": [{ "part": "nucleus", "text": "Nucleus" }],
+  "alt": "Animal cell with labelled nucleus"
+}
+```
+
+Packs are registered with `defineAssetPack` and declare their named parts. They live outside core; the starter pack is registered only in the playground.
+
+## Security notes
+
+- SVG packs are sanitised before rendering. Never pass model-authored SVG.
+- `resolveAsset` should return a same-origin or allowlisted URL. Do not proxy arbitrary URLs from the model.
+- Images need meaningful `alt`; the figure schema requires it for a reason.
+- Locale bundles are text only — no HTML, no markup, no `dangerouslySetInnerHTML`.
+
+## Next
+
+- [Styling](/docs/guides/configuration/styling)
+- [Protocol: figures](/docs/concepts/protocol)
+- [Security](/docs/guides/security)

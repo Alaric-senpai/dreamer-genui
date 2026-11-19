@@ -1,0 +1,143 @@
+---
+title: Streaming a reply
+description: Apply partial tutor replies idempotently and settle the turn without losing content.
+---
+
+Model replies arrive token by token. The board is built for that: `applyPartial` is idempotent, failed operations are retried, and a block becomes eligible to enter only when it is complete and its trigger has fired.
+
+## The rule
+
+Apply the **latest accumulated object** as often as you like. Do not concatenate ops yourself.
+
+```ts
+board.applyPartial(reply);   // during streaming, same object updated repeatedly
+board.applyFinal(reply);     // once the stream completes
+```
+
+`applyPartial` keys each operation by its index plus a content hash. Applying the same partial twice produces no duplicate nodes and no duplicate-id errors. An operation that fails is **not** recorded, so it is retried on the next partial — useful when `attach` references a target that an earlier op has not created yet.
+
+`applyFinal` skips operations already applied through partials, retries the ones that failed, and closes the turn.
+
+## A fetch-stream reader
+
+Most transports send newline-delimited JSON or SSE frames containing the accumulated reply. This reader handles both shapes:
+
+```ts
+import type { BoardStore } from 'dreamer-genui/react';
+import type { Reply } from 'dreamer-genui/schema';
+
+export async function streamTurn(response: Response, board: BoardStore) {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let latest: Reply | undefined;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith(':')) continue;
+
+      const payload = trimmed.startsWith('data:') ? trimmed.slice(5).trim() : trimmed;
+      if (payload === '[DONE]') continue;
+
+      latest = JSON.parse(payload) as Reply;
+      board.applyPartial(latest);
+    }
+  }
+
+  if (latest) board.applyFinal(latest);
+  else board.endTurn();
+}
+```
+
+If your transport sends deltas rather than snapshots, accumulate the `ops` array yourself and keep completed operations stable by index.
+
+<Callout title="Idempotence is keyed by index" type="warn">
+  Reordering completed ops between partials changes their keys and can duplicate nodes. Append new ops; do not sort or rewrite old ones while streaming.
+</Callout>
+
+## Complete blocks, not half blocks
+
+The validator works on whole operations. A block with a missing required field fails validation and is retried later; it does not render a half-built node.
+
+```json
+{ "ops": [
+  { "op": "append", "blocks": [
+    { "id": "intro", "type": "text", "variant": "hero", "content": ["Cells"] }
+  ]}
+]}
+```
+
+If the model streams `"content": ["Cel"` the op fails; once the string closes, the next partial applies it. For long lessons, prefer several small `append` ops over one giant array so early blocks can enter while later ones are still being written.
+
+## Cues during streaming
+
+A node whose cue fired early enters as soon as it arrives:
+
+```ts
+board.cue('b2');              // narrator is already at beat 2
+// ... reply streams in the block for b2 ...
+// block enters immediately when applied
+```
+
+This is why fired cues are stored per board. You do not need to replay cues when late content lands.
+
+## Settling the turn
+
+At the end of the stream:
+
+- `applyFinal` closes the turn and reports orphan cues.
+- If you are not calling `applyFinal`, call `board.endTurn()`.
+- A turn with no beats needs no special handling; pending cued nodes stay pending until a cue or `flush()`.
+
+```ts
+board.endTurn(); // orphan cues are reported and still-pending cued nodes enter
+```
+
+## Partial narration
+
+Beats become speakable as soon as their text is complete. The board does not wait for the whole reply:
+
+```ts
+if (beat.text && !spoken.has(beat.id)) {
+  spoken.add(beat.id);
+  narrator.speak(beat).then(() => board.cue(beat.id));
+}
+```
+
+Keep a small prefetch window in the narrator so the next beat is ready before the current one ends. The Conductor handles this in M6d; a custom narrator can do the same with the same cue contract.
+
+## Error handling
+
+```ts
+const results = board.applyPartial(reply);
+
+for (const result of results) {
+  if (result.status === 'error') {
+    console.warn(result.error?.code, result.error?.message);
+  }
+}
+```
+
+Errors never abort the stream. Invalid ops are dropped or retried; the rest of the reply still renders.
+
+## Check your work
+
+- Applying the same partial ten times leaves exactly one copy of each node.
+- A block appears only after its `content` array is complete.
+- A cue fired before the block arrives still enters it immediately.
+- `applyFinal` after partials does not duplicate anything.
+- Dropping a required field produces one typed error and a fallback, not a crash.
+
+## Next
+
+- [Persistence and replay](/docs/guides/configuration/persistence)
+- [Store configuration](/docs/guides/configuration/store)
+- [Protocol](/docs/concepts/protocol)

@@ -393,3 +393,59 @@ checklist and event/error logs rendered against the live dev server.
 stories (M7), formal 60 fps measurement and the pre-lazy bundle budget (M8),
 manual screen-reader audit (M8). No gate stop at M5 — next milestone is M5b
 (3D figures + Model Connector), which ends at a 3D showcase approval gate.**
+
+## M5 redo — figures rebuilt after review
+
+The user rejected the first M5 figure pass: charts were accepted, but the
+flowchart, radial diagrams and Lottie were not. This section supersedes the
+M5 status above.
+
+Captures (headless Chromium, `http://localhost:3100/m5`, raw CDP):
+`m5-flowchart.png`, `m5-radial.png`, `m5-cycle.png`, `m5-timeline.png`,
+`m5-lottie.png`, `m5-chart-*.png`, `m5-labeled.png`; phone-width variants
+`m5-*-narrow.png`. The capture diagnostics reported: flowchart 6 nodes,
+6 edges, 4 edge labels, shapes `[start, step, step, decision, step, end]`,
+0 errors; radial 6 nodes / 6 polar items; cycle 3 nodes / 3 edges; timeline
+3 nodes; Lottie 1 SVG; every chart present; labeled 4 nodes.
+
+- **Flowchart nodes use the reference silhouettes** — pass. Start/end are
+  green stadiums, steps are white rounded rectangles, the decision is an
+  orange diamond, I/O is a parallelogram, notes are dashed. Labels sit inside
+  the safe area rather than over the outline.
+- **Interconnections are visible** — pass. Edges are 2.25 px ink strokes with
+  per-kind arrowheads; branch labels are warning-tinted, recycle edges are
+  info-tinted and now route outside the graph into the target's right port.
+  Edge labels are opaque chips with `width: max-content`, so they no longer
+  collapse into one character per line.
+- **Radial diagrams are a wheel, not overlapping cards** — pass. The hub is
+  centred with rings and spokes; satellites are hue-coded cards on a computed
+  ring with no overlap. Cycle diagrams use the same polar geometry with
+  trimmed arrowed edges.
+- **Timeline vertical and horizontal both read as rails** — pass. Both
+  orientations use the same rail markup, with a fixed date badge, stem and
+  full-width card in vertical mode.
+- **Lottie is implemented, not a placeholder** — pass. The expression-free
+  `lottie_light` player is lazy-loaded and plays
+  `apps/playground/public/lottie/wave.json` through the host asset resolver.
+  Reduced motion stops on the first frame; a load failure shows `alt`.
+- **All eleven chart types render from their fixtures** — pass. Accepted by
+  the user; charts remain recharts-only and are not being reworked further.
+- **Phone-width flowchart** — pass. The stepper shows one active step and
+  numbered dots with no horizontal overflow; compact mode hides edges and
+  lanes.
+- **Docs and stories** — pass. Fumadocs pages for charts, flowcharts,
+  diagrams, timelines, Lottie and media rendered 200 on a temporary dev server
+  (`:3102`, stopped after verification); Storybook build completed
+  successfully with all figure/chart stories.
+- **Tests and lint** — pass. `pnpm lint` clean; targeted suite 12 files /
+  **241 tests** green. `pnpm test` had previously been green at 63 files /
+  739 tests before the rework; the rework's changed area is covered by the
+  targeted suite.
+- **Honest gap** — the package declaration build still fails with
+  `ERR_WORKER_OUT_OF_MEMORY` on this ~1.8 GB machine after emitting the JS
+  entries. The playground runs from the fresh `dist` JavaScript; declarations
+  are a release/hardening item. Formal 60 fps measurement and the pre-lazy
+  bundle budget remain M8 work.
+
+**Status: M5 redo implementation and docs complete. STOP for explicit user
+approval. Do not advance to M5b on standing consent.**

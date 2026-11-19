@@ -1,0 +1,96 @@
+---
+title: Mental model
+description: The five moving parts of dreamer-genui and who owns each one.
+---
+
+`dreamer-genui` has one job: turn a stream of validated operations into a board that animates on cue, and turn the student's actions into typed events. Everything else is a plugin, a prop or a host responsibility.
+
+## The pipeline
+
+```text
+Tutor / host
+    │  Reply { v, ops, narration? }
+    ▼
+┌─────────────┐   ┌──────────────┐   ┌──────────────┐   ┌─────────────────┐
+│  Validator  │ → │    Reducer   │ → │   Resolver   │ → │  React renderer │
+│  + middleware│   │ (pure state) │   │ (registry)   │   │ (motion, layout)│
+└─────────────┘   └──────────────┘   └──────────────┘   └─────────────────┘
+                                                               │
+                          UIEvent  ◀──── student interaction ◀──┘
+```
+
+| Stage | Owns | Never does |
+| :--- | :--- | :--- |
+| Validator | Shape, ids, references, limits, policy | Guess intent or mutate state |
+| Middleware | Host-defined transforms before the reducer | Break the board when a hook throws |
+| Reducer | Deterministic board state from ops | Animate, fetch or read the DOM |
+| Resolver | Type lookup, lazy loading, fallbacks | Invent a renderer for an unknown type |
+| Renderer | Layout, motion, focus, accessibility | Fetch, grade or call an LLM |
+
+## Five ideas worth learning first
+
+### 1. The board is data
+
+Board state is plain, serializable JSON: nodes, layout, theme, fired cues, detours, assessment state and history. The reducer is pure, so the same ops plus the same cues always produce the same board. That is what makes snapshot, replay, SSR and testing possible.
+
+```ts
+const snapshot = board.snapshot();   // save it
+board.restore(snapshot);             // rehydrate, settled, no entrance animations
+```
+
+### 2. The tutor declares intent, the library decides geometry
+
+A tutor never supplies coordinates, CSS or class names. It says “a flowchart with these steps and this decision”, and the library computes the layered layout, routes the back-edge, sizes the labels and draws the arrows. The same rule applies to charts, diagrams, timelines and layout.
+
+### 3. Relevance is gated by triggers
+
+A block is not mounted until its trigger fires. It is absent from the DOM and the accessibility tree, not merely invisible. A cue that arrives early is remembered. A cue that never arrives cannot hide content forever: `flush()`, the end of a turn, and `after` fallbacks all settle the board.
+
+### 4. Everything is a named preset
+
+Moods, effects, layouts, transitions, ambience, icons and strings live in registries. The tutor can only name registered things. Hosts can add, override or disable entries without forking the renderer. The same names feed the validator, the JSON Schema, the prompt guide and the capability list, so the model is never told about something the board cannot render.
+
+### 5. The core is offline
+
+The core, schema and renderer never fetch. Assets come through `resolveAsset`, models through a host connector, tutors and voice through opt-in subpaths. No analytics, no telemetry, no audio playback in the core.
+
+## What ships today
+
+The library is being built milestone by milestone. This site documents what is implemented, and marks protocol shapes that are defined but not yet rendered.
+
+| Area | Status | Notes |
+| :--- | :--- | :--- |
+| Protocol, validation, reducer | **Available** | Ops, blocks, marks, figures, errors and fixtures |
+| Cues, triggers, pacing, seek/flush | **Available** | Cue `lead`, fired-cue memory, reading speed |
+| Layouts (`flow`, `split`, `grid`, `stage`) | **Available** | Slots, responsive collapse, animated re-flow |
+| Motion, transitions, pointer, camera | **Available** | Presets are data; reduced motion honoured |
+| Theme engine, moods, ambience, density | **Available** | Policy, contrast guardrail, component tokens |
+| Persistence, snapshot, replay | **Available** | Versioned snapshots and ops logs |
+| Headless hooks and devtools | **Available** | Store provider without default UI |
+| Figures: flowchart, diagram, timeline, chart, Lottie, media | **Available (M5)** | Lazy chunks; see the figure pages |
+| UI kit (host-only + tutor blocks) | **Available (M4d)** | `dreamer-genui/ui` and UI-kit blocks |
+| Questions and assessment UI | **Protocol + state machine** | Full shell and widgets land in M6b |
+| Math, code, table renderers | **Protocol only** | Render a fallback until M6a |
+| 3D figures and connectors | **Upcoming (M5b)** | Schemas and generator contracts exist |
+
+<Callout title="Unimplemented types fail gracefully" type="warn">
+  A valid block whose renderer is not shipped yet shows its `alt`/fallback and reports a typed error. It never blanks the board or crashes the host.
+</Callout>
+
+## Who owns what
+
+| Concern | Library | Host |
+| :--- | :--- | :--- |
+| Lesson content | Renders it | Authors or generates the JSON |
+| Pacing | Cue engine | Narrator, timer or the Conductor |
+| Grading | Never | Backend or host logic |
+| Network | Only opt-in subpaths | Chooses endpoints, credentials and policy |
+| Theme | Resolves, validates, applies | Sets policy, baseline and allowlists |
+| Assets | Resolves `{ asset }` through a callback | Stores and serves them |
+| Accessibility | Semantics, focus, announcements | Page-level landmarks and skip links |
+
+## Next
+
+- [Protocol](/docs/concepts/protocol)
+- [Cues and timing](/docs/concepts/cues-and-timing)
+- [Your first board](/docs/guides/tutorials/first-board)

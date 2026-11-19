@@ -1,0 +1,44 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-line",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "line",
+            "curve": "monotone",
+            "series": [
+              {
+                "name": "Pages read",
+                "data": [
+                  12,
+                  20,
+                  28,
+                  34,
+                  41,
+                  55,
+                  62,
+                  70,
+                  88,
+                  95,
+                  104,
+                  118
+                ]
+              }
+            ],
+            "xLabel": "Month",
+            "yLabel": "Pages",
+            "alt": "Line chart of pages read per month climbing steadily from January to December"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

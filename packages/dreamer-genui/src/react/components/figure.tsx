@@ -7,15 +7,19 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Node } from '../../core/types';
 import type { Figure } from '../../schema/figures';
+import type { Model3DFigure, Scene3DFigure } from '../../schema/model';
 import { useDreamer, useEmitEvent } from '../provider';
 import { useOverride, useParts } from '../anatomy';
 import { renderInline } from './inline';
+import { Figure3DView } from './figure-3d';
 
 const LazyFigureRenderer = lazy(() => import('dreamer-genui/figures'));
 
 const TWO_D_KINDS = new Set<Figure['kind']>([
   'image', 'icon', 'diagram', 'flowchart', 'timeline', 'labeled', 'chart', 'lottie',
 ]);
+
+const THREE_D_KINDS = new Set<Figure['kind']>(['model3d', 'scene3d']);
 
 function FigureFallback({ node }: { node: Node }): ReactNode {
   const p = useParts('fallback');
@@ -45,7 +49,24 @@ export function FigureView({ node }: { node: Node }): ReactNode {
     return () => query.removeEventListener?.('change', update);
   }, []);
 
-  if (!figure || !TWO_D_KINDS.has(figure.kind)) return <FigureFallback node={node} />;
+  if (!figure) return <FigureFallback node={node} />;
+
+  if (THREE_D_KINDS.has(figure.kind)) {
+    const defaultView = (
+      <Figure3DView
+        node={node}
+        figure={figure as Model3DFigure | Scene3DFigure}
+        reducedMotion={reducedMotion}
+      />
+    );
+    return override ? (
+      <>{override({ node, figure, renderDefault: () => defaultView })}</>
+    ) : (
+      <div {...p.props('root', 'dg-figure-wrapper')}>{defaultView}</div>
+    );
+  }
+
+  if (!TWO_D_KINDS.has(figure.kind)) return <FigureFallback node={node} />;
 
   const defaultView = (
     <Suspense

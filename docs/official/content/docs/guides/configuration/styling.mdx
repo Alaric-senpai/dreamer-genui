@@ -1,0 +1,170 @@
+---
+title: Styling
+description: Tokens, stable classes, data attributes, Tailwind and per-part overrides.
+---
+
+The board ships compiled CSS, not a Tailwind dependency. Every visual value is a `--dg-*` variable with a fallback, so the default looks finished and a host can rebrand without forking a component.
+
+## Load order
+
+```ts
+import 'dreamer-genui/styles.css'; // required
+import 'dreamer-genui/ui.css';     // only if you use the optional UI kit
+```
+
+```css
+/* Tailwind v4 hosts */
+@import 'tailwindcss';
+@import 'dreamer-genui/tailwind.css';
+```
+
+Library rules live in `@layer dreamer-genui` at low specificity. Your application styles win by default; you rarely need `!important`.
+
+## Core tokens
+
+| Token | Purpose |
+| :--- | :--- |
+| `--dg-color-bg` | Page/board background |
+| `--dg-color-surface` | Raised surfaces: cards, callouts |
+| `--dg-color-ink` | Primary text |
+| `--dg-color-muted` | Secondary text |
+| `--dg-color-accent` | The one accent per scene |
+| `--dg-color-info`, `success`, `warn`, `danger` | Semantic roles |
+| `--dg-color-border` | Hairlines and outlines |
+| `--dg-font-display`, `body`, `mono` | Type families |
+| `--dg-text-hero`, `heading`, `body`, `small`, `kicker` | Type scale |
+| `--dg-radius-sm`, `md`, `lg`, `full` | Corner radii |
+| `--dg-gap-xs` … `xl` | Spacing scale |
+| `--dg-space-scale`, `--dg-effective-space` | Density multipliers |
+| `--dg-min-target` | Minimum interactive target |
+| `--dg-theme-duration`, `--dg-theme-ease` | Theme tween |
+| `--dg-motion-ease` | Default easing |
+| `--dg-camera-duration`, `--dg-camera-tilt-x`, `--dg-camera-tilt-y` | Camera state |
+| `--dg-transition-duration`, `--dg-transition-origin-x/y` | Scene transition state |
+| `--dg-ambience-intensity` | Ambience strength |
+
+Component tokens follow `--dg-<component>-<token>`, for example:
+
+```css
+--dg-card-accent
+--dg-callout-color
+--dg-progress-color
+--dg-progress-duration
+--dg-avatar-size
+--dg-badge-color
+--dg-kbd-bg
+--dg-counter-size
+```
+
+## Rebrand with CSS
+
+```css
+:root {
+  --dg-color-bg: #0b1020;
+  --dg-color-surface: #141a2e;
+  --dg-color-ink: #f4f6ff;
+  --dg-color-muted: #a7b0c8;
+  --dg-color-accent: #5ad1ff;
+  --dg-font-display: 'Sora', sans-serif;
+  --dg-font-body: 'Inter', sans-serif;
+  --dg-radius-md: 10px;
+}
+```
+
+The theme resolver still enforces contrast. If your palette makes body text unreadable, it adjusts ink or muted and reports the change rather than shipping an inaccessible board.
+
+## Stable class names and data hooks
+
+Every component part renders:
+
+```html
+<div
+  class="dg-choices-item"
+  data-dg-part="item"
+  data-dg-state="selected"
+  data-dg-variant="chip"
+>
+```
+
+| Attribute | Where | Values |
+| :--- | :--- | :--- |
+| `data-dg-part` | Every part | Component-specific part name |
+| `data-dg-state` | Interactive parts | `idle`, `selected`, `correct`, `incorrect`, … |
+| `data-dg-variant` | Variants | Component-specific |
+| `data-dg-mood` | Board root | Resolved mood name |
+| `data-dg-surface` | Board root | Resolved surface |
+| `data-dg-density` | Board root | `compact`, `comfortable`, `large` |
+| `data-dg-camera` | Board root | `auto`, `off` |
+| `data-dg-ambience` | Board root | `auto`, `off`, `lite` |
+| `data-dg-exam` | Board root | Present during exam |
+| `data-dg-layout` | Layout container | `flow`, `split`, `grid`, `stage` |
+| `data-dg-narrow` | Layout container | Present when collapsed |
+| `data-dg-transition` | Board root | Active scene transition |
+
+```css
+[data-dg-mood='night'] .dg-card {
+  box-shadow: 0 0 24px rgb(90 209 255 / 0.18);
+}
+
+[data-dg-density='large'] .dg-choices-item {
+  padding-block: 1rem;
+}
+```
+
+## Per-part overrides
+
+`<Board>` accepts `partClassNames` and `partStyles` keyed by component and part:
+
+```tsx
+<Board
+  store={board}
+  partClassNames={{
+    text: { hero: 'tracking-tight' },
+    card: { root: 'border shadow-none', title: 'text-2xl' },
+  }}
+  partStyles={{
+    progress: { fill: { background: 'linear-gradient(90deg, #2e5dc4, #5ad1ff)' } },
+  }}
+/>
+```
+
+Class names are merged with the library's classes; pass `tailwind-merge` to your host if you want conflict-aware merging. `partStyles` applies after library styles and accepts only token-safe values.
+
+## Replace a component
+
+For behavioural changes, replace the component through the provider:
+
+```tsx
+<DreamerProvider
+  registry={registry}
+  components={{
+    'progress.ring': ({ renderDefault }) => <MyRing>{renderDefault()}</MyRing>,
+  }}
+>
+```
+
+The `components` entry receives the component's props and `renderDefault()`. See the generated metadata for each component's parts and override key.
+
+## Dark mode
+
+`colorScheme="auto"` follows the OS and resolves to `light` or `dark` safely during SSR. The active mood supplies the palette; dark mode is not a CSS filter. If your host uses a `.dark` class or `data-theme`, map your tokens into `--dg-*` in that scope:
+
+```css
+.dark {
+  --dg-color-bg: #0b1020;
+  --dg-color-ink: #f4f6ff;
+}
+```
+
+## What not to do
+
+- Do not style by node id; ids come from the tutor.
+- Do not inject model-provided class names or CSS. The protocol has none for a reason.
+- Do not rely on inline `style` from the model; only validated tokens reach CSS.
+- Do not set a fixed height on the board; layouts are container-driven.
+
+## Next
+
+- [Theming](/docs/concepts/theming)
+- [Custom moods and themes](/docs/guides/extensibility/moods-and-themes)
+- [Accessibility](/docs/guides/accessibility)

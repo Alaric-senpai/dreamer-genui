@@ -1,0 +1,74 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-radar",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "radar",
+            "series": [
+              {
+                "name": "Before",
+                "data": [
+                  {
+                    "x": "Focus",
+                    "y": 52
+                  },
+                  {
+                    "x": "Memory",
+                    "y": 44
+                  },
+                  {
+                    "x": "Speed",
+                    "y": 60
+                  },
+                  {
+                    "x": "Accuracy",
+                    "y": 58
+                  },
+                  {
+                    "x": "Recall",
+                    "y": 47
+                  }
+                ]
+              },
+              {
+                "name": "After",
+                "data": [
+                  {
+                    "x": "Focus",
+                    "y": 78
+                  },
+                  {
+                    "x": "Memory",
+                    "y": 72
+                  },
+                  {
+                    "x": "Speed",
+                    "y": 74
+                  },
+                  {
+                    "x": "Accuracy",
+                    "y": 80
+                  },
+                  {
+                    "x": "Recall",
+                    "y": 76
+                  }
+                ]
+              }
+            ],
+            "alt": "Radar chart comparing five skills before and after a study programme"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

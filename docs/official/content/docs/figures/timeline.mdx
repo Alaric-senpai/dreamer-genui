@@ -1,0 +1,65 @@
+---
+title: Timelines
+description: Milestone rails that read clearly on phones and desktops.
+---
+
+`kind: "timeline"` renders ordered events as a coloured rail. Each event gets a `when` badge, a connector and a card; the rail itself is part of the composition.
+
+## Schema
+
+```ts
+type TimelineFigure = {
+  kind: 'timeline';
+  orientation?: 'horizontal' | 'vertical';
+  events: {
+    id: string;
+    when: string;
+    label: Inline[];
+    detail?: Inline[];
+    enter?: Enter;
+  }[];
+  focusable?: boolean;
+  alt: string;
+};
+```
+
+A timeline accepts **1 to 64 events**.
+
+## Orientations
+
+- **`horizontal`** (default) lays events left to right on a single rail. On a narrow board the rail scrolls horizontally instead of squeezing cards into unreadable columns.
+- **`vertical`** stacks events down the rail. The `when` badge sits in a fixed left column, the pinned connector runs across to the card, and the card fills the remaining width. This is the calmer choice for long histories on phones.
+
+```json
+{
+  "kind": "timeline",
+  "orientation": "vertical",
+  "events": [
+    { "id": "first", "when": "1848", "label": ["First observation"], "detail": ["Recorded in a field notebook."] },
+    { "id": "second", "when": "1902", "label": ["Method refined"] },
+    { "id": "third", "when": "Today", "label": ["Used in classrooms"] }
+  ],
+  "alt": "Three milestones from first observation to classroom use"
+}
+```
+
+## Look
+
+- Each event receives its own hue from the theme palette, cycling if there are more events than hues.
+- The `when` badge is a solid token colour with white text; the card carries a matching top border.
+- Connectors are token-coloured stems, not decorative dots, so the eye follows the order of events.
+- Reduced motion renders all events settled; otherwise events enter in order.
+
+## Focus and events
+
+With `focusable: true`, each event is a button whose accessible name combines the date and label. Activating it emits:
+
+```ts
+{ type: 'focus', nodeId: '<figure-id>', ref: '<figure-id>/<event-id>', label: '1848: First observation' }
+```
+
+This lets a tutor attach an explainer to a single milestone without replacing the whole timeline.
+
+## Failure behavior
+
+An empty event list is rejected by the schema. A renderer failure shows the `alt` text inside the figure error boundary. Timelines never overlap cards: each item has a reserved width in horizontal mode and a full row in vertical mode.

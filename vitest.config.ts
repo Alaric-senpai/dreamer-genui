@@ -11,6 +11,7 @@ export default defineConfig({
       ).pathname,
       // M5 figures are a separate tsup entry loaded via a dynamic import;
       // map the published subpath to source so tests exercise the real chunk.
+      'dreamer-genui/3d': new URL('./packages/dreamer-genui/src/figure3d/index.tsx', import.meta.url).pathname,
       'dreamer-genui/figures': new URL(
         './packages/dreamer-genui/src/figures/index.tsx',
         import.meta.url,

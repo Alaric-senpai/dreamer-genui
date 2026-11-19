@@ -1,0 +1,50 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-composed",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "composed",
+            "series": [
+              {
+                "name": "Attempts",
+                "data": [
+                  20,
+                  34,
+                  29,
+                  45,
+                  51,
+                  58
+                ],
+                "seriesType": "bar"
+              },
+              {
+                "name": "Running mean",
+                "data": [
+                  20,
+                  27,
+                  28,
+                  32,
+                  36,
+                  40
+                ],
+                "seriesType": "line"
+              }
+            ],
+            "xLabel": "Week",
+            "yLabel": "Problems solved",
+            "alt": "Composed chart with bars for weekly attempts and a line for the running mean"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

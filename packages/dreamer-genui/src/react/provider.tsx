@@ -9,6 +9,8 @@ import type { ComponentOverride } from './anatomy';
 import { createTranslator } from '../core/strings';
 import { createAssetResolver } from '../core/assets';
 import type { AssetResolveFunction, AssetResolver } from '../core/assets';
+import { DEFAULT_MODEL_BUDGET } from '../core/model';
+import type { ModelBudget } from '../core/model';
 
 /** UI strings — all overridable for i18n. */
 export interface UIStrings {
@@ -72,6 +74,8 @@ export interface DreamerContextValue {
   components: Record<string, ComponentOverride | undefined>;
   /** Cached asset resolver (§7.6); always present, no-op when host supplies nothing. */
   assets: AssetResolver;
+  /** Budgets enforced for connector-supplied 3D models (§6.16). */
+  modelBudget: ModelBudget;
 }
 
 const DreamerContext = createContext<DreamerContextValue | null>(null);
@@ -101,6 +105,9 @@ export interface DreamerProviderProps {
    *  never fetches: this callback owns all network access; results are cached
    *  and deduplicated. */
   resolveAsset?: AssetResolveFunction;
+  /** Budgets enforced for connector-supplied 3D models (§6.16). Defaults to
+   *  ~2 MB / 50k triangles; hosts may tighten or relax them. */
+  modelBudget?: ModelBudget;
   children: ReactNode;
 }
 
@@ -138,6 +145,7 @@ export function DreamerProvider({
   density = 'comfortable',
   components,
   resolveAsset,
+  modelBudget = DEFAULT_MODEL_BUDGET,
   children,
 }: DreamerProviderProps) {
   const scheme = useMediaScheme(colorScheme === 'auto');
@@ -174,8 +182,9 @@ export function DreamerProvider({
       t,
       components: components ?? {},
       assets,
+      modelBudget,
     }),
-    [registry, colorScheme, scheme, onEvent, onError, mergedStrings, locale, dir, density, t, components, assets]
+    [registry, colorScheme, scheme, onEvent, onError, mergedStrings, locale, dir, density, t, components, assets, modelBudget]
   );
   return (
     <DreamerContext.Provider value={value}>

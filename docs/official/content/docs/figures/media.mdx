@@ -1,0 +1,87 @@
+---
+title: Media and art
+description: Images, icons and labelled illustrations with named parts.
+---
+
+Three figure kinds cover host media and illustrated art. All are declarative and all defer asset lookup to the host.
+
+## Image
+
+```ts
+type ImageFigure = {
+  kind: 'image';
+  src: string | { asset: string };
+  alt: string;          // required
+};
+```
+
+- A string `src` is used as supplied.
+- `{ asset: id }` goes through the provider's `resolveAsset` callback and is cached there.
+- While an asset resolves, the figure holds its frame; if it fails, the `alt` text renders in a poster panel.
+- Tapping the image emits `focus` with the figure id. Add an `attach` op to open an explainer on it.
+
+```json
+{
+  "kind": "image",
+  "src": { "asset": "cell-diagram" },
+  "alt": "A labelled diagram of a cell with the nucleus highlighted"
+}
+```
+
+## Icon
+
+```ts
+type IconFigure = {
+  kind: 'icon';
+  name: string;
+  alt?: string;
+};
+```
+
+Icons come from the active icon-set registry. They are decorative by default, so `alt` is optional; supply it when the icon carries meaning on its own. An unknown icon name degrades to the fallback glyph and calls `onError` with `invalid-node` rather than breaking the figure.
+
+```json
+{ "kind": "icon", "name": "lightbulb", "alt": "Idea" }
+```
+
+## Labelled art
+
+```ts
+type LabeledFigure = {
+  kind: 'labeled';
+  pack: string;          // registered asset pack
+  art: string;           // art id inside the pack
+  highlight?: string[];  // named parts to accent
+  labels?: { part: string; text: string }[];
+  alt: string;
+};
+```
+
+A labelled illustration is host art with **named parts**. The tutor references part names, never coordinates.
+
+- `highlight` accents the named parts using the theme accent token.
+- `labels` pins accessible text labels to named parts.
+- Tapping a part emits `focus` with `ref = '<figureId>/<partId>'`, so `attach` can open an explainer on one structure.
+- Packs and art are registered by the host; the library ships none in core.
+
+```json
+{
+  "kind": "labeled",
+  "pack": "biology",
+  "art": "cell",
+  "highlight": ["nucleus"],
+  "labels": [
+    { "part": "nucleus", "text": "Nucleus" },
+    { "part": "membrane", "text": "Cell membrane" }
+  ],
+  "alt": "A cell illustration with the nucleus highlighted and labelled"
+}
+```
+
+## Universal rules
+
+- **`alt` is mandatory** for image, labelled and every other figure except icon.
+- **Assets never come from the model.** The model can only name an asset id that the host resolves.
+- **No raw HTML or SVG from the model.** Labelled art is sanitized by the host asset pack; the model selects names.
+- **No coordinates.** Named parts and computed layout only.
+- **Failures stay local.** An unresolved asset or unknown part renders the figure fallback and reports an error; the rest of the board continues.

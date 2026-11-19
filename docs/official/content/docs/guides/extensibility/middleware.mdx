@@ -1,0 +1,173 @@
+---
+title: Middleware
+description: Intercept ops, events, themes and nodes before they reach the reducer or the host.
+---
+
+Middleware is the seam between the tutor and the board. It can rewrite, expand, drop or annotate anything crossing it, and it can never break the lesson: a failing middleware is isolated and reported as `middleware-error`.
+
+```ts
+import { defineMiddleware } from 'dreamer-genui/core';
+```
+
+## Shape
+
+```ts
+interface MiddlewareDefinition {
+  name: string;
+  priority?: number;                  // ascending; lower runs first. Default 100.
+  onOp?: (op: Op, ctx: MiddlewareContext) => Op | Op[] | null | Promise<Op | Op[] | null>;
+  onEvent?: (event: UIEvent, ctx: MiddlewareContext) => UIEvent | null | Promise<UIEvent | null>;
+  onThemeResolve?: (spec: unknown, ctx: MiddlewareContext) => unknown;
+  onNodeResolve?: (node: Block, ctx: MiddlewareContext) => Block | null;
+}
+
+interface MiddlewareContext {
+  readonly registry: unknown;
+  readonly direction: 'ltr' | 'rtl';
+  readonly locale: string;
+}
+```
+
+| Hook | Runs | Return to |
+| :--- | :--- | :--- |
+| `onOp` | Before the reducer, per op | Keep the op, replace it, return several, or `null` to drop |
+| `onEvent` | Before `onEvent` reaches the host | Keep, enrich, or `null` to suppress |
+| `onThemeResolve` | Before a `ThemeSpec` is resolved | A modified spec |
+| `onNodeResolve` | Before a node is rendered | A replaced node, or `null` to fall back |
+
+`onOp` may be async. Ops are processed in order, so a middleware that waits on I/O delays the rest of the turn; keep it fast or resolve work outside the hook.
+
+## Register it
+
+```ts
+export const houseRules = defineMiddleware({
+  name: 'acme:house-rules',
+  priority: 20,
+  onOp(op, ctx) {
+    // Split large appends so early blocks can enter sooner.
+    if (op.op === 'append' && op.blocks.length > 6) {
+      return chunk(op.blocks, 6).map((blocks) => ({ op: 'append', blocks }));
+    }
+    return op;
+  },
+});
+```
+
+```ts
+const board = createBoardStore({
+  registry,
+  middleware: [houseRules],
+});
+```
+
+Plugins can also register middleware during `install(ctx)`.
+
+## Recipes
+
+### Localise nodes at render time
+
+```ts
+const localise = defineMiddleware({
+  name: 'acme:localise',
+  onNodeResolve(node, ctx) {
+    if (ctx.locale !== 'sw') return node;
+    return { ...node, alt: translate(node.alt, 'sw') } as typeof node;
+  },
+});
+```
+
+When translation is not ready, return `node` unchanged. Returning `null` makes the board render the node's fallback, which is worse than an untranslated label.
+
+### Enforce a house mood
+
+```ts
+const moodGuard = defineMiddleware({
+  name: 'acme:mood-guard',
+  onThemeResolve(spec) {
+    const request = spec as { mood?: string };
+    if (request.mood === 'eerie') return { ...request, mood: 'solemn' };
+    return spec;
+  },
+});
+```
+
+This runs inside the theme pipeline, so the resolver still validates, enforces contrast and applies density afterwards.
+
+### Add attempt metadata to answers
+
+```ts
+const attempts = defineMiddleware({
+  name: 'acme:attempts',
+  onEvent(event) {
+    if (event.type !== 'answer') return event;
+    return {
+      ...event,
+      meta: { ...event.meta, attempt: attemptsById.get(event.nodeId) ?? 1 },
+    };
+  },
+});
+```
+
+### Drop presentation ops during an exam
+
+Exam mode already queues locked ops. A middleware is the place for a stricter house rule:
+
+```ts
+const examSilence = defineMiddleware({
+  name: 'acme:exam-silence',
+  onOp(op) {
+    if (!examActive) return op;
+    return ['theme', 'camera', 'layout', 'pointer'].includes(op.op) ? null : op;
+  },
+});
+```
+
+## Ordering
+
+```text
+lower priority  →  runs first
+```
+
+The default is `100`. Register the broad, structural middleware low (10–50) and the cosmetic ones high (150+). Order matters when two middleware touch the same op: the first one to transform it determines what the second one sees.
+
+## Isolation
+
+- An exception in `onOp` drops that op and reports `middleware-error`; the rest of the turn still applies.
+- An exception in `onEvent` drops that event.
+- An exception in `onThemeResolve` skips the middleware.
+- An exception in `onNodeResolve` renders the node unchanged.
+
+Nothing throws into host code and nothing blanks the board.
+
+## Testing
+
+`createTestBoard()` from `dreamer-genui/core` gives you a store with a registry and no DOM, which is enough to test middleware directly:
+
+```ts
+const board = createTestBoard({ middleware: [houseRules] });
+const results = board.applyOps({ v: 1, ops: [{ op: 'append', blocks: manyBlocks }] });
+
+expect(results).toHaveLength(6);
+expect(board.getState().nodes['intro']).toBeDefined();
+```
+
+For event middleware, subscribe to `board.events` and assert the enrichment arrived.
+
+<Callout title="Ordering is a contract" type="warn">
+  Document the priority you chose. A middleware that silently reorders or drops ops is indistinguishable from a bug when two teams own different middleware.
+</Callout>
+
+## Checklist
+
+- One responsibility per middleware
+- Explicit `priority`, chosen against the existing set
+- Fast, synchronous paths for `onOp`
+- Never assumes a specific mood, subject or locale
+- Tested with an empty board and with a board that already has content
+- Errors surfaced through `onError` in development
+
+## Next
+
+- [Plugins](/docs/guides/extensibility/plugins)
+- [Store](/docs/guides/configuration/store)
+- [Events and errors](/docs/reference/events-and-errors)

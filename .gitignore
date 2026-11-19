@@ -5,3 +5,5 @@ dist/
 .next/
 coverage/
 .superpowers/
+
+storybook-static/

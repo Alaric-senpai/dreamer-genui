@@ -1,0 +1,51 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-radialbar",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "radialBar",
+            "series": [
+              {
+                "name": "Reading",
+                "data": [
+                  {
+                    "x": "Reading",
+                    "y": 84
+                  }
+                ]
+              },
+              {
+                "name": "Problem solving",
+                "data": [
+                  {
+                    "x": "Solving",
+                    "y": 67
+                  }
+                ]
+              },
+              {
+                "name": "Essays",
+                "data": [
+                  {
+                    "x": "Essays",
+                    "y": 42
+                  }
+                ]
+              }
+            ],
+            "alt": "Radial bar chart showing mastery of three skills"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

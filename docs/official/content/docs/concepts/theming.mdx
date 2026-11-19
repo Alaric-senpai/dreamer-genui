@@ -1,0 +1,178 @@
+---
+title: Theming and mood
+description: Tokens, registered moods, ambience, density and the contrast guardrail.
+---
+
+The tutor can change how the board feels — not with CSS, but by naming a registered mood and, if the host allows it, adjusting tokens. The resolver validates every request, enforces contrast and rejects anything outside policy without breaking the board.
+
+## The two tiers
+
+```ts
+type ThemeSpec = {
+  mood?: string;
+  intensity?: number;
+  tokens?: Partial<ThemeTokens>;
+  ambience?: string | { preset: string; intensity?: number };
+  surface?: string;
+  motionPreset?: string;
+  transition?: { duration?: number; ease?: EaseName };
+};
+```
+
+| Tier | What it is | Recommended |
+| :--- | :--- | :--- |
+| `mood` | A registered, complete preset with a description | Yes — reliable, teachable to the model |
+| `tokens` | Partial token overrides | Advanced, policy-gated, host opt-in |
+
+The prompt guide lists every registered mood with its description, so the tutor can choose by meaning rather than by guessing colour names.
+
+## Built-in example presets
+
+These are examples, not a closed list. Any of them can be overridden or removed.
+
+| Mood | Register |
+| :--- | :--- |
+| `calm` | Neutral, low-contrast motion, paper-like |
+| `solemn` | Slower tempo, weighty type, restrained accent |
+| `playful` | Brighter accent, quicker tempo, rounder shapes |
+| `eerie` | Dark, desaturated, flickering ambience |
+| `night` | Deep navy, cyan accent, glow, blueprint decor |
+| `paper` | Light grey, blue accent, editorial calm |
+
+| Ambience | Character |
+| :--- | :--- |
+| `grain` | Subtle film grain |
+| `vignette` | Darkened edges |
+| `dust` | Slow floating particles |
+| `embers` | Warm rising sparks |
+| `fog` | Soft drifting haze |
+| `stars` | Sparse star field |
+| `flicker` | Uneasy light variation |
+| `blueprint-grid` | Thin structural guide lines |
+| `rings` | Concentric HUD rings |
+
+| Surface | Look |
+| :--- | :--- |
+| `flat` | Clean, minimal backdrop |
+| `chalkboard` | Dark board with chalk texture |
+| `paper` | Warm, light sheet |
+
+Ambience renders below content, never over it. It pauses when the tab is hidden or the board is off-screen, runs in a lite mode on weak devices, becomes static under reduced motion and is **off in exam mode**.
+
+## Apply a theme
+
+```json
+{ "op": "theme", "theme": { "mood": "solemn", "intensity": 0.7 } }
+```
+
+```json
+{
+  "op": "replace",
+  "theme": { "mood": "night", "ambience": { "preset": "blueprint-grid", "intensity": 0.35 } },
+  "transition": { "kind": "iris", "theme": { "mood": "night" } },
+  "blocks": []
+}
+```
+
+`scope: "detour"` applies the theme to an open explainer and reverts it on return. A `replace` may carry a theme; the history stack restores the previous one on `back()`.
+
+## Host policy
+
+Policy is **engine configuration**, not a provider prop, because theme ops can arrive before React mounts. Pass it when creating the store:
+
+```ts
+const board = createBoardStore({
+  registry,
+  theme: {
+    policy: 'moods',                 // 'none' | 'moods' | 'moods+tokens'
+    allowedMoods: ['calm', 'solemn', 'paper'],
+    allowedAmbience: ['grain', 'blueprint-grid'],
+    allowedFonts: ['Inter', 'Source Serif 4'],
+    baseline: { mood: 'calm' },      // below tutor requests, above defaults
+    onThemeAdjusted: (roles) => console.info('adjusted', roles),
+  },
+});
+```
+
+| Policy | Tutor may set |
+| :--- | :--- |
+| `none` | Nothing; every theme op is rejected |
+| `moods` | Mood, ambience, surface, motion preset |
+| `moods+tokens` | All of the above plus tokens |
+
+Anything outside policy is ignored with `theme-rejected`, and the rest of the theme still applies. Exam mode locks themes entirely.
+
+## Tokens
+
+```ts
+type ThemeTokens = {
+  color: { bg; surface; ink; muted; accent; info; success; warn; danger };
+  font: { display; body; mono };
+  radius: { sm; md; lg };
+  space: { scale: number };
+  motion: { speed: number; ease: EaseName };
+  texture: { grain: number; vignette: number; glow: number };
+  density: { scale: number; minTarget: number };
+  components?: Record<string, Record<string, string | number>>;
+};
+```
+
+- Colours must parse as hex, `hsl()` or `oklch()`. `url()`, `var()`, `calc()` and expressions are rejected.
+- Fonts must be in the host allowlist.
+- Radii, scales, speeds and texture strengths are clamped.
+- Numbers never become raw CSS; the resolver writes `--dg-*` variables on the board root.
+
+Every component reads component tokens as `--dg-<component>-<token>`. A host can restyle one part without forking the component.
+
+## Contrast guardrail
+
+The resolver measures text/background contrast and adjusts ink or muted colours to meet WCAG AA: 4.5:1 for body text and 3:1 for large text. Adjustments are reported through `onThemeAdjusted` and are visible in devtools. Ambience is factored into the check so a dark overlay cannot silently make captions unreadable.
+
+## Transitions
+
+Theme changes tween colour, font, ambience and tempo; they never hard-cut. A `replace` transition may flip the theme at its midpoint, which is how a dark scene becomes a light one inside an iris or push. Reduced motion shortens the tween to near-instant.
+
+## Density
+
+Density is a host/user setting, not a tutor request:
+
+```tsx
+<DreamerProvider registry={registry} density="large">
+```
+
+| Density | Type/space scale | Minimum target |
+| :--- | :--- | :--- |
+| `compact` | Smaller | 40 px |
+| `comfortable` | Default | 44 px |
+| `large` | Larger, for early readers | 56 px |
+
+Density affects type, spacing, touch targets and control sizes. It composes with the active theme; it does not override the mood's palette.
+
+## Precedence
+
+From lowest to highest:
+
+1. Library defaults
+2. Host CSS / Tailwind variables
+3. Host `theme` baseline (store configuration)
+4. Tutor `ThemeSpec` (subject to policy and exam locks)
+5. User density and reduced-motion preferences
+
+## Listening for changes
+
+```tsx
+<Board
+  store={board}
+  onThemeChange={(theme) => {
+    document.documentElement.dataset.mood = theme.mood ?? 'default';
+  }}
+/>
+```
+
+The callback receives the **resolved** theme, not the raw request. Hosts use it to sync page chrome, soundscapes or analytics-free decorations. The library itself plays no audio.
+
+## Next
+
+- [Custom moods and themes](/docs/guides/extensibility/moods-and-themes)
+- [Styling and Tailwind](/docs/guides/configuration/styling)
+- [Accessibility](/docs/guides/accessibility)

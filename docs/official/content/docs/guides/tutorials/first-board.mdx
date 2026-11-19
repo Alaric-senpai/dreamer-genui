@@ -1,0 +1,198 @@
+---
+title: Your first board
+description: Build a complete lesson screen in a Next.js App Router app, from install to events.
+---
+
+This tutorial builds a single lesson page with a title, a split explanation and a chart, a mood change and a working event log. It assumes a fresh Next.js app.
+
+## 1. Create the app
+
+```bash
+pnpm create next-app@latest my-lesson --ts --app --tailwind
+cd my-lesson
+pnpm add dreamer-genui
+```
+
+Import the library styles once in the root layout:
+
+```tsx
+// app/layout.tsx
+import 'dreamer-genui/styles.css';
+import './globals.css';
+```
+
+## 2. Create the board module
+
+Keeping the store outside React means ops can arrive before the page mounts — the normal case when a tutor reply is already streaming.
+
+```ts
+// lib/board.ts
+import { createRegistry } from 'dreamer-genui/core';
+import { createBoardStore } from 'dreamer-genui/react';
+
+export const registry = createRegistry();
+
+export const board = createBoardStore({
+  registry,
+  theme: {
+    policy: 'moods',
+    allowedMoods: ['calm', 'solemn', 'playful', 'night', 'paper'],
+  },
+  locale: 'en',
+  dir: 'ltr',
+});
+```
+
+## 3. Apply the opening scene
+
+```ts
+// lib/opening.ts
+import { board } from './board';
+
+board.applyOps({
+  v: 1,
+  ops: [
+    {
+      op: 'append',
+      blocks: [
+        {
+          id: 'kicker',
+          type: 'text',
+          variant: 'kicker',
+          content: ['Biology · Cells'],
+          enter: { effect: 'wipe' },
+        },
+        {
+          id: 'title',
+          type: 'text',
+          variant: 'hero',
+          slot: 'left',
+          content: ['The cell is the ', { mark: 'emphasis', text: 'unit of life' }, '.'],
+          enter: { effect: 'slam', order: 1 },
+        },
+        {
+          id: 'note',
+          type: 'text',
+          variant: 'note',
+          slot: 'left',
+          content: ['Every living organism is built from one or more cells.'],
+          enter: { effect: 'rise', order: 2 },
+        },
+        {
+          id: 'chart',
+          type: 'figure',
+          slot: 'right',
+          figure: {
+            kind: 'chart',
+            type: 'bar',
+            series: [{ name: 'Cells observed', data: [12, 28, 45] }],
+            xLabel: 'Sample',
+            yLabel: 'Count',
+            alt: 'Cell counts rising across three samples',
+          },
+          enter: { effect: 'draw', order: 3 },
+        },
+      ],
+    },
+    {
+      op: 'layout',
+      layout: { kind: 'split', ratio: '3:2', narrow: 'stack' },
+    },
+  ],
+});
+```
+
+## 4. Render the board
+
+```tsx
+// app/lesson/page.tsx
+'use client';
+
+import { Board, DreamerProvider } from 'dreamer-genui';
+import { board, registry } from '@/lib/board';
+import '@/lib/opening';
+
+export default function LessonPage() {
+  return (
+    <main className="mx-auto max-w-5xl p-4">
+      <DreamerProvider registry={registry}>
+        <Board
+          store={board}
+          pacing="auto"
+          camera="auto"
+          ambience="auto"
+          onEvent={(event) => console.log('event', event)}
+          onError={(error) => console.warn('board error', error.code, error.message)}
+        />
+      </DreamerProvider>
+    </main>
+  );
+}
+```
+
+`pacing="auto"` is right for this first pass because nothing is firing cues yet. The board plays blocks in `order`, and figures load lazily while the layout settles.
+
+## 5. Add a mood change
+
+Moods are registered by name. Send a theme op when the lesson reaches a serious section:
+
+```ts
+board.applyOps({
+  v: 1,
+  ops: [
+    { op: 'theme', theme: { mood: 'solemn', intensity: 0.8 } },
+  ],
+});
+```
+
+The change tweens. If the host policy does not allow `solemn`, the op is ignored with `theme-rejected` and the board keeps its current look.
+
+## 6. Handle a choice
+
+Append a navigation choice and route the event into your app:
+
+```ts
+board.applyOps({
+  v: 1,
+  ops: [
+    {
+      op: 'append',
+      blocks: [
+        {
+          id: 'next',
+          type: 'choices',
+          intent: 'navigate',
+          layout: 'chips',
+          items: [
+            { id: 'organelles', label: ['Explore organelles'], ref: 'organelles' },
+            { id: 'division', label: ['How cells divide'], ref: 'division' },
+          ],
+        },
+      ],
+    },
+  ],
+});
+```
+
+```tsx
+onEvent={(event) => {
+  if (event.type === 'select' && event.nodeId === 'next') {
+    router.push(`/lesson/${event.ref}`);
+  }
+}}
+```
+
+## 7. Check your work
+
+- The title enters with a heavy landing, not a fade.
+- The split lays out beside the chart on a laptop and stacks on a phone.
+- The chart draws in; on a slow connection the figure shows a neutral placeholder first.
+- A mood op changes colour and tempo without a hard cut.
+- Clicking a choice emits `select` with `nodeId`, `ref` and `label`.
+- Removing a required prop from the chart (try deleting `alt`) produces a typed error and a fallback, not a blank page.
+
+## Where to go next
+
+- [Narrated lesson](/docs/guides/tutorials/narrated-lesson) — replace `pacing="auto"` with real cue timing.
+- [Streaming](/docs/guides/tutorials/streaming) — apply partial replies from a model.
+- [Configuration](/docs/guides/configuration/provider) — policy, assets, strings and density.

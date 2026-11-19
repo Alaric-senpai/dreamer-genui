@@ -1,0 +1,151 @@
+---
+title: Persistence and replay
+description: Versioned snapshots, migrations and ops logs that resume a lesson exactly.
+---
+
+The library never touches storage. It gives you two serializable artefacts: a **snapshot** of the settled board and an **ops log** of everything that happened. You choose where they live.
+
+## Snapshot
+
+```ts
+const snapshot = board.snapshot();
+// { v: 1, state: { id, nodes, detours, theme, layout, firedCues, assessments, history } }
+```
+
+```ts
+board.restore(snapshot);
+```
+
+Restoring rehydrates without replaying entrance animations: content appears in its final settled state, reduced-motion style, and normal cueing continues afterwards. That is what makes refresh, crash recovery and SSR handoff feel instant.
+
+Snapshots include:
+
+- nodes and their entry state
+- fired cues and fired event triggers
+- layout and resolved theme
+- detours and history
+- assessment states
+
+### Storage recipe
+
+```ts
+const KEY = 'dreamer:lesson';
+
+export function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(board.snapshot()));
+  } catch (error) {
+    // Quota exceeded or storage disabled: keep the lesson running.
+    console.warn('snapshot not saved', error);
+  }
+}
+
+export function load() {
+  const raw = localStorage.getItem(KEY);
+  if (!raw) return;
+  try {
+    board.restore(JSON.parse(raw));
+  } catch (error) {
+    console.warn('snapshot ignored', error);
+    localStorage.removeItem(KEY);
+  }
+}
+```
+
+Save on meaningful boundaries (turn end, assessment answer, page hide), not on every animation frame. A snapshot is a few kilobytes, not a video.
+
+### Migrations
+
+Snapshots carry `v`. When the shape changes, provide a migration per version step:
+
+```ts
+const migrations = {
+  1: (state, from) => {
+    // upgrade v1 state to v2
+    return { ...state, newField: defaultValue };
+  },
+};
+
+board.restore(snapshot, migrations);
+```
+
+An unknown future version throws a descriptive error instead of silently corrupting the board. Catch it, discard the snapshot and start fresh.
+
+## Ops log
+
+```ts
+const log = board.exportOps();
+// { v: 1, startedAt, entries: [{ t, type: 'op' | 'cue' | 'flush' | 'back' | 'detour-return' | 'assessment', ... }] }
+```
+
+Replay synchronously into a settled board:
+
+```ts
+board.replay(log);
+```
+
+Or drive a real-time replay yourself:
+
+```ts
+import { replayTimeline } from 'dreamer-genui/core';
+
+for (const step of replayTimeline(log, 2)) {
+  setTimeout(() => applyStep(step.entry), step.at);
+}
+```
+
+`replayTimeline(log, speed)` scales timestamps; `speed: 2` is twice as fast.
+
+### What replay is for
+
+| Use | Snapshot | Ops log |
+| :--- | :--- | :--- |
+| Resume after refresh | Yes | Overkill |
+| Debug a lesson | Inspect final state | Step through exactly what happened |
+| Demo replay | No | Yes, with pacing |
+| Offline resume | Yes | Yes |
+| Analytics-free audit | No | Yes, host-owned |
+
+Logs contain no credentials and no student data beyond what the host already put into events. They are safe to store locally.
+
+## Assessment state
+
+Assessment snapshots are part of the board snapshot, but you can also save them independently:
+
+```ts
+const state = board.assessments.snapshot('assessment-1');
+if (state) localStorage.setItem('exam', JSON.stringify(state));
+
+const saved = JSON.parse(localStorage.getItem('exam') ?? 'null');
+if (saved) board.assessments.restore('assessment-1', saved);
+```
+
+The timer survives reload because `timerRemainingMs`, `startedAt` and `submittedAt` are all serializable. The machine's injectable clock makes this testable without waiting.
+
+## SSR handoff
+
+Render the server state, then restore it on the client:
+
+```tsx
+// server
+const snapshot = board.snapshot();
+
+// client
+board.restore(snapshot);
+<Board store={board} pacing="auto" camera="off" ambience="off" />
+```
+
+Use the same snapshot on both sides to avoid hydration mismatches. Do not generate random ids in the host wrapper.
+
+## Rules
+
+- **Never store answer keys client-side in exam mode.** Snapshots of an exam contain answers the student gave, not the correct answers.
+- **Snapshots and logs are versioned data.** Check `v` before restoring.
+- **Storage is the host's job.** The library does not touch `localStorage`, IndexedDB, cookies or the network.
+- **Offline is a host concern.** Queue uploads yourself; the library queues nothing.
+
+## Next
+
+- [i18n and assets](/docs/guides/configuration/i18n-and-assets)
+- [Store](/docs/guides/configuration/store)
+- [Security](/docs/guides/security)

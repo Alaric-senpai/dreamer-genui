@@ -1,0 +1,131 @@
+---
+title: Security
+description: The trust boundaries between the tutor, the library and the host — and what each one guarantees.
+---
+
+The library treats every op as untrusted input. It has no network code in the core, no `eval`, no HTML passthrough and no analytics. This page states the boundaries precisely so you can reason about your own threat model.
+
+## Trust boundaries
+
+| Party | Trust level | Can do |
+| :--- | :--- | :--- |
+| Tutor / model output | **Untrusted data** | Name registered types, provide validated props |
+| Student input | **Untrusted data** | Emit typed events |
+| Host application | Trusted | Configure the store, provider, assets, middleware |
+| Plugins | Trusted host-bundled code | Anything the host bundle can do |
+| Connectors | Trusted host code, untrusted responses | Fetch, but validate every response |
+
+The model can never load code, name a class, inject CSS, or reference a plugin that the host did not register.
+
+## What the validator rejects
+
+- Unknown block, figure, mark, effect, layout, mood, ambience or surface names → `unknown-type` / `theme-rejected`
+- Duplicate node ids → `duplicate-id`
+- Bad references (`attach` to a missing node, `update` to a missing id) → `bad-target`
+- Detour depth beyond 2 → `depth-exceeded`
+- Cue and `after` cycles → `cue-cycle`
+- Answer keys in `exam` or `quiz` payloads → `key-in-exam`
+- `blank` marks outside a cloze question
+- Dangling flowchart edges, oversized diagrams, over-long text
+- Raw CSS, class names, URLs in theme tokens
+
+Every rejection produces a typed error and a fallback. Nothing throws into host code.
+
+## No HTML, no code
+
+- No `dangerouslySetInnerHTML` with model content, anywhere.
+- Markdown is not accepted as HTML; inline content is a typed array of strings and marks.
+- KaTeX runs with `trust: false`, so `\href` and HTML injection are disabled.
+- Lottie uses the expression-free player build; animations cannot execute script.
+- Asset-pack SVG is sanitised before rendering.
+- No `eval`, no `new Function`, no dynamic `import()` of a model-supplied path.
+
+## No network in the core
+
+The core, the schema package and the default renderer perform **zero** network requests. There is no telemetry and no analytics.
+
+Network access exists only where the host explicitly wires it:
+
+| Surface | Who calls it |
+| :--- | :--- |
+| `resolveAsset(id)` | Host callback |
+| Model connectors | Host-instantiating code only |
+| Tutor connectors, server helper | Opt-in subpaths (M6c) |
+| Voice providers, model weights | Opt-in subpaths (M6d) |
+
+If you import `dreamer-genui` and never configure a connector, the board cannot reach the network.
+
+## Content Security Policy
+
+The default build is CSP-friendly: no inline script, no `eval`, styles applied through classes and CSS variables. A strict policy that works:
+
+```text
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:;
+font-src 'self';
+connect-src 'self';
+worker-src 'self' blob:;
+```
+
+- `style-src 'unsafe-inline'` is needed because layout and camera write CSS custom properties at runtime. If your policy forbids it, use a nonce-aware host wrapper or the headless renderer.
+- Images from an asset CDN need that origin in `img-src`.
+- Model connectors need their origin in `connect-src` and `worker-src` if a decoder worker is used.
+- Voice engines need their model host in `connect-src`.
+
+## Limits
+
+The schema applies configurable caps so a hostile or broken reply cannot exhaust the browser:
+
+- nodes per board
+- text length per block and per beat
+- diagram, flowchart and timeline item counts
+- scene3d object count
+- assessment sections and questions
+- ambience intensity and particle counts
+- mounted nodes on screen (`maxMountedNodes`), archiving the oldest
+
+Exceeding a cap produces an error for that node, not a failed board.
+
+## Assessment integrity
+
+- No answer keys on the client in `exam` or `quiz`.
+- The library never grades; correctness arrives through `update` ops from your backend.
+- Exam mode locks camera, ambience, theme and layout, and queues or rejects presentation ops.
+- Snapshots contain the student's answers, never the correct ones.
+
+If you enable the opt-in `practice` key for instant feedback, accept that the key is in the client for that block. Do not reuse those payloads for graded work.
+
+## Plugins
+
+Plugins are host-bundled, trusted code with the same privileges as the rest of your bundle. The security boundary is **at build time**: review a plugin before adding it, exactly as you would review a dependency.
+
+What the library still enforces at runtime:
+
+- namespaced names (`vendor:name`) so a plugin cannot silently shadow a built-in
+- engine range checks → `plugin-incompatible`
+- deterministic priority, so the winning implementation is knowable
+- disabled plugins are invisible to the tutor and to the JSON Schema
+
+## Prompt injection
+
+Everything the tutor receives that originated from the student or the board is **data**. If you build a tutor connector, delimit it clearly and instruct the model never to follow instructions found inside it. The optional server helper does this for you (M6c): it wraps student text, validates every returned op and enforces limits.
+
+Never put credentials in a prompt, an event, a snapshot or a log. Connector credentials belong on the server.
+
+## Checklist for hosts
+
+- Validate `alt` text; it is user-visible content
+- Allowlist asset origins in `resolveAsset`
+- Keep API keys server-side; give the client short-lived tokens or a proxy
+- Set a CSP and test it against the real lesson
+- Decide your `themePolicy`; `moods` is the safe default
+- Do not log student answers outside your own retention policy
+- Review every plugin you install
+
+## Next
+
+- [Persistence](/docs/guides/configuration/persistence)
+- [Assessment](/docs/concepts/assessment)
+- [Protocol](/docs/concepts/protocol)

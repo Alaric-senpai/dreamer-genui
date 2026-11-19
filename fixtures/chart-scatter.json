@@ -1,0 +1,84 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-scatter",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "scatter",
+            "series": [
+              {
+                "name": "Study hours vs score",
+                "data": [
+                  {
+                    "x": 2,
+                    "y": 42
+                  },
+                  {
+                    "x": 4,
+                    "y": 51
+                  },
+                  {
+                    "x": 5,
+                    "y": 55
+                  },
+                  {
+                    "x": 7,
+                    "y": 63
+                  },
+                  {
+                    "x": 9,
+                    "y": 71
+                  },
+                  {
+                    "x": 11,
+                    "y": 78
+                  },
+                  {
+                    "x": 13,
+                    "y": 84
+                  }
+                ]
+              },
+              {
+                "name": "Peer group",
+                "data": [
+                  {
+                    "x": 3,
+                    "y": 38
+                  },
+                  {
+                    "x": 6,
+                    "y": 52
+                  },
+                  {
+                    "x": 8,
+                    "y": 60
+                  },
+                  {
+                    "x": 10,
+                    "y": 66
+                  },
+                  {
+                    "x": 12,
+                    "y": 70
+                  }
+                ]
+              }
+            ],
+            "xLabel": "Hours studied per week",
+            "yLabel": "Score (%)",
+            "alt": "Scatter plot of weekly study hours against score for two groups"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

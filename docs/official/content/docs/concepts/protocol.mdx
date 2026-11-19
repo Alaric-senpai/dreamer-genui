@@ -1,0 +1,235 @@
+---
+title: Protocol
+description: Replies, operations, blocks, marks and figures — the complete declarative surface.
+---
+
+Everything the tutor can say about the board is data. One envelope carries operations; the operations carry blocks; blocks carry inline marks and figures. Zod schemas define the whole surface, TypeScript types are derived from them, and the same schemas generate JSON Schema and the tutor prompt.
+
+## The envelope
+
+```ts
+type Reply = {
+  v: 1;
+  ops: Op[];
+  narration?: Beat[];
+  meta?: Record<string, unknown>;
+};
+```
+
+`Reply` is also the `LessonTurn` type: one tutor answer carries both what is said (`narration`) and what is written (`ops`). A student's next turn is a `StudentTurn` with their input, a board outline and the capabilities the host advertises.
+
+```ts
+type StudentTurn = {
+  v: 1;
+  input:
+    | { kind: 'text'; text: string; lang?: string }
+    | { kind: 'voice'; text?: string; lang?: string; confidence?: number }
+    | { kind: 'event'; event: UIEvent };
+  board: string;                 // serializeBoard(state)
+  capabilities: string[];        // getCapabilities(registry)
+  narration?: { spokenUpTo?: string; interrupted?: boolean };
+  models?: ModelSummary[];
+  assessment?: { id: string; mode: string; answered: number; flagged: number };
+  locale?: string;
+};
+```
+
+<Callout title="Unknown fields are warnings, not failures" type="info">
+  Extra keys are ignored and reported. A malformed operation is rejected while the rest of the reply applies. A malformed block becomes a per-node fallback and leaves its neighbours untouched.
+</Callout>
+
+## Operations
+
+| Op | Purpose | Key fields |
+| :--- | :--- | :--- |
+| `append` | Add blocks to the current board | `blocks`, `after?`, `slot?` |
+| `attach` | Open an explainer on an existing node | `to`, `blocks`, `placement`, `connector`, `target.annotate`, `mode`, `theme` |
+| `replace` | Replace the board, keeping history | `blocks`, `title?`, `theme?`, `layout?`, `transition?` |
+| `update` | Change a node's props | `id`, `props`, `transition?: 'morph' \| 'fade' \| 'none'` |
+| `remove` | Remove a node | `id` |
+| `theme` | Change the mood or tokens | `theme`, `scope?: 'board' \| 'detour'` |
+| `camera` | Move the 2D camera | `to`, `preset`, `zoom`, `tilt`, `dolly`, `duration`, `ease`, `trigger`, `path` |
+| `layout` | Change the board layout | `layout`, `transition` |
+| `pointer` | Move the virtual teacher's pointer | `to`, `style`, `trigger`, `duration`, `ease` |
+
+`NodeRef` is a node id, or `"parentId/itemId"` for an item inside a node. `NodeId` is a short tutor-authored string and must be unique per board; duplicates are rejected with `duplicate-id`.
+
+### Append
+
+```json
+{
+  "op": "append",
+  "blocks": [
+    { "id": "intro", "type": "text", "variant": "kicker", "content": ["Cell biology"] }
+  ]
+}
+```
+
+### Attach
+
+```json
+{
+  "op": "attach",
+  "to": "nucleus",
+  "blocks": [
+    { "id": "nucleus-detail", "type": "text", "content": ["The nucleus stores DNA."] }
+  ],
+  "placement": "right",
+  "connector": "arrow",
+  "target": { "annotate": "circle" },
+  "mode": "spotlight"
+}
+```
+
+`attach` pushes a detour. The rest of the board dims, a return control appears, focus moves into the explainer and returns to the target on close. Nested detours are limited to depth 2 (`depth-exceeded`).
+
+### Replace and history
+
+```json
+{
+  "op": "replace",
+  "title": "Photosynthesis",
+  "layout": { "kind": "split", "ratio": "3:2" },
+  "transition": { "kind": "iris", "origin": "center", "duration": 900 },
+  "theme": { "mood": "paper" },
+  "blocks": []
+}
+```
+
+`replace` pushes the current board, theme and layout onto the history stack. `board.back()` restores them. The fired-cue set resets for a new board, while history snapshots keep their own cues.
+
+### Update and morph
+
+```json
+{
+  "op": "update",
+  "id": "definition",
+  "transition": "morph",
+  "props": {
+    "content": [
+      "A cell is the ",
+      { "mark": "emphasis", "text": "smallest unit of life", "key": "accent" }
+    ]
+  }
+}
+```
+
+Keyed spans persist across a morph. The renderer matches by `key`, then by text, then by position, and animates from old to new geometry.
+
+### Camera and pointer
+
+```json
+{
+  "op": "camera",
+  "path": [
+    { "preset": "wide", "trigger": { "on": "cue", "id": "b1" } },
+    { "to": "flow", "zoom": 1.35, "tilt": { "x": 4 }, "trigger": { "on": "cue", "id": "b2" } },
+    { "to": "overview", "trigger": { "on": "cue", "id": "b3" } }
+  ]
+}
+```
+
+```json
+{
+  "op": "pointer",
+  "to": "flow/decision",
+  "style": "dot",
+  "trigger": { "on": "cue", "id": "b2" }
+}
+```
+
+See [Motion](/docs/concepts/motion) for bounds, exam restrictions and reduced-motion behaviour.
+
+## Blocks
+
+Blocks are a discriminated union on `type`. Every block extends `NodeBase`, which carries the id, the enter/emphasis/exit plan and placement fields.
+
+| Type | What it is | Notable props |
+| :--- | :--- | :--- |
+| `text` | Body copy, definitions, headings, notes, heroes, kickers, quotes | `variant`, `content` |
+| `figure` | A figure with an optional caption | `figure`, `caption` |
+| `choices` | Navigate or answer | `intent`, `layout`, `multi`, `items` |
+| `steps` | Ordered procedure | `reveal`, `items` |
+| `callout` | Inline notice | `tone`, `title`, `content` |
+| `list` | Bullet, numbered or check list | `style`, `items` |
+| `compare` | Two or more columns | `columns`, `highlight` |
+| `group` | Nested layout | `layout`, `blocks`, direction/wrap/gap |
+| `table` | Tabular data | `columns`, `rows`, `highlight` |
+| `math` | TeX, including `\ce{}` | `tex`, `display` |
+| `code` | Highlighted source | `lang`, `source` |
+| `question` | One question widget | kind-specific props |
+| `flashcards` | Flip cards | `cards`, `flip`, `rating` |
+| `assessment` | Assessment shell | `mode`, `sections`, `timer` |
+| `card` | Container with media and footer | `title`, `blocks`, `footer`, `variant` |
+| `alert` | Dismissible alert | `tone`, `title`, `content` |
+| `accordion` | Collapsible sections | `items`, `multiple` |
+| `collapsible` | One collapsible section | `title`, `blocks` |
+| `tabs` | Tabbed panels | `tabs`, `active` |
+| `badge` | Small status label | `text`, `tone` |
+| `progress` | Animated progress | `value`, `label`, `variant` |
+| `counter` | Count-up number | `value`, `from`, `format` |
+| `avatar` | Image or icon identity | `name`, `src`, `icon` |
+| `separator` | Divider with optional label | `orientation`, `label` |
+| `carousel` | Horizontal slides | `slides`, `auto` |
+| `kbd` | Keyboard keys | `keys` |
+
+<Callout title="Renderer availability" type="warn">
+  `table`, `math` and `code` are part of the protocol but their renderers ship in M6a. Until then the board shows a fallback and reports `unknown-type`. Questions and the assessment shell likewise land in M6b; the state machine and schemas are already available.
+</Callout>
+
+## Inline marks
+
+`Inline` is either a string or a mark. Marks nest, so a highlight can contain an emphasis.
+
+```ts
+type Mark =
+  | { mark: 'highlight'; text: Inline[] | string; color?: ColorToken }
+  | { mark: 'emphasis'; text: Inline[] | string }
+  | { mark: 'term'; text: string; definition: string; detail?: Inline[] }
+  | { mark: 'focusable'; text: Inline[] | string; ref: string }
+  | { mark: 'annotate'; text: Inline[] | string; kind: 'circle' | 'underline' | 'box' | 'bracket' | 'strike'; color?: ColorToken }
+  | { mark: 'math'; tex: string }
+  | { mark: 'blank'; id: string; options?: string[]; width?: 'sm' | 'md' | 'lg' };
+```
+
+`ColorToken` is a theme token name (`accent`, `info`, `success`, `warn`, `danger`, `muted`, `ink`) — never a raw colour. Marks may carry `enter` and `key`.
+
+## Figures
+
+```ts
+type Figure =
+  | { kind: 'image'; src: string | { asset: string }; alt: string }
+  | { kind: 'icon'; name: string; alt?: string }
+  | { kind: 'diagram'; layout: 'tree' | 'radial' | 'orbit' | 'cycle'; nodes; edges; alt }
+  | { kind: 'flowchart'; nodes; edges; inputs?; outputs?; lanes?; alt }
+  | { kind: 'timeline'; events; orientation?; alt }
+  | { kind: 'labeled'; pack: string; art: string; labels?; alt }
+  | { kind: 'chart'; type: ChartType; series; alt }
+  | { kind: 'lottie'; src: string | { asset: string }; loop?; alt };
+```
+
+Every figure except `icon` requires `alt`. See the [figure pages](/docs/figures/charts) for the full authoring reference.
+
+## Validation and limits
+
+Validation happens per operation and produces typed errors. Common codes:
+
+| Code | Cause |
+| :--- | :--- |
+| `invalid-node` | A block failed its schema |
+| `unknown-type` | No renderer for a valid or unknown type |
+| `duplicate-id` | Two nodes share an id |
+| `bad-target` | `attach`/`update`/`remove` points at nothing |
+| `depth-exceeded` | A third nested detour, or a group nested too deep |
+| `cue-cycle` | `after` triggers form a loop |
+| `layout-invalid` | Unknown layout kind or slot fallback |
+| `theme-rejected` | Mood or token request blocked by policy |
+| `key-in-exam` | An answer key appeared in an assessment payload |
+
+Every error is delivered to `onError` and rendered as a graceful fallback. Nothing throws into the host.
+
+## Next
+
+- [Cues and timing](/docs/concepts/cues-and-timing)
+- [Layout](/docs/concepts/layout)
+- [Events and errors](/docs/reference/events-and-errors)

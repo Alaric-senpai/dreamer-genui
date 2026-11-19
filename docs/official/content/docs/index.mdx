@@ -1,0 +1,73 @@
+---
+title: dreamer-genui
+description: Tutor-authored JSON rendered as a kinetic classroom blackboard.
+---
+
+**dreamer-genui** renders tutor-authored JSON as an animated, interactive blackboard. Figures are declarative: the tutor names the composition (a flowchart, a radial diagram, a chart), and the library owns geometry, layout, timing and animation.
+
+This site documents the figure layer shipped in M5. Every figure is a lazy-loaded chunk: diagrams, flowcharts, charts and Lottie never enter the initial bundle.
+
+## Quick start
+
+```tsx
+import { Board, DreamerProvider, useBoard } from 'dreamer-genui';
+import { createRegistry } from 'dreamer-genui/core';
+
+const registry = createRegistry();
+
+<DreamerProvider
+  registry={registry}
+  resolveAsset={(id) => assetUrls[id]}
+>
+  <Board store={board} pacing="auto" camera="off" ambience="off" />
+</DreamerProvider>
+```
+
+Apply a reply with operations and the board renders the figures it contains:
+
+```json
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-one",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "bar",
+            "series": [{ "name": "Score", "data": [42, 61, 78] }],
+            "alt": "Scores rising across three attempts"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Figure kinds
+
+| Kind | Use it for | Page |
+| :--- | :--- | :--- |
+| `chart` | Quantitative data: bars, lines, areas, pies, radar, radial bars, scatter, funnels, treemaps, sankeys and composed charts. | [Charts](/docs/figures/charts) |
+| `flowchart` | Processes with decisions, labelled branches, loops and inputs/outputs. | [Flowcharts](/docs/figures/flowcharts) |
+| `diagram` | Relationships: trees, radial wheels, orbits and cycles. | [Diagrams](/docs/figures/diagrams) |
+| `timeline` | Ordered milestones, horizontally or vertically. | [Timelines](/docs/figures/timeline) |
+| `lottie` | Small expression-free vector animations from a host asset. | [Lottie](/docs/figures/lottie) |
+| `image`, `icon`, `labeled` | Host-resolved imagery, icon accents and illustrated parts. | [Media and art](/docs/figures/media) |
+
+## Universal rules
+
+- **No coordinates from the model.** The tutor names a figure; the library computes geometry. The one exception is the opt-in `scene3d` vocabulary, documented with the 3D figures.
+- **`alt` is required** on every figure except `icon`. It is the fallback when an asset, chart library or renderer fails.
+- **Focus is an event.** A focusable node is a real button and emits `{ type: 'focus', nodeId, ref: '<figureId>/<id>' }`.
+- **Host assets only.** `{ asset: id }` references are resolved by the host's `resolveAsset` callback. The core never fetches.
+- **Reduced motion is honoured.** Charts draw without animation, diagrams appear settled, Lottie shows its first frame and figure entrances collapse to a calm reveal.
+- **Figures respect layout regions.** In a `split`, `grid` or `stage` layout a figure renders inside its assigned `slot`; narrow containers re-flow without requiring tutor input.
+
+## Inspect it live
+
+The playground route `/m5` renders every figure and every chart type from its canonical fixture, with event, error and cue logs. Use the fixture picker and the phone-width toggle to inspect the narrow variants.

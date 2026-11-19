@@ -1,0 +1,50 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-pie",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "pie",
+            "innerRadius": 45,
+            "series": [
+              {
+                "name": "Activities",
+                "data": [
+                  {
+                    "x": "Reading",
+                    "y": 34
+                  },
+                  {
+                    "x": "Practice",
+                    "y": 26
+                  },
+                  {
+                    "x": "Projects",
+                    "y": 16
+                  },
+                  {
+                    "x": "Review",
+                    "y": 14
+                  },
+                  {
+                    "x": "Other",
+                    "y": 10
+                  }
+                ]
+              }
+            ],
+            "alt": "Donut chart of how study time splits across five activities"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

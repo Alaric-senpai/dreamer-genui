@@ -1,0 +1,158 @@
+---
+title: A narrated lesson
+description: Sync board entrances to narration beats with cues, leads and reading-speed pacing.
+---
+
+This tutorial turns a static board into a narrated one. The tutor's reply carries `narration` beats and `ops`; every board element names the beat that introduces it. A narrator plays a beat and calls `board.cue(beat.id)`; the board writes at the same moment.
+
+In production the narrator is a TTS engine driven by the Conductor (M6d). For now we use the deterministic reading-speed scheduler, so the tutorial runs without audio.
+
+## 1. Write the turn
+
+```ts
+// lib/turn.ts
+import type { Reply } from 'dreamer-genui/schema';
+
+export const turn: Reply = {
+  v: 1,
+  narration: [
+    { id: 'b1', text: 'A cell is the smallest unit of life.' },
+    { id: 'b2', text: 'It is wrapped in a thin membrane.' },
+    { id: 'b3', text: 'Inside, organelles do specialised jobs.' },
+  ],
+  ops: [
+    {
+      op: 'append',
+      blocks: [
+        {
+          id: 'title',
+          type: 'text',
+          variant: 'hero',
+          content: ['The ', { mark: 'emphasis', text: 'cell' }],
+          enter: { effect: 'slam', trigger: { on: 'cue', id: 'b1', lead: 220 } },
+        },
+        {
+          id: 'membrane',
+          type: 'text',
+          variant: 'body',
+          content: ['A thin ', { mark: 'annotate', text: 'membrane', kind: 'circle' }, ' surrounds it.'],
+          enter: { effect: 'words', split: 'words', trigger: { on: 'cue', id: 'b2', lead: 160 } },
+        },
+        {
+          id: 'organelles',
+          type: 'list',
+          style: 'bullet',
+          items: [
+            { id: 'nucleus', content: ['Nucleus — stores DNA'] },
+            { id: 'mito', content: ['Mitochondrion — releases energy'] },
+          ],
+          enter: { effect: 'stagger', trigger: { on: 'cue', id: 'b3' } },
+        },
+      ],
+    },
+  ],
+};
+```
+
+Rules that matter:
+
+- Beat ids **are** cue ids. Do not invent a second namespace.
+- Leave a little `lead` (120–250 ms) so the visual lands as the word is spoken.
+- Only cue what the current sentence is about. Everything else waits.
+- `[[cue:id]]` inside beat text schedules a cue mid-sentence when a word-level engine is unavailable.
+
+## 2. Apply the turn
+
+```ts
+import { board } from './board';
+import { turn } from './turn';
+
+board.applyFinal(turn);
+```
+
+`applyFinal` validates, applies and marks the turn complete. If you are streaming, use `applyPartial` instead and call `endTurn()` at the end.
+
+## 3. Schedule the cues
+
+```ts
+import { readingSchedule } from 'dreamer-genui/core';
+
+const timers: number[] = [];
+
+export function startNarration() {
+  const schedule = readingSchedule(turn.narration!, {
+    wpm: 160,
+    leadMs: 120,
+  });
+
+  for (const cue of schedule) {
+    timers.push(window.setTimeout(() => board.cue(cue.cueId), cue.atMs));
+  }
+}
+
+export function stopNarration() {
+  timers.forEach(clearTimeout);
+  timers.length = 0;
+  board.flush(); // never leave content hidden
+}
+```
+
+The scheduler handles beat starts, inline markers and `pauseAfterMs`. It is pure: the same text and options always produce the same timeline, which makes it useful in tests.
+
+## 4. Render with cue pacing
+
+```tsx
+<Board
+  store={board}
+  pacing="cued"
+  onCue={(id) => console.log('cue', id)}
+  onEnter={(id) => console.log('enter', id)}
+/>
+```
+
+Add a start button. Browsers require a gesture before audio; the same gesture should start the timeline:
+
+```tsx
+<button onClick={startNarration}>Start lesson</button>
+```
+
+## 5. Replace the scheduler with real audio
+
+When you attach a voice provider, keep the same contract:
+
+```ts
+narrator.onBeatStart((beat) => board.cue(beat.id));
+```
+
+The Conductor does exactly this, but from the audio clock rather than a timer, and it subtracts each cue's `lead`. If a beat fails to synthesize, the fallback chain keeps going and the board still reaches every cue.
+
+## 6. Interruption
+
+When the student interrupts, stop the audio, then send the tutor what they actually heard:
+
+```ts
+await tutor.turn({
+  v: 1,
+  input: { kind: 'text', text: 'Wait, what is a membrane?' },
+  board: serializeBoard(board.getState()),
+  capabilities: getCapabilities(registry),
+  narration: { spokenUpTo: 'b2', interrupted: true },
+});
+```
+
+The next turn can resume from `b2` instead of repeating the introduction. `serializeBoard` also lists pending cues, so the tutor knows what the board has not shown yet.
+
+## 7. Check your work
+
+- The title enters on `b1`, within the lead window, not before the turn is applied.
+- The membrane text enters as the second sentence starts, not after it ends.
+- The list enters last, without re-animating earlier blocks.
+- `board.seek('b3')` settles all three beats instantly.
+- `board.flush()` reveals everything; nothing can remain hidden.
+- Under `prefers-reduced-motion` the content still appears on cue, calmly.
+
+## Next
+
+- [Cues and timing](/docs/concepts/cues-and-timing)
+- [Streaming](/docs/guides/tutorials/streaming)
+- [Persistence](/docs/guides/configuration/persistence)

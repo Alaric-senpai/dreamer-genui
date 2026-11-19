@@ -1,0 +1,136 @@
+---
+title: Flowcharts
+description: Processes that draw themselves in, with decisions, branches, loops and lanes.
+---
+
+Use `kind: "flowchart"` for any multi-step process: an algorithm, a procedure, a production line, a chemical route. The tutor supplies steps and connections; the library computes a layered layout and routes every edge.
+
+Flowcharts draw on. Nodes enter in document order (or on their own triggers), edges follow, and `flow: "pulse"` animates movement along the process. The result should read as a motion graphic, not a static diagram.
+
+## Schema
+
+```ts
+type FlowchartFigure = {
+  kind: 'flowchart';
+  direction?: 'down' | 'right';
+  nodes: {
+    id: string;
+    label: Inline[];
+    detail?: Inline[];
+    shape?: 'step' | 'start' | 'end' | 'decision' | 'io' | 'substance' | 'note';
+    lane?: string;
+    icon?: string;
+    enter?: Enter;
+  }[];
+  edges: {
+    from: string;
+    to: string;
+    label?: Inline[];
+    kind?: 'flow' | 'branch' | 'recycle' | 'optional';
+  }[];
+  inputs?: { to: string; label: Inline[] }[];
+  outputs?: { from: string; label: Inline[] }[];
+  lanes?: { id: string; label: string }[];
+  numbered?: boolean;
+  flow?: 'pulse' | 'none';
+  narrow?: 'stepper' | 'compact';
+  reveal?: 'sequential' | 'all';
+  focusable?: boolean;
+  alt: string;
+};
+```
+
+A flowchart accepts **1 to 64 nodes**. Every edge must point at a node in the same figure; dangling edges are rejected by the validator (`invalid-node`).
+
+## Shapes
+
+Each shape is an SVG silhouette with an HTML label on top, so labels stay selectable, wrap correctly and follow the theme.
+
+| Shape | Silhouette | Use it for |
+| :--- | :--- | :--- |
+| `step` | Rectangle with a soft radius | An ordinary action or stage. |
+| `start` | Stadium (fully rounded rectangle) | The entry point. |
+| `end` | Stadium | A terminal outcome. |
+| `decision` | Diamond | A question with labelled branches. |
+| `io` | Parallelogram | Data, material or information entering or leaving. |
+| `substance` | Strongly rounded rectangle | A material, product or compound. |
+| `note` | Dashed rectangle | An annotation that is not part of the flow. |
+
+Labels sit inside the silhouette's safe area: the renderer adds extra inline padding for diamonds, parallelograms and stadiums so text never crosses the outline.
+
+## Edges and branches
+
+Edges are smooth curves between computed ports. Every edge carries a visible arrowhead and is drawn above the lane bands.
+
+| `kind` | Look | Use it for |
+| :--- | :--- | :--- |
+| `flow` | Ink stroke, solid | The normal path. |
+| `branch` | Warning tint | A labelled outcome of a decision. |
+| `recycle` | Info tint, routed outside the graph | A loop back to an earlier step. |
+| `optional` | Muted, dashed | A path that may be skipped. |
+
+Edge labels are surface-coloured chips placed at the midpoint of their edge. A recycle edge leaves the source's right port, travels outside the graph and enters the target's right port, so its label never sits on top of a forward edge.
+
+```json
+{
+  "kind": "flowchart",
+  "direction": "down",
+  "numbered": true,
+  "flow": "pulse",
+  "nodes": [
+    { "id": "start", "shape": "start", "label": ["Receive material"] },
+    { "id": "check", "shape": "decision", "label": ["Within tolerance?"] },
+    { "id": "adjust", "shape": "step", "label": ["Adjust process"] },
+    { "id": "ship", "shape": "end", "label": ["Ship product"] }
+  ],
+  "edges": [
+    { "from": "start", "to": "check" },
+    { "from": "check", "to": "ship", "label": ["yes"], "kind": "branch" },
+    { "from": "check", "to": "adjust", "label": ["no"], "kind": "branch" },
+    { "from": "adjust", "to": "check", "label": ["retest"], "kind": "recycle" }
+  ],
+  "alt": "A product is checked against tolerance, adjusted when needed and shipped when it passes"
+}
+```
+
+## Inputs, outputs and lanes
+
+- `inputs` render as labelled chips entering a node from the left.
+- `outputs` render as labelled chips leaving a node to the right.
+- `lanes` group nodes into labelled horizontal bands. Give each node a `lane` id to place it.
+
+```json
+{
+  "inputs": [{ "to": "mix", "label": ["Raw material"] }],
+  "outputs": [{ "from": "settle", "label": ["Product"] }],
+  "lanes": [
+    { "id": "reaction", "label": "Reaction" },
+    { "id": "separation", "label": "Separation" }
+  ]
+}
+```
+
+Lane bands are expanded to fit their nodes, so a step is never clipped by a lane boundary.
+
+## Narrow containers
+
+The flowchart responds to the **container**, not the window. On a phone-width board:
+
+- `narrow: "stepper"` keeps one layer visible at a time and shows numbered navigation dots. Tapping a dot moves through the process.
+- `narrow: "compact"` stacks the nodes in a single column and hides the SVG edge overlay and lanes, so nothing overlaps or forces horizontal scrolling.
+
+When omitted, the flowchart keeps its full composition and the figure surface may scroll horizontally.
+
+## Focus and events
+
+With `focusable: true`, every node is a real `<button>` with its label as its accessible name. Activating one emits:
+
+```ts
+{ type: 'focus', nodeId: '<figure-id>', ref: '<figure-id>/<node-id>', label: 'Ship product' }
+```
+
+The `ref` is stable, so the tutor can attach an explainer to a specific step with an `attach` op. In stepper mode, focusing a step also makes it the active step.
+
+## Failure behavior
+
+An unknown shape falls back to `step`. An unknown node reference in an edge is rejected by the validator. If the layout chunk fails to load, the figure renders its `alt` text inside a standard figure error boundary.

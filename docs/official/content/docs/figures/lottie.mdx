@@ -1,0 +1,63 @@
+---
+title: Lottie
+description: Small expression-free vector animations from a host-resolved asset.
+---
+
+`kind: "lottie"` plays a Lottie animation through the lightweight, expression-free Lottie player. The player is lazy-loaded with the figure chunk; a board with no Lottie figures never downloads it.
+
+## Schema
+
+```ts
+type LottieFigure = {
+  kind: 'lottie';
+  src: string | { asset: string };
+  loop?: boolean;
+  alt: string;
+};
+```
+
+## Sources
+
+`src` accepts:
+
+- a **host asset id**: `{ "asset": "wave-animation-v1" }`, resolved by the provider's `resolveAsset` callback;
+- an **inline JSON string** (the animation JSON itself);
+- an **inline data URI**, `data:application/json` or `data:application/json;base64`;
+- a **URL** string, loaded by the player.
+
+The core never fetches. A URL passed straight through is the host's decision; the recommended pattern is to resolve an asset id to a URL in `resolveAsset`, where authentication, caching and CSP are under host control.
+
+```tsx
+<DreamerProvider
+  registry={registry}
+  resolveAsset={(id) =>
+    id === 'wave-animation-v1' ? '/animations/wave.json' : undefined
+  }
+>
+  <Board store={board} />
+</DreamerProvider>
+```
+
+```json
+{
+  "kind": "lottie",
+  "src": { "asset": "wave-animation-v1" },
+  "loop": true,
+  "alt": "Animated wave showing energy moving through a medium"
+}
+```
+
+## Expression-free by construction
+
+The renderer imports `lottie-web/build/player/lottie_light`, the SVG build that does **not** evaluate expressions. Model-supplied animations cannot execute code. Do not substitute the full player build: expression support is deliberately excluded for safety and CSP compatibility.
+
+## Motion and accessibility
+
+- `loop: true` repeats the animation; omitting it plays once and holds the final frame.
+- Under `prefers-reduced-motion`, the animation loads paused on its **first frame** instead of playing.
+- The host element is `aria-hidden`; the figure's accessible name comes from the mandatory `alt` text, which also renders as the fallback when the animation cannot load.
+- Keep animations small: Lottie is best for accents, not for long narrative sequences. Prefer board motion (text, figures, camera) for the explanation itself.
+
+## Failure behavior
+
+If the player chunk fails, the JSON is malformed or the asset cannot be resolved, the figure renders a poster panel containing its `alt` text and reports `load-failed`. It never blanks the board.

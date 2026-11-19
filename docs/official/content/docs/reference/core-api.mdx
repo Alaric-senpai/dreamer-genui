@@ -1,0 +1,261 @@
+---
+title: Core API
+description: The headless engine — registry, resolver, cues, theme, layout, assessment, persistence and the plugin SDK.
+---
+
+`dreamer-genui/core` has no React and no DOM dependency. Everything here runs in a server, a worker, a test or a CLI.
+
+```ts
+import { createRegistry, definePlugin, createBoardResolver, readingSchedule } from 'dreamer-genui/core';
+```
+
+## Plugin SDK
+
+| Helper | Definition shape |
+| :--- | :--- |
+| `definePlugin` | `{ name, version, engine, requires?, provides, install? }` |
+| `defineBlock` | `{ schema, promptGuide?, fallback?, load?, parts? }` |
+| `defineMark` | `{ schema, promptGuide?, load?, parts? }` |
+| `defineFigure` | `{ schema, promptGuide?, fallback?, load?, parts? }` |
+| `defineQuestion` | `{ schema, answer, promptGuide?, a11y?, parts? }` |
+| `defineEffect` | `{ driver, duration, ease, reducedMotion, phase, params? }` |
+| `defineTransition` | `{ kind, duration, ease, reducedMotion, description?, load? }` |
+| `defineLayout` | `{ regions, primary, narrow, component?, parts? }` |
+| `defineMood` | `{ name, description, tokens, ambience?, surface? }` |
+| `defineAmbience` | `{ name, description, layer?, intensity?, particles? }` |
+| `defineSurface` | `{ name, description }` |
+| `defineTheme` | `{ tokens, description? }` |
+| `defineMotionPreset` | `{ speed, description? }` |
+| `defineIconSet` | `{ description?, icons }` |
+| `defineAssetPack` | `{ name, description?, parts, load? }` |
+| `defineModelConnector` | `ModelConnector` |
+| `defineModelPack` | Static connector sugar |
+| `definePrimitive` | `{ shape, description? }` |
+| `defineStrings` | `{ locale, strings }` |
+| `defineRenderer` | `{ description?, load? }` |
+| `defineMiddleware` | `{ name, priority?, onOp?, onEvent?, onThemeResolve?, onNodeResolve? }` |
+| `defineProfile` | Prompt-guide capability profile |
+| `defineDevtoolsPanel` | Dev-only panel |
+
+Every `define*` helper validates the shape and normalises defaults; registration is separate.
+
+## Registry
+
+```ts
+const registry = createRegistry();
+registry.use(plugin, { override?: boolean });
+registry.register(kind, name, value);
+registry.override(kind, name, value);
+registry.get(kind, name);
+registry.list(kind?);
+registry.listValues(kind);
+registry.enable(name); registry.disable(name);
+registry.disableEntry(kind, name);
+registry.listModelConnectors();
+registry.listMiddleware();
+```
+
+Priority: host override → later plugin with `override: true` → earlier plugin → built-in. Built-ins start at `0`; third-party entries increment from `10`.
+
+## Validation
+
+```ts
+validateOp(op, registry): ValidationResult
+resolveNodeRef(ref, state): Node | undefined
+MAX_DETOUR_DEPTH // 2
+```
+
+`validateOp` returns either a validated op or a typed error; the resolver never throws.
+
+## Resolver
+
+```ts
+createBoardResolver(options?: ResolverOptions): BoardResolver
+```
+
+```ts
+interface ResolverOptions {
+  registry?: Registry;
+  onError?: (error: LibraryError) => void;
+  theme?: Partial<ThemeContext>;
+  middleware?: MiddlewareDefinition[];
+  locale?: string;
+  dir?: 'ltr' | 'rtl';
+  clock?: Clock;
+  examLocks?: Partial<ExamLockPolicy>;
+  examLockStrategy?: 'queue' | 'reject';
+}
+```
+
+`BoardResolver` owns the state, the cue plan, assessments, buses and the ops log. `createBoardStore()` from `dreamer-genui/react` is a thin React-friendly wrapper around it.
+
+## Cues
+
+```ts
+readingDurationMs(text, wpm?): number
+readingSchedule(beats, options?): ReadingCue[]
+narratedCueIds(beats): string[]
+orphanCues(beats, state): string[]
+cueLeads(beats, state): Record<string, number>
+defaultPacing(state): Pacing
+computeEntryPlan(state, pacing?): EntryPlan
+fireCue(state, cueId): BoardState
+flushAll(state): BoardState
+seekTo(state, cueId): BoardState
+collectCueIds(state): string[]
+eventKey(event): string
+signalEvent(state, event): BoardState
+newlyEntered(previous, next): string[]
+```
+
+All pure. `readingSchedule` is deterministic, which makes cue timelines testable without audio.
+
+## Theme
+
+```ts
+createThemeResolver(context: ThemeContext): (spec: ThemeSpec) => ThemeResolution
+```
+
+```ts
+type ThemePolicy = 'none' | 'moods' | 'moods+tokens';
+
+interface ThemeContext {
+  policy: ThemePolicy;
+  allowedMoods?: string[];
+  allowedAmbience?: string[];
+  allowedFonts?: string[];
+  baseline?: ThemeSpec;
+  onThemeAdjusted?: (roles: string[]) => void;
+}
+
+interface ResolvedTheme {
+  spec: ThemeSpec;
+  mood?: string;
+  intensity: number;
+  ambience?: { preset: string; intensity: number };
+  surface?: string;
+  tokens: ThemeTokens;
+  transition: { duration: number; ease: EaseName };
+}
+```
+
+`ThemeResolution` reports the resolved theme plus whether it was rejected or adjusted.
+
+## Layout
+
+```ts
+createLayoutModel(spec, nodes): LayoutModel
+assignSlots(spec, nodes): SlotAssignment[]
+narrowRegions(spec): Region[]
+leadingRegion(spec): Region
+gridColumns(spec): number
+layoutDefinesSlot(spec, slot): boolean
+```
+
+## Assessment
+
+```ts
+type Clock = { now(): number; setTimeout(fn, ms): unknown; clearTimeout(handle): void };
+
+interface AssessmentMachine {
+  start(): void;
+  answer(questionId: string, value: unknown): void;
+  flag(questionId: string, flagged?: boolean): void;
+  navigate(questionId: string): void;
+  tick(): TickResult;
+  submit(): void;
+  extendTime(ms: number): void;
+  pause(): void;
+  resume(): void;
+  snapshot(): AssessmentState;
+  restore(state: AssessmentState): void;
+  remainingMs(): number | undefined;
+}
+
+createAssessmentMachine(options: AssessmentMachineOptions): AssessmentMachine
+systemClock: Clock
+```
+
+Exam helpers:
+
+```ts
+interface ExamLockPolicy {
+  camera: boolean; ambience: boolean; theme: boolean; layout: boolean;
+  pacing: boolean; motion: boolean; pointer: boolean;
+}
+
+DEFAULT_EXAM_LOCKS      // every lock on
+examLocksFor(overrides?)
+isOpLockedByExam(op, policy)
+applyExamLocks(state, op, strategy)
+hintsAllowed(mode) / feedbackAllowed(mode) / isExamMode(mode)
+```
+
+## Persistence
+
+```ts
+SNAPSHOT_VERSION // 1
+OPS_LOG_VERSION  // 1
+
+createBoardSnapshot(state): BoardSnapshotFile
+restoreBoardSnapshot(snapshot, migrations?): BoardState
+migrateSnapshot(state, fromVersion, migrations): unknown
+
+createOpsLog(startedAt?): OpsLog
+appendOp(log, op, at): OpsLog
+appendCue(log, id, at): OpsLog
+appendFlush(log, at): OpsLog
+appendBack(log, at): OpsLog
+appendDetourReturn(log, at): OpsLog
+appendAssessmentState(log, id, state, at): OpsLog
+replayLog(log, options?): BoardState
+replayTimeline(log, speed?): Array<{ at, entry }>
+```
+
+## Assets and strings
+
+```ts
+createAssetResolver(options?): AssetResolver   // cache, dedupe, peek(), clear()
+DEFAULT_STRINGS: Record<string, string>
+```
+
+## Middleware pipeline
+
+```ts
+createMiddlewarePipeline(definitions, options?): MiddlewarePipeline
+sortMiddleware(definitions): MiddlewareDefinition[]
+```
+
+## Mounted nodes
+
+```ts
+DEFAULT_MAX_MOUNTED_NODES
+computeMountedNodes(state, options): MountedNodePlan
+```
+
+## Models
+
+```ts
+DEFAULT_MODEL_BUDGET
+parseModelManifest(raw): ManifestResult
+checkModelBudget(manifest, budget?)
+parseModelRef('connector:model'): { connectorId?, modelId }
+findModelInManifests(summaries, id)
+toModelSummary(manifest): ModelSummary
+validateModelDirectives(figure, manifest): DirectiveIssue[]
+```
+
+Manifest validation and directive checks are available now; the 3D runtime is M5b.
+
+## Errors
+
+```ts
+createError(code, detail?, nodeId?, type?): LibraryError
+EventBus<T>          // subscribe, emit, size
+```
+
+## Next
+
+- [Generators and registry](/docs/reference/generators-and-registry)
+- [Events and errors](/docs/reference/events-and-errors)
+- [Plugins](/docs/guides/extensibility/plugins)

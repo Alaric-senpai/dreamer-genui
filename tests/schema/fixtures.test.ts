@@ -45,6 +45,8 @@ const VALID = [
   'model3d-tour.json',
   'model3d-hotspot-question.json',
   'model3d-label-question.json',
+  'model3d-url.json',
+  'model3d-source.json',
   'scene3d-solids.json',
   // M4c additions (v3 protocol surface).
   'lesson-turn-narration.json',
@@ -54,6 +56,17 @@ const VALID = [
   'reference-saas-explainer.json',
   // M4d additions (v3 tutor-addressable UI kit).
   'ui-kit-blocks.json',
+  // M5 redo additions (chart protocol extension).
+  'chart-line.json',
+  'chart-area.json',
+  'chart-pie.json',
+  'chart-radar.json',
+  'chart-radialbar.json',
+  'chart-scatter.json',
+  'chart-composed.json',
+  'chart-funnel.json',
+  'chart-treemap.json',
+  'chart-sankey.json',
 ];
 
 const INVALID = [

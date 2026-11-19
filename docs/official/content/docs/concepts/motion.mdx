@@ -1,0 +1,198 @@
+---
+title: Motion
+description: Enter effects, scene transitions, text morph, the pointer and the virtual camera.
+---
+
+Motion is the point of the board, not decoration. Every effect is a named preset with a duration, an easing curve and a reduced-motion behaviour. Presets live in one registry, so a host can retune the whole library without touching a component.
+
+## Enter effects
+
+```ts
+type Enter = {
+  effect: EnterEffect;
+  order?: number;
+  delay?: number;
+  duration?: number;
+  trigger?: Trigger;
+  split?: 'words' | 'chars' | 'lines';
+  caret?: boolean;
+  blur?: boolean;
+};
+```
+
+| Effect | Default | Feel |
+| :--- | :--- | :--- |
+| `reveal` | 300 ms smooth | Quiet fade/rise for body copy |
+| `rise` | 340 ms smooth | Slight upward travel |
+| `pop` | 380 ms overshoot | Scale in with a spring |
+| `sweep` | 340 ms snappy | Mask wipe across |
+| `draw` | 800 ms linear | SVG stroke draw-on |
+| `stagger` | 300 ms | Children enter in sequence |
+| `typewriter` | 1200 ms linear | Character reveal, optional caret |
+| `words` | 320 ms smooth | Word-by-word entrance |
+| `chars` | 260 ms snappy | Letter-by-letter entrance |
+| `slam` | 420 ms overshoot | Heavy headline landing |
+| `wipe` | 380 ms snappy | Directional wipe |
+| `scribble` | 600 ms linear | Hand-drawn annotation stroke |
+| `zoom` | 320 ms overshoot | Scale from slightly small |
+| `morph` | 700 ms smooth | Keyed geometry animation |
+| `assemble` | 700 ms smooth | Letters converge into place |
+| `iris` | 900 ms smooth | Circular mask reveal |
+| `tilt-rise` | 620 ms smooth | Rise with a perspective tilt |
+| `none` | 0 ms | No entrance |
+
+`split` defaults follow the effect: `words` staggers 60 ms, `chars` 36 ms, `typewriter` 26 ms per character, `slam` 90 ms, `assemble`/`morph` 18 ms.
+
+### Ordering
+
+Blocks with the same `order` play together. Ascending order groups play in sequence. Omitted order means document order within the same trigger.
+
+```json
+{
+  "enter": { "effect": "words", "split": "words", "order": 2, "delay": 80 }
+}
+```
+
+### Emphasis and exit
+
+```ts
+type Emphasis = { effect: 'pulse' | 'glow' | 'underline' | 'shake' | 'bounce' | 'wobble'; order?: number; trigger?: Trigger };
+type Exit = { effect: 'fade' | 'shrink' | 'wipe-out' | 'none' };
+```
+
+Emphasis can be cue-triggered, which is how an annotation underlines a word exactly as the narrator says it. Looping emphasis (`glow`, `bounce`, `wobble`) stops under reduced motion.
+
+## Text morph and assemble
+
+`update` with `transition: "morph"` animates keyed spans from their old position and style to the new ones. Use `key` on nodes and marks to preserve identity:
+
+```json
+{
+  "op": "update",
+  "id": "headline",
+  "transition": "morph",
+  "props": {
+    "variant": "hero",
+    "content": [
+      "Software as a ",
+      { "mark": "emphasis", "text": "Service", "key": "accent" },
+      "."
+    ]
+  }
+}
+```
+
+`assemble` is the complementary entrance: letters or words converge around persistent accent letters. Both are grapheme-safe, so Kiswahili and other non-Latin text split correctly.
+
+## Scene transitions
+
+`replace` accepts a transition. The default is `fade`.
+
+```ts
+type SceneTransition = {
+  kind: 'cut' | 'fade' | 'wipe' | 'push' | 'iris' | 'morph';
+  duration?: number;
+  ease?: EaseName;
+  direction?: 'left' | 'right' | 'up' | 'down';
+  origin?: string | 'center';
+  theme?: ThemeSpec;
+};
+```
+
+| Kind | Default | Notes |
+| :--- | :--- | :--- |
+| `cut` | 0 ms | Rare; exam mode allows it |
+| `fade` | 450 ms | Default scene change |
+| `wipe` | 600 ms | Directional mask |
+| `push` | 650 ms | Old scene moves out, new moves in |
+| `iris` | 900 ms | Circle opens from a node or centre |
+| `morph` | 700 ms | Matches nodes and spans by `key`, cross-fades the rest |
+
+A transition may carry a `theme`. The theme flips at the midpoint, so a dark scene can become a light one inside the motion rather than at a hard boundary.
+
+**Exam mode allows only `cut` and `fade`.** Other transitions are downgraded, and the pointer and camera are disabled.
+
+## The pointer
+
+The pointer is a virtual teacher's pointer: a dot, hand or arrow that travels to a node on an eased path and can tap it with a ripple.
+
+```json
+{
+  "op": "pointer",
+  "to": "flow/decision",
+  "style": "dot",
+  "trigger": { "on": "cue", "id": "b4" },
+  "duration": 520,
+  "ease": "smooth"
+}
+```
+
+One pointer exists per board. `to: "hide"` removes it. Under reduced motion it becomes a highlight ring at the target with no travel. It is off in exam mode.
+
+## The camera
+
+The 2D camera pans, zooms, tilts and dollies. It is a real camera with bounds, not a scroll hack.
+
+```ts
+type CameraMove = {
+  to?: string | 'overview';
+  preset?: 'overview' | 'closeup' | 'wide' | 'drift';
+  zoom?: number;                 // about 1x to 1.6x
+  tilt?: { x?: number; y?: number };  // clamped, about ±15°
+  dolly?: 'in' | 'out' | number;
+  duration?: number;
+  ease?: EaseName;
+  trigger?: Trigger;
+};
+```
+
+Use an op per move, or a `path` for a guided sequence whose steps carry their own triggers:
+
+```json
+{
+  "op": "camera",
+  "path": [
+    { "preset": "wide", "trigger": { "on": "cue", "id": "b1" } },
+    { "to": "diagram", "zoom": 1.3, "trigger": { "on": "cue", "id": "b2" } },
+    { "preset": "drift", "duration": 6000, "trigger": { "on": "cue", "id": "b3" } }
+  ]
+}
+```
+
+- `camera="auto"` follows the entering node; `camera="off"` disables it.
+- `cameraControls="pinch-pan"` lets the student pinch and drag, with a reset control. Their input is released on the next tutor move or reset.
+- Tilt applies to figure layers and the backdrop; text stays flat and readable.
+- Reduced motion turns camera moves into scroll-into-view.
+- Exam mode disables the camera entirely.
+
+## Reduced motion
+
+`prefers-reduced-motion` is honoured everywhere: entrances become calm reveals, loops stop, ambience becomes static, transitions shorten to near-instant, the pointer becomes a ring, cameras scroll, and layout re-flows snap. Content is never withheld; only the motion is removed.
+
+## Retuning
+
+All presets live in `motion-default`. Override a single effect or provide a motion preset that scales tempo and swaps the easing set:
+
+```ts
+import { defineEffect, defineMotionPreset } from 'dreamer-genui/core';
+
+registry.override('effects', 'slam', defineEffect({
+  driver: 'motion',
+  duration: 520,
+  ease: 'overshoot',
+  reducedMotion: 'fade',
+}));
+
+registry.register('motionPresets', 'calm', defineMotionPreset({
+  speed: 0.85,
+  description: 'A slower, softer tempo for quiet topics.',
+}));
+```
+
+The tutor can request a registered motion preset through `ThemeSpec.motionPreset`. See [Theming](/docs/concepts/theming).
+
+## Next
+
+- [Theming](/docs/concepts/theming)
+- [Custom effects and layouts](/docs/guides/extensibility/effects-and-layouts)
+- [Motion defaults](/docs/reference/generators-and-registry)

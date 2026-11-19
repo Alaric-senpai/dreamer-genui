@@ -1,0 +1,165 @@
+---
+title: Quickstart
+description: Render your first board, drive it with cues and receive student events.
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+This page builds a small but complete board: a title, two definitions, a navigation choice and a question. It uses the same APIs the playground uses — no special test harness.
+
+<Steps>
+  <Step>
+    ### Create the store and registry
+
+    The store owns board state. It is created once, outside React, so operations can arrive before the board mounts:
+
+    ```ts
+    import { createRegistry } from 'dreamer-genui/core';
+    import { createBoardStore } from 'dreamer-genui/react';
+
+    export const registry = createRegistry();
+    export const board = createBoardStore({ registry });
+    ```
+
+    `createRegistry()` starts with the default capability catalogue. Pass `replace: true` to drop the example moods, ambience and surfaces and ship only your own.
+  </Step>
+
+  <Step>
+    ### Apply a reply
+
+    A reply is a versioned envelope with an `ops` array. `append` adds blocks to the current board:
+
+    ```ts
+    board.applyOps({
+      v: 1,
+      ops: [
+        {
+          op: 'append',
+          blocks: [
+            {
+              id: 'title',
+              type: 'text',
+              variant: 'hero',
+              content: ['What is a cell?'],
+              enter: { effect: 'slam' },
+            },
+            {
+              id: 'definition',
+              type: 'text',
+              variant: 'definition',
+              content: [
+                'The smallest unit of life, enclosed by a ',
+                { mark: 'highlight', text: 'membrane' },
+                '.',
+              ],
+              enter: { effect: 'rise', trigger: { on: 'cue', id: 'b2', lead: 160 } },
+            },
+            {
+              id: 'parts',
+              type: 'choices',
+              intent: 'navigate',
+              layout: 'chips',
+              items: [
+                { id: 'nucleus', label: ['Nucleus'], ref: 'nucleus' },
+                { id: 'membrane', label: ['Membrane'], ref: 'membrane' },
+              ],
+              enter: { effect: 'stagger', trigger: { on: 'cue', id: 'b3' } },
+            },
+          ],
+        },
+      ],
+    });
+    ```
+
+    The title enters immediately because its trigger defaults to `start`. The definition and choices wait for cues `b2` and `b3`.
+  </Step>
+
+  <Step>
+    ### Render the board
+
+    ```tsx
+    'use client';
+
+    import { Board, DreamerProvider } from 'dreamer-genui';
+    import { board, registry } from './board';
+
+    export function Lesson() {
+      return (
+        <DreamerProvider registry={registry}>
+          <Board
+            store={board}
+            pacing="cued"
+            onEvent={(event) => console.log(event)}
+            onError={(error) => console.warn(error.code, error.message)}
+          />
+        </DreamerProvider>
+      );
+    }
+    ```
+
+    `pacing="cued"` honours triggers. Use `pacing="auto"` in a preview or when no narrator is present; the board then plays blocks in document order and ignores cue triggers.
+  </Step>
+
+  <Step>
+    ### Fire cues
+
+    Cues come from whatever paces your lesson — a narrator, a timer, or a test:
+
+    ```ts
+    board.cue('b2'); // definition enters (160 ms early because of `lead`)
+    board.cue('b3'); // choices enter
+    ```
+
+    Cues that fire before their blocks arrive are remembered. When the block finally lands, it enters immediately. Call `board.flush()` to enter everything pending, or `board.seek('b3')` to fire every cue up to and including `b3`.
+  </Step>
+
+  <Step>
+    ### Listen for events
+
+    Every interactive element emits a typed event. A choice with `intent: "navigate"` emits `select`; a question emits `answer`.
+
+    ```ts
+    board.events.subscribe((event) => {
+      if (event.type === 'select' && event.nodeId === 'parts') {
+        fetch(`/api/tutor`, {
+          method: 'POST',
+          body: JSON.stringify({ ref: event.ref, label: event.label }),
+        });
+      }
+    });
+    ```
+
+    The library never fetches, grades or decides what happens next. Your host does.
+  </Step>
+</Steps>
+
+## The same thing with narration
+
+A `LessonTurn` can carry `narration` beats alongside its ops. Each beat id is a cue id, so the visual and the voice share one label:
+
+```ts
+board.applyFinal({
+  v: 1,
+  narration: [
+    { id: 'b1', text: 'Every living thing is made of cells.' },
+    { id: 'b2', text: 'A cell is the smallest unit of life.' },
+    { id: 'b3', text: 'It is wrapped in a membrane.' },
+  ],
+  ops: [
+    {
+      op: 'append',
+      blocks: [
+        /* ...blocks whose cues reference b1, b2, b3... */
+      ],
+    },
+  ],
+});
+```
+
+The host narrator plays a beat, then calls `board.cue(beat.id)`. In M6d the Conductor does this from the audio clock; until then a mock narrator or a `setTimeout` timeline is enough. See [Narrated lesson](/docs/guides/tutorials/narrated-lesson).
+
+## Next
+
+- [Mental model](/docs/getting-started/mental-model) — how state, ops, cues and rendering fit together.
+- [Protocol](/docs/concepts/protocol) — the complete operation and block vocabulary.
+- [Streaming](/docs/guides/tutorials/streaming) — render partial replies safely.

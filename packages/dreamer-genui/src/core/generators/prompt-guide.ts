@@ -63,7 +63,7 @@ Reduced motion: all effects fall back to instant/unanimated. Always show all con
 - **flowchart** (nodes/edges with decisions, branches, loops, inputs/outputs): use for multi-step processes. Node shapes: step|start|end|decision|io|substance|note. Labels are inline arrays, e.g. ['Brine + NH₃']. Set 'flow:"pulse"' to animate the path.
 - **timeline** (events with when/label): for chronological sequences.
 - **labeled** (pack, art): reference named parts by id (highlight and label by part id).
-- **chart** (type: bar|line|pie|scatter): series[].data is number[] or {x, y}[].
+- **chart** (type: bar|line|area|pie|radar|radialBar|scatter|funnel|treemap|sankey|composed): series[].data is number[] or {x, y}[]. Use 'stacked:true' to stack bar/area/composed, 'innerRadius' (0-100) for a pie ring, 'curve' (linear|monotone|step) for line/area smoothing. 'composed' mixes bar/line/area series (add 'seriesType':"bar|line|area" per series). 'sankey' takes 'links' ({source, target, value}) instead of series data.
 - **lottie** (src, loop?): alt required.
 - **scene3d** (objects): procedural shapes from a safe vocabulary; use 'place'/'arrange' rather than raw coordinates. No model registry needed.
 

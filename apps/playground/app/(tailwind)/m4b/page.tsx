@@ -352,10 +352,10 @@ export default function M4bPage() {
           >
             <Board
               store={board}
-              camera="auto"
-              cameraControls="pinch-pan"
+              camera="none"
+              cameraControls="none"
               ambience="lite"
-              classNames={{ root: 'rounded-2xl ring-2 ring-sky-400/50 h-full', content: 'w-full' }}
+              classNames={{ root: 'rounded-2xl sticky top-5 ring-2 ring-sky-400/50 h-full', content: 'w-full' }}
             />
           </div>
           <p className="mt-2 text-xs text-neutral-500">

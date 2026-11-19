@@ -18,6 +18,7 @@
     "baseUrl": ".",
     "paths": {
       "dreamer-genui": ["./packages/dreamer-genui/src/index.ts"],
+      "dreamer-genui/3d": ["./packages/dreamer-genui/src/figure3d/index.tsx"],
       "dreamer-genui/*": ["./packages/dreamer-genui/src/*"]
     }
   },

@@ -1,0 +1,135 @@
+---
+title: Board
+description: Every prop on the renderer, from pacing and camera to per-part styling.
+---
+
+`<Board>` is the default renderer. It mounts entered blocks, animates them, applies the resolved theme and reports events. It is entirely replaceable: use the [headless hooks](/docs/guides/extensibility/headless) if you need a different UI.
+
+```tsx
+<Board
+  store={board}
+  status="idle"
+  pacing="cued"
+  camera="auto"
+  cameraControls="none"
+  ambience="auto"
+  recede
+  onEvent={handleEvent}
+  onError={report}
+  onEnter={(id) => console.log('entered', id)}
+  onCue={(id) => console.log('cue', id)}
+  onThemeChange={(theme) => console.log('mood', theme.mood)}
+/>
+```
+
+## Props
+
+| Prop | Type | Default | Notes |
+| :--- | :--- | :--- | :--- |
+| `store` | `BoardStore` | required | Created with `createBoardStore` |
+| `status` | `'idle' \| 'thinking' \| 'listening' \| 'speaking'` | `'idle'` | Drives the unobtrusive status pill |
+| `pacing` | `'cued' \| 'auto' \| 'reading'` | board default | Exam mode forces `auto` |
+| `camera` | `'auto' \| 'off'` | `'auto'` | Auto follows entering/emphasised nodes |
+| `cameraControls` | `'none' \| 'pinch-pan'` | `'none'` | Adds student pinch/drag and a reset control |
+| `ambience` | `'auto' \| 'off' \| 'lite'` | `'auto'` | Lite caps particles and frame work |
+| `recede` | `boolean` | `true` | De-emphasises finished content |
+| `examLocks` | `Partial<ExamLockPolicy>` | — | Per-aspect override of exam locks |
+| `classNames` | `{ root?, content?, skip? }` | — | Page-level class hooks |
+| `partClassNames` | `PartOverrides` | — | Per component part, merged with library classes |
+| `partStyles` | `PartStyleOverrides` | — | Inline styles applied after library styles |
+| `onEvent` | `(event: UIEvent) => void` | — | Student interaction |
+| `onError` | `(error: LibraryError) => void` | — | Validation, loading and plugin errors |
+| `onEnter` | `(nodeId: string) => void` | — | A block started its entrance |
+| `onCue` | `(cueId: string) => void` | — | A cue fired |
+| `onThemeChange` | `(theme: ResolvedTheme) => void` | — | Resolved theme, not the raw request |
+
+## Status
+
+The status pill tells the student the system is alive without stealing focus:
+
+```tsx
+<Board store={board} status={isThinking ? 'thinking' : isSpeaking ? 'speaking' : 'idle'} />
+```
+
+`'listening'` is for a microphone that is capturing; `'speaking'` for narration. The indicator is part of the Customization Surface and can be restyled or replaced.
+
+## Styling parts
+
+Every built-in component renders named parts with `data-dg-part` and a stable class. Override one part without forking:
+
+```tsx
+<Board
+  store={board}
+  partClassNames={{
+    choices: { item: 'rounded-full px-4 py-2', itemActive: 'ring-2 ring-offset-2' },
+    progress: { track: 'h-2', fill: 'bg-emerald-500' },
+  }}
+  partStyles={{
+    text: { hero: { letterSpacing: '-0.02em' } },
+  }}
+/>
+```
+
+Plain CSS can target the same hooks:
+
+```css
+[data-dg-part='choices-item'] {
+  border-radius: 999px;
+}
+.dg-choices-item[data-dg-state='selected'] {
+  background: var(--dg-color-accent);
+  color: var(--dg-color-bg);
+}
+```
+
+## Exam mode
+
+When an assessment is running in `exam` mode the board enforces distraction-free presentation:
+
+- camera off
+- ambience off
+- pacing `auto`
+- kinetic effects downgraded to a calm preset
+- theme and layout ops queued until submit
+
+Hosts can relax individual aspects:
+
+```tsx
+<Board
+  store={board}
+  examLocks={{ camera: false }}
+/>
+```
+
+The default is strict. See [Assessment](/docs/concepts/assessment).
+
+## Controls
+
+The board does not force chrome on you. Build skip, replay or progress controls with the store:
+
+```tsx
+<button onClick={() => board.flush()}>Show everything</button>
+<button onClick={() => board.seek('b3')}>Jump to beat 3</button>
+<button onClick={() => board.back()}>Back</button>
+
+const plan = board.getEntry('cued');
+const total = plan.entered.length + plan.pending.length;
+```
+
+`useCue()` and `useNodeEnter(id)` give the same data to headless components. A `skip` affordance is required for accessibility: content must never be permanently hidden.
+
+## SSR
+
+The board is hydration-safe. Render it on the server with settled content and no entrance animations, then let the client take over:
+
+```tsx
+<Board store={board} pacing="auto" camera="off" ambience="off" />
+```
+
+Ambience and camera mount after hydration. Avoid random ids in host wrappers; block ids come from the tutor and are validated.
+
+## Next
+
+- [Store](/docs/guides/configuration/store)
+- [Styling](/docs/guides/configuration/styling)
+- [Accessibility](/docs/guides/accessibility)

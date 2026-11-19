@@ -1,0 +1,171 @@
+---
+title: Plugins
+description: Package registries, presets and metadata with the public plugin SDK.
+---
+
+A plugin is a manifest plus optional contributions. It is host-bundled code, trusted at the same level as the rest of your app. The model can never load a plugin or name anything that is not registered.
+
+## Define a plugin
+
+```ts
+import { definePlugin, defineMood, defineStrings } from 'dreamer-genui/core';
+
+export const calmPack = definePlugin({
+  name: 'acme:calm-pack',
+  version: '1.0.0',
+  engine: '^1.0.0',
+  provides: {
+    moods: {
+      'acme:quiet': defineMood({
+        name: 'acme:quiet',
+        description: 'A low-energy register for reflective passages.',
+        tokens: {
+          color: { bg: '#f5f4ef', ink: '#23231f', accent: '#4b6b52' },
+          motion: { speed: 0.85 },
+          texture: { grain: 0.08 },
+        },
+        ambience: 'grain',
+      }),
+    },
+    strings: {
+      fr: defineStrings({ locale: 'fr', strings: { 'board.skip': 'Passer' } }),
+    },
+  },
+  install({ registry }) {
+    // Optional: register middleware or listeners imperatively.
+  },
+});
+```
+
+```ts
+registry.use(calmPack);
+```
+
+## Rules
+
+| Rule | Detail |
+| :--- | :--- |
+| Namespacing | Third-party names use `vendor:name`; core names are reserved |
+| Engine range | `engine` defaults to `^1.0.0`; mismatches report `plugin-incompatible` |
+| Requirements | `requires: ['math']` must already be registered, or `plugin-incompatible` |
+| Conflicts | Duplicate registration throws in development and reports `plugin-conflict` in production |
+| Override | `override: true` (or `registry.use(plugin, { override: true })`) wins over earlier entries |
+| Disabled | A disabled plugin is invisible to the prompt guide, JSON Schema and capabilities |
+
+Plugin implementations must use static `import()` only. Loading plugin code from a URL at runtime is out of scope.
+
+## What a plugin can provide
+
+```ts
+provides: {
+  blocks, marks, figures, questions,
+  effects, transitions, layouts,
+  moods, ambience, surfaces, themes, motionPresets,
+  iconSets, assetPacks, modelConnectors, primitives,
+  strings, renderers, middleware, profiles, devtoolsPanels
+}
+```
+
+Every key maps to a `define*` helper. The helper validates the shape and normalises defaults; it does not register anything by itself.
+
+### Rendering support today
+
+The registry is fully wired for **validation, prompt generation and capabilities**. Not every kind is wired into the default React renderer yet. Registering a type contributes its schema and tutor documentation, but a brand-new visual type needs a renderer.
+
+| Contribution | Registered | Rendered by `<Board>` today |
+| :--- | :--- | :--- |
+| Moods | Yes | Yes — theme resolver selects tokens |
+| Ambience | Yes | Yes — generic layer kinds render |
+| Strings | Yes | Yes — translator reads the bundle |
+| Middleware | Yes | Yes — ops, events, theme and nodes |
+| Asset packs | Yes | For `labeled` figures with a matching pack |
+| Icon sets | Yes | Used by figure/choice icons where named |
+| Profiles | Yes | Yes — prompt guide profiles |
+| Devtools panels | Yes | Discovered; initial panel host ships in M7 |
+| Blocks / marks / figures | Yes | Built-in types only; new visual types await renderer wiring |
+| Effects / transitions / layouts | Yes | Built-in presets only; custom definitions feed metadata, not playback yet |
+
+<Callout title="Be precise about scope" type="warn">
+  If you need a new visual block today, render it through a **headless** board (your own component tree reading `useNode`) or map it to an existing built-in shape. Do not ship a plugin that promises rendering the default `<Board>` cannot perform.
+</Callout>
+
+This table is the honest state of the 1.0 work in progress. The public contract — names, schemas, prompt snippets — is stable; renderer coverage is filled milestone by milestone.
+
+## Priority
+
+```text
+host override  >  later plugin with override:true  >  earlier plugin  >  built-in
+```
+
+Built-ins have priority `0`; third-party registrations get an increasing priority starting at `10`. The winning entry is the highest-priority enabled one.
+
+## Inspect the registry
+
+```ts
+registry.list();                    // all entries
+registry.list('moods');             // one kind
+registry.listValues('effects');     // winning values
+registry.get('blocks', 'text');     // one entry
+registry.listModelConnectors();
+registry.listMiddleware();
+```
+
+Disable and re-enable without unregistering:
+
+```ts
+registry.disable('lottie');
+registry.enable('lottie');
+registry.disableEntry('moods', 'eerie');
+```
+
+Disabling a built-in removes it from the prompt guide and JSON Schema, so the tutor is never told about a capability the host turned off. A block of a disabled type renders its fallback and reports `unknown-type`.
+
+## Replacing built-ins
+
+```ts
+registry.override('blocks', 'text', defineBlock({
+  schema: myTextSchema,
+  promptGuide: '...',
+  fallback: 'Text unavailable',
+  parts: { parts: ['root', 'content'] },
+}));
+```
+
+Overrides are deterministic and logged in devtools. They do not mutate earlier entries; they add a higher-priority one and disable the older winner.
+
+## Middleware and install
+
+`install(ctx)` runs once when the plugin is registered. It is the place for imperative setup — registering middleware with the host's own configuration, subscribing to buses, or adding a devtools panel. Keep it small and side-effect-free on import.
+
+```ts
+install({ registry, onError }) {
+  registry.register('middleware', 'acme:rules', defineMiddleware({
+    name: 'acme:rules',
+    priority: 20,
+    onOp(op) { /* ... */ },
+  }));
+}
+```
+
+See [Middleware](/docs/guides/extensibility/middleware).
+
+## Testing a plugin
+
+There is no published conformance entry point yet. Test the same invariants directly in Vitest:
+
+```ts
+const registry = createRegistry({ replace: true });
+registry.use(calmPack);
+
+expect(registry.get('moods', 'acme:quiet')).toBeDefined();
+expect(getSystemPromptGuide(registry)).toContain('acme:quiet');
+expect(schemaToJsonSchema(registry)).toMatchSnapshot();
+```
+
+Render a fixture that uses the plugin and assert that a bad payload produces a typed error rather than a crash. Namespacing, engine range and lazy loading are validated at registration.
+
+## Next
+
+- [Custom blocks and figures](/docs/guides/extensibility/blocks-and-figures)
+- [Custom moods and themes](/docs/guides/extensibility/moods-and-themes)
+- [Registry reference](/docs/reference/generators-and-registry)

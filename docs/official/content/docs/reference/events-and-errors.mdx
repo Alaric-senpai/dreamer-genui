@@ -1,0 +1,156 @@
+---
+title: Events and errors
+description: Every UIEvent the board emits and every error code it can report.
+---
+
+Events go out; errors go out. Neither ever throws into host code, and neither carries credentials.
+
+## UIEvent
+
+```ts
+type UIEvent =
+  | { type: 'focus'; nodeId: string; ref?: string; label?: string }
+  | { type: 'select'; nodeId: string; ref?: string; label?: string }
+  | { type: 'answer'; nodeId: string; value: AnswerValue;
+      meta?: { timeMs?: number; attempt?: number; assessmentId?: string; questionId?: string } }
+  | { type: 'action'; nodeId?: string;
+      action: 'return' | 'continue' | 'hint' | 'view' | (string & {});
+      detail?: Record<string, unknown> }
+  | { type: 'assessment'; assessmentId: string;
+      action: 'start' | 'submit' | 'flag' | 'unflag' | 'navigate' | 'pause' | 'resume' | 'warn' | 'timeout';
+      questionId?: string; state?: AssessmentState };
+```
+
+| Type | Emitted when | Typical host action |
+| :--- | :--- | :--- |
+| `focus` | A focusable mark, diagram node, flowchart step or 3D part is focused | Send to the tutor as context |
+| `select` | A choice, tab, carousel slide or interactive card is selected | Navigate, or answer |
+| `answer` | A question receives an answer | Grade on the server |
+| `action` | Return, continue, hint, view change, toggle | Close a detour, reveal a hint |
+| `assessment` | Assessment lifecycle changes | Autosave, start/stop the exam timer |
+
+### Answer values
+
+| Question kind | Value |
+| :--- | :--- |
+| `mcq` | `string` or `string[]` |
+| `truefalse` | `boolean` |
+| `short`, `extended` | `string` |
+| `numeric` | `number` or numeric string |
+| `cloze` | `Record<blankId, string>` |
+| `matching` | `Record<leftId, rightId>` |
+| `ordering` | `string[]` |
+| `hotspot` | part id |
+| `labelDiagram` | `Record<labelId, partId>` |
+
+Plugins may emit namespaced types (`vendor:event`); the union is open for that reason.
+
+## Delivering events
+
+```tsx
+<Board store={board} onEvent={(event) => sendToTutor(event)} />
+```
+
+or, without React:
+
+```ts
+board.events.subscribe((event) => sendToTutor(event));
+```
+
+Event middleware runs before either sink, so enrichment and suppression behave identically.
+
+## LibraryError
+
+```ts
+interface LibraryError {
+  code: ErrorCode;
+  nodeId?: string;
+  type?: string;
+  detail?: string;
+}
+```
+
+Delivered through `onError` and `board.errors`. `board.errors` buffers errors raised before the board mounts, so an early op failure is never lost.
+
+## Error codes
+
+### Content and protocol
+
+| Code | Cause | Fallback |
+| :--- | :--- | :--- |
+| `invalid-node` | Block failed schema validation | Node's `alt` / fallback view |
+| `unknown-type` | Type not registered or plugin disabled | Fallback view |
+| `duplicate-id` | Node id already on the board | Second node rejected |
+| `bad-target` | `attach`/`update`/`remove` references a missing node | Op dropped |
+| `depth-exceeded` | Detour stack beyond 2 | Op dropped |
+| `version-mismatch` | Envelope `v` not supported | Turn rejected |
+| `cue-cycle` | `after`/cue graph has a cycle | Affected nodes fall back to `start` |
+| `cue-orphan` | Cue references no beat in the turn (warning) | Node enters at turn end |
+| `turn-invalid` | Reply envelope failed validation | Turn rejected |
+| `load-failed` | Lazy chunk or asset failed | Fallback |
+| `layout-invalid` | Layout spec invalid for the registry | Previous layout kept |
+
+### Theme
+
+| Code | Cause | Fallback |
+| :--- | :--- | :--- |
+| `theme-rejected` | Outside policy or allowlist, or invalid tokens | Previous theme kept |
+
+Contrast adjustments are not errors; they arrive through `onThemeAdjusted`.
+
+### Plugins and middleware
+
+| Code | Cause |
+| :--- | :--- |
+| `plugin-conflict` | Duplicate name without `override: true` |
+| `plugin-incompatible` | Engine range or `requires` unsatisfied |
+| `middleware-error` | A middleware hook threw; op/event skipped |
+
+### Assessment
+
+| Code | Cause |
+| :--- | :--- |
+| `assessment-invalid` | Assessment payload failed validation |
+| `key-in-exam` | Answer key present in an `exam` or `quiz` payload |
+
+### Models (M5b)
+
+| Code | Cause |
+| :--- | :--- |
+| `model-not-found` | No registered connector resolves the id |
+| `model-load-failed` | Asset or manifest fetch/parse failed |
+| `unknown-part` | Directive names a part not in the manifest |
+| `unknown-view` | Directive names a view not in the manifest |
+| `webgl-unavailable` | No usable WebGL context |
+| `connector-error` | Connector threw or returned an invalid manifest |
+| `model-budget-exceeded` | Manifest exceeds size, triangle or texture budget |
+
+### Voice and tutors (M6c/M6d)
+
+| Code | Cause |
+| :--- | :--- |
+| `tutor-connector-error` | Connector failed or streamed an invalid turn |
+| `voice-error` | TTS/STT provider failed |
+| `voice-unsupported` | No engine supports the requested language or capability |
+| `transition-unknown` | Transition name not registered |
+
+## Handling errors
+
+```tsx
+onError={(error) => {
+  report(error.code, { nodeId: error.nodeId, detail: error.detail });
+}}
+```
+
+Guidance:
+
+- **Never** rethrow into React. A thrown error balloons into a blank board.
+- Treat `cue-orphan` and `theme-rejected` as warnings, not incidents.
+- Log `nodeId` and `type`; they identify which tutor output to fix.
+- Surface a retry affordance only for `load-failed`; the other codes mean the data was wrong.
+
+## Next
+
+- [Protocol](/docs/concepts/protocol)
+- [Assessment](/docs/concepts/assessment)
+- [Core API](/docs/reference/core-api)

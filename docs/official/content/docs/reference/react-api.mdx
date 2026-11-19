@@ -1,0 +1,152 @@
+---
+title: React API
+description: Components, hooks and types exported from the default entry point and the headless subpath.
+---
+
+```ts
+import {
+  DreamerProvider,
+  Board,
+  createBoardStore,
+  useBoard,
+  useBoardVersion,
+  BoardStoreProvider,
+  useBoardStore,
+  useBoardStatus,
+  useNode,
+  useNodeEnter,
+  useCue,
+  useTheme,
+  useLayout,
+  useAssessment,
+  useRegistry,
+} from 'dreamer-genui';
+```
+
+## Components
+
+### `<DreamerProvider>`
+
+Presentation root: registry, colour scheme, strings, locale, direction, density, component overrides, asset resolver, presentation-level event and error sinks.
+
+| Prop | Type | Default |
+| :--- | :--- | :--- |
+| `registry` | `Registry` | required |
+| `colorScheme` | `'auto' \| 'light' \| 'dark'` | `'light'` |
+| `onEvent` | `(event: UIEvent) => void` | — |
+| `onError` | `(error: LibraryError) => void` | — |
+| `strings` | `Partial<Record<string, string>>` | — |
+| `locale` | `string` | `'en'` |
+| `dir` | `'ltr' \| 'rtl'` | `'ltr'` |
+| `density` | `'compact' \| 'comfortable' \| 'large'` | `'comfortable'` |
+| `components` | `Record<string, ComponentOverride>` | — |
+| `resolveAsset` | `(id: string) => string \| Promise<string \| undefined>` | — |
+
+### `<Board>`
+
+Default renderer. Requires a store; everything else is optional.
+
+| Prop | Type | Default |
+| :--- | :--- | :--- |
+| `store` | `BoardStore` | required |
+| `status` | `'idle' \| 'thinking' \| 'listening' \| 'speaking'` | `'idle'` |
+| `pacing` | `'cued' \| 'auto' \| 'reading'` | board default |
+| `camera` | `'auto' \| 'off'` | `'auto'` |
+| `cameraControls` | `'none' \| 'pinch-pan'` | `'none'` |
+| `ambience` | `'auto' \| 'off' \| 'lite'` | `'auto'` |
+| `recede` | `boolean` | `true` |
+| `examLocks` | `Partial<ExamLockPolicy>` | — |
+| `classNames` | `{ root?, content?, skip? }` | — |
+| `partClassNames` | `PartOverrides` | — |
+| `partStyles` | `PartStyleOverrides` | — |
+| `onEvent` | `(event: UIEvent) => void` | — |
+| `onError` | `(error: LibraryError) => void` | — |
+| `onEnter` | `(nodeId: string) => void` | — |
+| `onCue` | `(cueId: string) => void` | — |
+| `onThemeChange` | `(theme: ResolvedTheme) => void` | — |
+
+## Store
+
+### `createBoardStore(options?)`
+
+```ts
+createBoardStore(options?: CreateBoardStoreOptions | BoardResolver): BoardStore
+```
+
+`CreateBoardStoreOptions` extends `ResolverOptions`:
+
+| Option | Type | Purpose |
+| :--- | :--- | :--- |
+| `registry` | `Registry` | Resolve types |
+| `onError` | `(error: LibraryError) => void` | Error sink |
+| `theme` | `Partial<ThemeContext>` | Policy, allowlists, baseline |
+| `middleware` | `MiddlewareDefinition[]` | Extra middleware |
+| `locale` | `string` | Engine locale |
+| `dir` | `'ltr' \| 'rtl'` | Engine direction |
+| `clock` | `Clock` | Injectable clock for timers and logs |
+| `examLocks` | `Partial<ExamLockPolicy>` | Per-aspect exam lock overrides |
+| `examLockStrategy` | `'queue' \| 'reject'` | What to do with locked ops |
+
+### `BoardStore`
+
+| Member | Signature | Purpose |
+| :--- | :--- | :--- |
+| `applyOps` | `(reply: Reply) => ResolvedOp[]` | Apply a complete reply |
+| `applyPartial` | `(reply: Reply) => ResolvedOp[]` | Idempotent streaming apply |
+| `applyFinal` | `(reply: Reply) => ResolvedOp[]` | Settle a streamed turn |
+| `endTurn` | `() => void` | Close a turn without a final reply |
+| `getState` | `() => BoardState` | Current serializable state |
+| `getEntry` | `(pacing?: Pacing) => EntryPlan` | Entered / pending / pending cues |
+| `cue` | `(id: string) => void` | Fire a cue |
+| `flush` | `() => void` | Enter everything pending |
+| `seek` | `(cueId: string) => void` | Fire all cues up to and including `cueId` |
+| `back` | `() => void` | Restore the previous `replace` snapshot |
+| `closeDetour` | `() => void` | Close the top attach explainer |
+| `reset` | `() => void` | Clear the board |
+| `snapshot` | `() => BoardSnapshotFile` | Versioned snapshot |
+| `restore` | `(snapshot, migrations?) => void` | Rehydrate settled state |
+| `exportOps` | `() => OpsLog` | Ops log with cue timeline |
+| `replay` | `(log: OpsLog, options?) => void` | Re-run a lesson |
+| `assessments` | `AssessmentRegistryApi` | `get`, `list`, `snapshot`, `restore` |
+| `subscribe` / `getVersion` | — | External-store contract for React |
+
+Buses: `cueBus`, `enterBus`, `themeChangeBus`, `cameraBus`, `layoutBus`, `transitionBus`, `pointerBus`, `narrationBus`, `events`, `errors`.
+
+## Hooks
+
+| Hook | Returns |
+| :--- | :--- |
+| `useBoard()` | The store from context |
+| `useBoardVersion(store)` | A version number for `useSyncExternalStore` |
+| `useBoardStore()` | The store in scope |
+| `useBoardStatus()` | `BoardStatus` |
+| `useNode(id)` | `Node \| undefined` |
+| `useNodeEnter(id, pacing?)` | `{ entered, pending, plan }` |
+| `useCue()` | `{ fired, pending, fire, flush, seek }` |
+| `useTheme()` | `ResolvedTheme \| undefined` |
+| `useLayout()` | `LayoutSpec` |
+| `useAssessment(id)` | `{ state, machine }` |
+| `useRegistry()` | `Registry` |
+| `useDreamer()` | Provider context: `registry`, `scheme`, `density`, `dir`, `locale`, `t`, `components`, `assets` |
+
+## Also exported
+
+These are stable enough to use but are implementation-adjacent: `MotionProvider`, `Animated`, `KineticText`, `renderInline`, `AnnotationStroke`, `Annotated`, `NodeView`, `FallbackView`, `FigureView`, `DetourView`, `AmbienceLayer`, `resolveTheme`, `tokensToVars`, `createMotionDriver`, `createReducedMotionDriver`, `splitIntoParts`, `joinParts`, `useTempo`.
+
+## Subpaths
+
+| Import | Contains |
+| :--- | :--- |
+| `dreamer-genui` | Renderer, provider, hooks, default registry |
+| `dreamer-genui/schema` | Zod schemas and types; server-safe |
+| `dreamer-genui/core` | Headless engine and plugin SDK |
+| `dreamer-genui/headless` | Hooks only, no default components |
+| `dreamer-genui/ui` | Optional UI kit |
+| `dreamer-genui/styles.css` | Required CSS |
+| `dreamer-genui/ui.css` | Optional UI kit CSS |
+
+## Next
+
+- [Core API](/docs/reference/core-api)
+- [Events and errors](/docs/reference/events-and-errors)
+- [Board configuration](/docs/guides/configuration/board)

@@ -1,0 +1,166 @@
+---
+title: Moods and themes
+description: Ship a mood pack, a surface or a complete theme without touching library code.
+---
+
+Moods, ambience, surfaces and themes are **data**. The renderer never branches on a mood name, so adding one is a registration, not a fork.
+
+## A mood
+
+A mood is a complete token set plus an optional ambience and surface. The description is shown to the tutor, so write it as guidance.
+
+```ts
+import { defineMood, definePlugin } from 'dreamer-genui/core';
+
+const quiet = defineMood({
+  name: 'acme:quiet',
+  description: 'A low-energy register for reflective or sensitive passages. Use sparingly.',
+  tokens: {
+    color: {
+      bg: '#f5f4ef',
+      surface: '#ffffff',
+      ink: '#23231f',
+      muted: '#5f5c53',
+      accent: '#4b6b52',
+      info: '#2f6f8f',
+      success: '#3f7d4a',
+      warn: '#9a6a1f',
+      danger: '#a33a2f',
+    },
+    radius: { sm: 2, md: 6, lg: 10 },
+    motion: { speed: 0.85, ease: 'smooth' },
+    texture: { grain: 0.1, vignette: 0.2 },
+  },
+  ambience: 'grain',
+  surface: 'paper',
+});
+
+export const quietPack = definePlugin({
+  name: 'acme:quiet-pack',
+  version: '1.0.0',
+  engine: '^1.0.0',
+  provides: { moods: { 'acme:quiet': quiet } },
+});
+```
+
+```ts
+registry.use(quietPack);
+```
+
+Once registered, the mood appears in `getCapabilities`, the JSON Schema enum and `getSystemPromptGuide` — unless the plugin is disabled or the host policy excludes it.
+
+## Ambience
+
+Ambience presets are also data. The renderer picks a **layer kind**, never a preset name:
+
+```ts
+import { defineAmbience } from 'dreamer-genui/core';
+
+const snowfall = defineAmbience({
+  name: 'acme:snowfall',
+  description: 'Slow, sparse falling particles; reads as cold and quiet.',
+  layer: 'particles',
+  intensity: 0.5,
+  particles: {
+    count: 40,
+    color: 'muted',
+    minSize: 1,
+    maxSize: 3,
+    speed: 12,
+    drift: 6,
+    twinkle: false,
+    direction: 'down',
+  },
+});
+```
+
+| Layer kind | Use it for |
+| :--- | :--- |
+| `grain` | Film grain overlay |
+| `vignette` | Darkened edges |
+| `haze` | Soft drifting fog |
+| `flicker` | Uneasy light variation |
+| `particles` | Dust, embers, stars, snow |
+| `blueprint-grid` | Thin structural guide lines |
+| `rings` | Concentric HUD rings |
+
+Particle counts are requested, not guaranteed: the runtime caps them and halves them in lite mode. Ambience is static under reduced motion and off in exam mode regardless of what you register.
+
+## Surfaces
+
+A surface is the board backdrop. Keep it a description plus tokens; it must never reduce contrast.
+
+```ts
+import { defineSurface } from 'dreamer-genui/core';
+
+const slate = defineSurface({
+  name: 'acme:slate',
+  description: 'Cool grey board with a faint tooth.',
+});
+```
+
+## A complete theme
+
+`defineTheme` registers a full token set a host can apply as a baseline:
+
+```ts
+import { defineTheme } from 'dreamer-genui/core';
+
+const brand = defineTheme({
+  description: 'The house theme for product lessons.',
+  tokens: {
+    color: { bg: '#0b1020', surface: '#141a2e', ink: '#f4f6ff', muted: '#a7b0c8', accent: '#5ad1ff', info: '#60a5fa', success: '#34d399', warn: '#fbbf24', danger: '#f87171' },
+    font: { display: 'Sora, sans-serif', body: 'Inter, sans-serif', mono: 'ui-monospace, monospace' },
+    radius: { sm: 4, md: 10, lg: 16 },
+    motion: { speed: 1, ease: 'snappy' },
+  },
+});
+
+registry.register('themes', 'acme:brand', brand);
+```
+
+A theme is a starting point, not a policy: the tutor's `mood` still applies on top, subject to the store's `themePolicy`.
+
+## Motion presets
+
+A motion preset is tempo and easing, nothing more:
+
+```ts
+import { defineMotionPreset } from 'dreamer-genui/core';
+
+registry.register('motionPresets', 'acme:brisk', defineMotionPreset({
+  speed: 1.15,
+  description: 'Slightly quicker playback for short recap lessons.',
+}));
+```
+
+```json
+{ "op": "theme", "theme": { "motionPreset": "acme:brisk" } }
+```
+
+## Contrast is not optional
+
+Every mood, surface and token override passes through the resolver:
+
+- colours must parse as hex, `hsl()` or `oklch()` — no `url()`, `var()` or `calc()`
+- text contrast is enforced at WCAG AA (4.5:1 body, 3:1 large)
+- ambience intensity is factored into the check
+- fonts must be in the host allowlist
+
+If your preset is unreadable the resolver adjusts it and reports `onThemeAdjusted`. A preset that fails validation is rejected at registration or on use; the board keeps its previous look.
+
+## Authoring checklist
+
+- `name` is namespaced (`vendor:name`) for third-party packs
+- `description` tells the tutor **when** to use it, not what it looks like
+- Tokens cover every colour role; missing roles fall back to the default theme
+- Ambience layer kind exists in the runtime
+- Contrast passes for body and large text
+- Tempo is appropriate to the register, not just faster or slower for effect
+- A fixture renders it and a Storybook story captures it
+
+## Next
+
+- [Theming concepts](/docs/concepts/theming)
+- [Plugins](/docs/guides/extensibility/plugins)
+- [Styling](/docs/guides/configuration/styling)

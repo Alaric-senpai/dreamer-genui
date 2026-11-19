@@ -1,0 +1,4 @@
+{
+  "title": "Reference",
+  "pages": ["react-api", "core-api", "events-and-errors", "generators-and-registry"]
+}

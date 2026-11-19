@@ -1,0 +1,185 @@
+---
+title: Blocks and figures
+description: Extend the protocol with new schemas, prompt guidance and fallbacks — and know what renders.
+---
+
+New content types are declared with `defineBlock`, `defineMark` and `defineFigure`. A definition carries the Zod schema, the prompt-guide text, the fallback and the component anatomy metadata. Registering it makes the type part of validation, JSON Schema, capabilities and the tutor prompt.
+
+<Callout title="Renderer coverage" type="warn">
+  The default `<Board>` renders the built-in types listed in [Protocol](/docs/concepts/protocol). A brand-new visual type is validated and advertised but needs a renderer; until custom renderers are wired into the default board, render it through [headless mode](/docs/guides/extensibility/headless) or express it with existing blocks. Do not tell the tutor a type is available if your UI cannot draw it.
+</Callout>
+
+## Define a block
+
+```ts
+import { z } from 'zod';
+import { defineBlock, definePlugin } from 'dreamer-genui/core';
+
+const PollSchema = z.object({
+  id: z.string().min(1).max(64),
+  type: z.literal('acme:poll'),
+  question: z.string().max(240),
+  options: z.array(z.object({ id: z.string(), label: z.string() })).min(2).max(8),
+  enter: z.unknown().optional(),
+  slot: z.enum(['left', 'right', 'top', 'bottom', 'center']).optional(),
+});
+
+const poll = defineBlock({
+  schema: PollSchema,
+  promptGuide:
+    'acme:poll — a quick class poll. Use at most one per scene; options are short labels, never sentences.',
+  fallback: 'Poll unavailable',
+  parts: {
+    parts: ['root', 'question', 'option', 'results'],
+    tokens: ['--dg-poll-bar'],
+    variants: ['bars', 'chips'],
+    events: ['select'],
+  },
+});
+
+export const pollPlugin = definePlugin({
+  name: 'acme:poll-pack',
+  version: '1.0.0',
+  engine: '^1.0.0',
+  provides: { blocks: { 'acme:poll': poll } },
+});
+```
+
+```ts
+registry.use(pollPlugin);
+```
+
+The schema is the source of truth. Keep it strict enough to protect the renderer: limits on strings, array lengths and enum values are part of the contract.
+
+## Prompt guidance
+
+The `promptGuide` string is injected only when the plugin is enabled. Write it for a model:
+
+- what the type is for
+- when to use it (and when not to)
+- the shape in one line
+- one short example
+
+Disable the plugin and the text disappears from `getSystemPromptGuide`, the JSON Schema and `getCapabilities` together. That consistency is the point.
+
+## Figures
+
+Figures follow the same shape, with a required `alt` by convention:
+
+```ts
+const SparklineSchema = z.object({
+  kind: z.literal('acme:sparkline'),
+  values: z.array(z.number()).min(2).max(64),
+  label: z.string().max(80).optional(),
+  alt: z.string().min(1).max(240),
+});
+
+const sparkline = defineFigure({
+  schema: SparklineSchema,
+  promptGuide: 'acme:sparkline — a tiny trend line. Always provide alt.',
+  fallback: 'Trend unavailable',
+  parts: { parts: ['root', 'line', 'label'] },
+  load: () => import('./SparklineFigure'),
+});
+```
+
+`load` is a static `import()` so bundlers can split the implementation. The manifest stays tiny; the component loads only when the type appears.
+
+## Marks
+
+Marks extend inline content:
+
+```ts
+const PronunciationSchema = z.object({
+  mark: z.literal('acme:ipa'),
+  text: z.string(),
+  ipa: z.string(),
+});
+
+const pronunciation = defineMark({
+  schema: PronunciationSchema,
+  promptGuide: 'acme:ipa — show a phonetic transcription after a word.',
+  parts: { parts: ['root', 'text', 'ipa'] },
+});
+```
+
+Marks may carry motion fields (`enter`, `key`) if their schema includes them.
+
+## Questions
+
+Question kinds declare both the question schema and the answer schema:
+
+```ts
+const defineQuestionKind = defineQuestion({
+  schema: MyQuestionSchema,
+  answer: z.string(),
+  promptGuide: '...',
+  a11y: 'Keyboard: arrow keys move, Enter selects.',
+  parts: { parts: ['root', 'prompt', 'control'] },
+});
+```
+
+The answer schema is what `onEvent` receives as `value`, and what the host validates before grading.
+
+## Component anatomy
+
+Every definition should declare:
+
+```ts
+parts: {
+  parts: ['root', 'header', 'body'],       // data-dg-part names
+  tokens: ['--dg-acme-header-bg'],          // component tokens
+  variants: ['compact', 'full'],
+  dataAttrs: ['data-dg-acme-mode'],
+  events: ['select', 'action'],
+  effects: ['enter', 'emphasis'],
+}
+```
+
+The metadata drives generated docs and the customization-surface test. A component that cannot enumerate its parts cannot be fully restyled or replaced.
+
+## Rendering a custom block headlessly
+
+Until the default renderer accepts custom components, a host can render the board itself:
+
+```tsx
+import { useBoardStore, useNode } from 'dreamer-genui/headless';
+
+function PollNode({ id }: { id: string }) {
+  const store = useBoardStore();
+  const node = useNode(id);
+  if (!node) return null;
+  const block = node.block as z.infer<typeof PollSchema>;
+  return (
+    <section data-dg-part="root">
+      <h3>{block.question}</h3>
+      <button
+        onClick={() =>
+          store.events.emit({ type: 'select', nodeId: id, ref: block.options[0].id })
+        }
+      >
+        {block.options[0].label}
+      </button>
+    </section>
+  );
+}
+```
+
+The store still validates, gates cues, resolves the theme and records events. Only the drawing is yours. This is the supported escape hatch for visual types the default renderer does not know.
+
+## Checklist
+
+- Namespaced type name (`acme:poll`)
+- Zod schema with explicit limits
+- `alt` or fallback text
+- Prompt guide written for a model
+- Parts and tokens declared
+- Static `import()` for the implementation
+- A fixture that renders it, plus an invalid fixture
+- A test that disables the plugin and asserts the type disappears from the prompt guide
+
+## Next
+
+- [Plugins](/docs/guides/extensibility/plugins)
+- [Effects and layouts](/docs/guides/extensibility/effects-and-layouts)
+- [Headless](/docs/guides/extensibility/headless)

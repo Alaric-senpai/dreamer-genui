@@ -69,6 +69,43 @@ export function parseModelRef(ref: string): { connectorId?: string; modelId: str
   return { modelId: ref };
 }
 
+/**
+ * Lightweight resolution for the two `model3d` source shapes:
+ * a direct asset link (`modelUrl`) or a registry reference (`model`).
+ * `source` selects a connector by id when one is registered; otherwise the
+ * bare model id resolves through connector priority.
+ */
+export type ModelReference =
+  | { kind: 'url'; url: string }
+  | { kind: 'registry'; ref: string; source?: string }
+  | { kind: 'invalid'; error: LibraryError };
+
+export function normalizeModelReference(
+  figure: Pick<Model3DFigure, 'model' | 'modelUrl'>,
+  connectorIds: readonly string[] = [],
+): ModelReference {
+  if (figure.modelUrl !== undefined && figure.model !== undefined) {
+    return {
+      kind: 'invalid',
+      error: createError('invalid-node', 'model3d accepts either `model` or `modelUrl`, not both'),
+    };
+  }
+  if (figure.modelUrl !== undefined) return { kind: 'url', url: figure.modelUrl };
+  if (figure.model === undefined) {
+    return {
+      kind: 'invalid',
+      error: createError('invalid-node', 'model3d requires `model` or `modelUrl`'),
+    };
+  }
+  if (typeof figure.model === 'string') return { kind: 'registry', ref: figure.model };
+  const { id, source } = figure.model;
+  return {
+    kind: 'registry',
+    ref: connectorIds.includes(source) ? `${source}:${id}` : id,
+    source,
+  };
+}
+
 /** Find a manifest among a connector's models. */
 export function findModelInManifests(
   manifests: readonly ModelManifest[],

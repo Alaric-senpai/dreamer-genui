@@ -1,0 +1,62 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "chart-treemap",
+          "type": "figure",
+          "figure": {
+            "kind": "chart",
+            "type": "treemap",
+            "series": [
+              {
+                "name": "Mathematics",
+                "data": [
+                  {
+                    "x": "Algebra",
+                    "y": 42
+                  },
+                  {
+                    "x": "Geometry",
+                    "y": 28
+                  },
+                  {
+                    "x": "Statistics",
+                    "y": 19
+                  },
+                  {
+                    "x": "Number",
+                    "y": 31
+                  }
+                ]
+              },
+              {
+                "name": "Language",
+                "data": [
+                  {
+                    "x": "Reading",
+                    "y": 26
+                  },
+                  {
+                    "x": "Writing",
+                    "y": 22
+                  },
+                  {
+                    "x": "Speaking",
+                    "y": 14
+                  }
+                ]
+              }
+            ],
+            "alt": "Treemap of study time across mathematics and language topics"
+          },
+          "enter": {
+            "effect": "draw"
+          }
+        }
+      ]
+    }
+  ]
+}

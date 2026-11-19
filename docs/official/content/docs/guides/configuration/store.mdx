@@ -1,0 +1,142 @@
+---
+title: Store
+description: Create the board, apply ops, drive cues, inspect state and subscribe to buses.
+---
+
+The store is the headless board. It owns state, validation, the cue plan, assessments, persistence and the event buses. React is a subscriber, not the source of truth.
+
+## Create it
+
+```ts
+import { createRegistry } from 'dreamer-genui/core';
+import { createBoardStore } from 'dreamer-genui/react';
+
+export const registry = createRegistry();
+export const board = createBoardStore({ registry });
+```
+
+`createBoardStore()` accepts no options, a `CreateBoardStoreOptions` object, or a pre-built `BoardResolver`:
+
+```ts
+const board = createBoardStore({
+  registry,
+  theme: { policy: 'moods', baseline: { mood: 'calm' } },
+  middleware: [houseRules],
+  locale: 'en',
+  dir: 'ltr',
+  clock: systemClock,
+  examLocks: { camera: true, ambience: true },
+  examLockStrategy: 'queue',
+  onError: (error) => report(error),
+});
+```
+
+Create one store per board. Creating it inside a React component will reset the lesson on every render.
+
+## Applying ops
+
+```ts
+const results = board.applyOps({ v: 1, ops });
+```
+
+| Method | Use it for | Difference |
+| :--- | :--- | :--- |
+| `applyOps(reply)` | Complete replies | Applies every op, no streaming ledger |
+| `applyPartial(reply)` | Streaming | Idempotent by op index + content; failed ops retry |
+| `applyFinal(reply)` | End of a stream | Skips applied ops, retries failures, closes the turn |
+
+Every method returns `ResolvedOp[]` with `status: 'applied' | 'error'` and an optional typed error. Errors are also emitted on `board.errors`.
+
+## State
+
+```ts
+const state = board.getState();
+```
+
+`BoardState` is serializable and includes nodes, detours, theme, layout, fired cues, assessments and history. Treat it as read-only; all changes go through ops or the cue/assessment APIs.
+
+```ts
+const plan = board.getEntry('cued');
+// { entered: string[], pending: string[], pendingCues: string[] }
+```
+
+## Cues and history
+
+```ts
+board.cue('b2');
+board.flush();
+board.seek('b4');
+board.back();          // restore previous replace snapshot
+board.closeDetour();   // close the top attach explainer
+board.reset();         // clear the board
+```
+
+`back()` restores the previous board, theme and layout. `closeDetour()` reverts a detour-scoped theme and returns focus.
+
+## Persistence
+
+```ts
+const snapshot = board.snapshot();
+localStorage.setItem('lesson', JSON.stringify(snapshot));
+
+const saved = JSON.parse(localStorage.getItem('lesson')!);
+board.restore(saved);
+```
+
+See [Persistence and replay](/docs/guides/configuration/persistence) for migrations and ops logs.
+
+## Assessments
+
+```ts
+const machine = board.assessments.get('assessment-1');
+machine?.start();
+machine?.answer('q1', 'a');
+
+const state = board.assessments.snapshot('assessment-1');
+board.assessments.restore('assessment-1', savedState);
+board.assessments.list();
+```
+
+## Buses
+
+Every asynchronous concern has a typed bus you can subscribe to without React:
+
+```ts
+const unsubscribe = board.cueBus.subscribe((cueId) => console.log('cue', cueId));
+
+board.events.subscribe((event) => sendToTutor(event));
+board.errors.subscribe((error) => console.warn(error.code));
+
+board.themeChangeBus.subscribe((theme) => syncChrome(theme));
+board.transitionBus.subscribe(({ transition, fromTheme }) => freezeOldScene(transition, fromTheme));
+board.narrationBus.subscribe(({ beats, orphanCueIds }) => narrator.enqueue(beats));
+```
+
+| Bus | Emits |
+| :--- | :--- |
+| `cueBus` | Fired cue ids |
+| `enterBus` | Node ids whose entry gate opened |
+| `themeChangeBus` | Resolved themes |
+| `cameraBus` | Validated explicit camera ops |
+| `layoutBus` | Re-flow transition settings |
+| `transitionBus` | Scene transitions with the outgoing theme |
+| `pointerBus` | Validated pointer ops |
+| `narrationBus` | Beats for the turn plus orphan cues |
+| `events` | Student `UIEvent`s |
+| `errors` | `LibraryError`s |
+
+`errors` buffers errors that occur before the board mounts, so hosts never miss a validation failure from an early op.
+
+## React integration
+
+```tsx
+const version = useBoardVersion(board); // subscribe a custom component
+```
+
+`<Board>` installs `BoardStoreProvider` and subscribes itself. A custom UI wraps its tree in `<BoardStoreProvider store={board}>` and uses `useBoardStore()`, `useNode()`, `useCue()` and friends. See [Headless](/docs/guides/extensibility/headless).
+
+## Next
+
+- [Persistence](/docs/guides/configuration/persistence)
+- [Board props](/docs/guides/configuration/board)
+- [Headless hooks](/docs/guides/extensibility/headless)

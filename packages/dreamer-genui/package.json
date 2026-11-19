@@ -20,7 +20,11 @@
     "./ui.css": "./styles/ui.css",
     "./styles.css": "./styles/base.css",
     "./tailwind.css": "./styles/tailwind.css",
-    "./tailwind-preset": "./styles/tailwind-preset.cjs"
+    "./tailwind-preset": "./styles/tailwind-preset.cjs",
+    "./3d": "./dist/3d/index.js",
+    "./3d/*": "./dist/3d/*.js",
+    "./connectors": "./dist/connectors/index.js",
+    "./connectors/*": "./dist/connectors/*.js"
   },
   "files": [
     "dist",
@@ -31,7 +35,9 @@
   ],
   "scripts": {
     "build": "NODE_OPTIONS=--max-old-space-size=6144 tsup",
-    "dev": "tsup --watch"
+    "dev": "tsup --watch",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
@@ -69,12 +75,18 @@
     "@react-aria/focus": "^3.22.1",
     "@react-aria/interactions": "^3.28.1",
     "cmdk": "^1.1.1",
+    "lottie-web": "^5.13.0",
     "motion": "^14.10.1",
+    "recharts": "^3.10.1",
+    "three": "^0.180.0",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
+    "@storybook/react-vite": "^10.6.7",
     "@types/node": "^22.0.0",
+    "@types/three": "^0.180.0",
+    "storybook": "^10.6.7",
     "tsup": "^8.3.0",
     "typescript": "^5.7.0"
   }

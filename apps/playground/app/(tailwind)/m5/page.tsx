@@ -19,7 +19,18 @@ import cycleFixture from '../../../../../fixtures/diagram-cycle.json';
 import timelineFixture from '../../../../../fixtures/timeline.json';
 import compareFixture from '../../../../../fixtures/compare.json';
 import labeledFixture from '../../../../../fixtures/labeled-art.json';
-import chartFixture from '../../../../../fixtures/chart-bar.json';
+import lottieFixture from '../../../../../fixtures/lottie-basic.json';
+import chartBarFixture from '../../../../../fixtures/chart-bar.json';
+import chartLineFixture from '../../../../../fixtures/chart-line.json';
+import chartAreaFixture from '../../../../../fixtures/chart-area.json';
+import chartPieFixture from '../../../../../fixtures/chart-pie.json';
+import chartRadarFixture from '../../../../../fixtures/chart-radar.json';
+import chartRadialbarFixture from '../../../../../fixtures/chart-radialbar.json';
+import chartScatterFixture from '../../../../../fixtures/chart-scatter.json';
+import chartComposedFixture from '../../../../../fixtures/chart-composed.json';
+import chartFunnelFixture from '../../../../../fixtures/chart-funnel.json';
+import chartTreemapFixture from '../../../../../fixtures/chart-treemap.json';
+import chartSankeyFixture from '../../../../../fixtures/chart-sankey.json';
 import modelFixture from '../../../../../fixtures/model3d-basic.json';
 
 const registry = createRegistry();
@@ -64,7 +75,18 @@ const SOURCES = [
   { id: 'timeline', label: 'timeline.json', reply: timelineFixture },
   { id: 'compare', label: 'compare.json', reply: compareFixture },
   { id: 'labeled', label: 'labeled-art.json', reply: labeledFixture },
-  { id: 'chart', label: 'chart-bar.json', reply: chartFixture },
+  { id: 'lottie', label: 'lottie-basic.json — expression-free Lottie animation', reply: lottieFixture },
+  { id: 'chart-bar', label: 'chart-bar.json — bar', reply: chartBarFixture },
+  { id: 'chart-line', label: 'chart-line.json — line', reply: chartLineFixture },
+  { id: 'chart-area', label: 'chart-area.json — stacked area', reply: chartAreaFixture },
+  { id: 'chart-pie', label: 'chart-pie.json — donut', reply: chartPieFixture },
+  { id: 'chart-radar', label: 'chart-radar.json — radar', reply: chartRadarFixture },
+  { id: 'chart-radialbar', label: 'chart-radialbar.json — radial bar', reply: chartRadialbarFixture },
+  { id: 'chart-scatter', label: 'chart-scatter.json — scatter', reply: chartScatterFixture },
+  { id: 'chart-composed', label: 'chart-composed.json — composed (bar + line)', reply: chartComposedFixture },
+  { id: 'chart-funnel', label: 'chart-funnel.json — funnel', reply: chartFunnelFixture },
+  { id: 'chart-treemap', label: 'chart-treemap.json — treemap', reply: chartTreemapFixture },
+  { id: 'chart-sankey', label: 'chart-sankey.json — sankey', reply: chartSankeyFixture },
   { id: 'asset', label: 'resolveAsset demo — { asset } image', reply: assetReply },
   { id: 'fallback', label: 'model3d-basic.json — alt fallback until M5b', reply: modelFixture },
 ] as const;
@@ -73,13 +95,16 @@ type SourceId = (typeof SOURCES)[number]['id'];
 
 const CHECKLIST = [
   'Every M5 figure kind renders from its fixture (image, icon, diagram, flowchart, timeline, labeled, chart).',
+  'All eleven chart types render from their own fixtures via recharts (bar, line, area, pie, radar, radialBar, scatter, composed, funnel, treemap, sankey).',
   'process-flowchart.json draws in sequentially with a decision, labelled branches and a recycle loop.',
   'Flowchart steps are focusable: tapping a step emits focus with ref = figureId/nodeId.',
   'Phone-width container shows the one-step stepper with no overlapping edges or horizontal scroll.',
-  'GSAP / flowchart-layout code is absent from the initial bundle; figures load from a separate lazy chunk.',
+  'Figures ship in a separate lazy chunk powered by recharts; the initial bundle carries no chart library code.',
   'Forcing a figure to fail (or an unbuilt 3D kind) shows its mandatory alt text, never a blank board.',
   'Figures respect their layout region and their enter triggers, including sequential reveal.',
-  'Annotation marks (circle / underline / box / bracket / strike) draw on with hand-drawn SVG strokes.',
+  'Radial diagrams draw a wheel-of-life composition (rings, hub, hue-cycled satellites).',
+  'Timeline draws a colored milestone rail with alternating pins and cards; vertical stays a rail.',
+  'Lottie plays an expression-free animation through the lazy player; reduced motion shows its first frame.',
   'Compare block renders a themable table with highlight; keyboard, screen-reader and axe checks pass (tests/react/figures).',
 ] as const;
 
@@ -119,7 +144,13 @@ export default function M5Page() {
       registry={registry}
       density="comfortable"
       colorScheme="light"
-      resolveAsset={(id) => (id === 'demo-svg' ? DEMO_SVG : undefined)}
+      resolveAsset={(id) =>
+        id === 'demo-svg'
+          ? DEMO_SVG
+          : id === 'wave-animation-v1'
+            ? '/lottie/wave.json'
+            : undefined
+      }
       onEvent={(event) => setEvents((current) => [event, ...current].slice(0, 40))}
       onError={(error) => setErrors((current) => [error, ...current].slice(0, 20))}
     >
@@ -132,7 +163,8 @@ export default function M5Page() {
             <h1 className="mt-2 text-xl font-semibold">M5 — Figures</h1>
             <p className="text-neutral-600">
               Diagrams, flowcharts, timelines, labeled art and charts — drawn in from a separate lazy
-              chunk, with focusable steps, hand-drawn annotation strokes and alt fallbacks.
+              chunk, with focusable steps, hand-drawn annotation strokes and alt fallbacks. All eleven
+              chart types render through recharts from their own fixtures.
             </p>
           </div>
 

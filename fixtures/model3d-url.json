@@ -1,0 +1,21 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "model-url",
+          "type": "figure",
+          "figure": {
+            "kind": "model3d",
+            "modelUrl": "/api/mock-models/models/assembly.glb",
+            "view": "iso",
+            "controls": "both",
+            "alt": "The demo assembly loaded directly from a GLB asset link, without a model connector."
+          }
+        }
+      ]
+    }
+  ]
+}

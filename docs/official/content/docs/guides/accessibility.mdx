@@ -1,0 +1,92 @@
+---
+title: Accessibility
+description: Keyboard, screen readers, reduced motion, contrast and the rules the default board already enforces.
+---
+
+The board is a teaching surface, so accessibility is part of the product, not a checklist at the end. The default renderer handles the common cases; this page lists what is guaranteed and what a host still owns.
+
+## Guaranteed by the library
+
+| Area | Behaviour |
+| :--- | :--- |
+| Unentered content | Absent from the DOM **and** the accessibility tree — no hidden-but-focusable nodes |
+| Interactive elements | Real `<button>`, `<input>` and `<select>`, never clickable `<div>`s |
+| Figures | `alt` is required by the schema; it is the fallback when a figure fails |
+| Diagrams and charts | Expose a text summary, not only an image |
+| Drag interactions | Keyboard equivalents: select an item, then select a target |
+| Live updates | A polite live region announces newly entered content |
+| Skip | `board.flush()` is exposed so content is never permanently hidden |
+| Reduced motion | Effects, ambience, camera, layout re-flow and transitions all degrade |
+| Contrast | Enforced at WCAG AA by the theme resolver |
+| Touch targets | Minimum size follows density (`40`/`44`/`56` px) |
+| Focus | Detours move focus in; `return` restores it |
+
+## Reduced motion
+
+`prefers-reduced-motion` is honoured in the React layer, not per effect:
+
+- entrance effects become near-instant
+- ambience is static
+- the camera becomes scroll-into-view
+- scene transitions become `cut`
+- the pointer becomes a ring at its target
+- auto-rotate and loops stop
+- layout changes jump instead of animating
+
+Reduced motion removes motion, not content or meaning. A node still enters on its cue, calmly.
+
+## Keyboard
+
+- **Choices** are a roving-tabindex group; arrows move, Enter selects.
+- **Steps** and **lists** expose their items in reading order.
+- **Tabs** use arrow keys; **accordions** use Enter/Space on the header.
+- **Questions** have a text-input or select-equivalent path for every kind, including hotspot and label-drag.
+- **Assessment navigator** is a listbox with answered, flagged and unvisited state in the accessible name.
+- **Camera controls** (when enabled) have a visible reset reachable by keyboard.
+- **Detours** trap focus while open and restore it on return.
+
+Do not add `tabIndex={0}` to a node wrapper to "make it focusable". If it is interactive, use a control.
+
+## Screen readers
+
+- The board root has a name derived from the board title.
+- Each entered node announces once, politely, with its type and a short summary — not its full text.
+- Time warnings in assessments are polite, not assertive.
+- Flags and answered state are announced on change.
+- Chart and diagram summaries are available as text, including the data for charts.
+
+## Contrast and density
+
+The theme resolver adjusts ink or muted colours when a palette would fail AA, and reports `onThemeAdjusted`. Ambience is included in the calculation so a dark overlay cannot silently make captions unreadable.
+
+Density is a learner setting, not a tutor request:
+
+```tsx
+<DreamerProvider registry={registry} density="large">
+```
+
+`large` suits early readers: bigger type, more space, larger targets. It composes with the active mood.
+
+## What a host still owns
+
+- **Real content alternatives.** `alt` is required, but a meaningful `alt` is your writing.
+- **Language.** Set `locale` and `dir`; declare `lang` on the page.
+- **Focus after navigation.** If you route away from a lesson, manage focus in your app shell.
+- **Custom components.** A headless board inherits none of the wiring above.
+- **Captions.** Narration captions arrive with the voice layer (M6d). Until then, the beat text is your caption source.
+- **Testing.** Run axe in your own app; the library's tests only cover its own tree.
+
+## Testing checklist
+
+- Tab through a full lesson: every interactive element is reachable, in order, with a visible focus ring
+- Turn on a screen reader: each block announces once, and nothing unentered appears
+- Enable reduced motion: all content still arrives
+- Set density to `large`: no target below 56 px
+- Force a figure failure (bad asset id): `alt` renders, `load-failed` is reported
+- Run an exam with the keyboard only: answer, flag, navigate, submit
+
+## Next
+
+- [Theming](/docs/concepts/theming)
+- [Board configuration](/docs/guides/configuration/board)
+- [Assessment](/docs/concepts/assessment)
