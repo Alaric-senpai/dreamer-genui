@@ -1904,24 +1904,44 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
     padding: 0;
     white-space: pre;
   }
-  .dg-code .hljs-comment,
-  .dg-code .hljs-quote { color: var(--dg-code-comment, #7c8798); font-style: italic; }
-  .dg-code .hljs-keyword,
-  .dg-code .hljs-selector-tag,
-  .dg-code .hljs-literal { color: var(--dg-code-keyword, #c792ea); }
-  .dg-code .hljs-string,
-  .dg-code .hljs-attr,
-  .dg-code .hljs-template-string { color: var(--dg-code-string, #a5d6a7); }
-  .dg-code .hljs-number,
-  .dg-code .hljs-symbol { color: var(--dg-code-number, #f2b36b); }
-  .dg-code .hljs-title,
-  .dg-code .hljs-function,
-  .dg-code .hljs-section { color: var(--dg-code-title, #82c7ff); }
-  .dg-code .hljs-variable,
-  .dg-code .hljs-params { color: var(--dg-code-var, #e8eaf0); }
-  .dg-code .hljs-built_in,
-  .dg-code .hljs-type { color: var(--dg-code-builtin, #7ad9d0); }
-  .dg-code .hljs-meta { color: var(--dg-color-muted, #565650); }
+  /* Shiki emits its own <pre class="shiki">; keep our wrapper in charge. */
+  .dg-code-pre .shiki {
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+    font: inherit;
+    line-height: inherit;
+    overflow: visible;
+  }
+  .dg-code-pre .shiki code {
+    font: inherit;
+    background: none;
+    padding: 0;
+  }
+  .dg-code-pre .dg-code-plain {
+    margin: 0;
+    font: inherit;
+  }
+  /* Token colours are CSS variables from Shiki's css-variables theme,
+     mapped onto the board's own code tokens. */
+  .dg-code {
+    --shiki-foreground: var(--dg-code-ink, #e8eaf0);
+    --shiki-background: transparent;
+    --shiki-token-comment: var(--dg-code-comment, #7c8798);
+    --shiki-token-keyword: var(--dg-code-keyword, #c792ea);
+    --shiki-token-constant: var(--dg-code-number, #f2b36b);
+    --shiki-token-string: var(--dg-code-string, #a5d6a7);
+    --shiki-token-string-expression: var(--dg-code-string, #a5d6a7);
+    --shiki-token-function: var(--dg-code-title, #82c7ff);
+    --shiki-token-parameter: var(--dg-code-var, #e8eaf0);
+    --shiki-token-variable: var(--dg-code-var, #e8eaf0);
+    --shiki-token-variable-other: var(--dg-code-var, #e8eaf0);
+    --shiki-token-punctuation: var(--dg-code-ink, #e8eaf0);
+    --shiki-token-link: var(--dg-code-title, #82c7ff);
+  }
+  .dg-code-pre .shiki .line {
+    display: block;
+  }
 
   @container (max-width: 480px) {
     .dg-code-pre { padding: 0.75rem; font-size: 0.76rem; }

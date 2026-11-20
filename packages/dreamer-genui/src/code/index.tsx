@@ -1,30 +1,32 @@
 /**
- * Lazy code chunk (M6a). highlight.js core with a small, deliberate language
- * set — loaded only when a `code` block mounts. Everything is rendered from a
- * validated `source` string; the highlighted markup is generated locally.
+ * Lazy code chunk (M6a). Shiki (v4) with a small, deliberate language set —
+ * loaded only when a `code` block mounts. Everything is rendered from a
+ * validated `source` string; the highlighted markup is generated locally
+ * with the JavaScript regex engine (no WASM, no network, no CDN).
+ *
+ * The theme is Shiki's CSS-variables theme: tokens reference `--shiki-*`
+ * variables, which the board maps onto `--dg-code-*` tokens in base CSS.
+ * That keeps token colours themeable and avoids inline hard-coded colours.
  */
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import hljs from 'highlight.js/lib/core';
-import javascript from 'highlight.js/lib/languages/javascript';
-import typescript from 'highlight.js/lib/languages/typescript';
-import python from 'highlight.js/lib/languages/python';
-import json from 'highlight.js/lib/languages/json';
-import bash from 'highlight.js/lib/languages/bash';
-import css from 'highlight.js/lib/languages/css';
-import xml from 'highlight.js/lib/languages/xml';
-import sql from 'highlight.js/lib/languages/sql';
+import { createCssVariablesTheme, createHighlighterCore, type HighlighterCore } from 'shiki/core';
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
 
-hljs.registerLanguage('javascript', javascript);
-hljs.registerLanguage('typescript', typescript);
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('json', json);
-hljs.registerLanguage('bash', bash);
-hljs.registerLanguage('css', css);
-hljs.registerLanguage('xml', xml);
-hljs.registerLanguage('sql', sql);
+const LANGUAGES = {
+  javascript: () => import('@shikijs/langs/javascript'),
+  typescript: () => import('@shikijs/langs/typescript'),
+  python: () => import('@shikijs/langs/python'),
+  json: () => import('@shikijs/langs/json'),
+  bash: () => import('@shikijs/langs/bash'),
+  css: () => import('@shikijs/langs/css'),
+  xml: () => import('@shikijs/langs/xml'),
+  sql: () => import('@shikijs/langs/sql'),
+} as const;
 
-const ALIASES: Record<string, string> = {
+type LanguageName = keyof typeof LANGUAGES;
+
+const ALIASES: Record<string, LanguageName> = {
   js: 'javascript',
   jsx: 'javascript',
   ts: 'typescript',
@@ -36,18 +38,40 @@ const ALIASES: Record<string, string> = {
   svg: 'xml',
 };
 
-function resolveLanguage(lang: string): string | undefined {
+const THEME = 'dg';
+const theme = createCssVariablesTheme({ name: THEME, variablePrefix: '--shiki-' });
+
+let corePromise: Promise<HighlighterCore> | null = null;
+const loaded = new Set<LanguageName>();
+
+function getCore(): Promise<HighlighterCore> {
+  corePromise ??= createHighlighterCore({
+    themes: [theme],
+    langs: [],
+    engine: createJavaScriptRegexEngine(),
+  });
+  return corePromise;
+}
+
+function resolveLanguage(lang: string): LanguageName | undefined {
   const name = lang.toLowerCase().trim();
-  const resolved = ALIASES[name] ?? name;
-  return hljs.getLanguage(resolved) ? resolved : undefined;
+  return ALIASES[name] ?? (name in LANGUAGES ? (name as LanguageName) : undefined);
 }
 
 /** Highlight `source` into safe HTML, or `null` when the language is unknown. */
-export function highlightCode(source: string, lang: string): string | null {
+export async function highlightCode(source: string, lang: string): Promise<string | null> {
   const language = resolveLanguage(lang);
   if (!language) return null;
   try {
-    return hljs.highlight(source, { language, ignoreIllegals: true }).value;
+    const core = await getCore();
+    if (!loaded.has(language)) {
+      const module = (await LANGUAGES[language]()) as {
+        default: Parameters<HighlighterCore['loadLanguage']>[0];
+      };
+      await core.loadLanguage(module.default);
+      loaded.add(language);
+    }
+    return core.codeToHtml(source, { lang: language, theme: THEME });
   } catch {
     return null;
   }
@@ -60,26 +84,38 @@ export interface CodeRendererProps {
 
 /** Code block. Unknown languages get escaped plain text, never a blank node. */
 export function CodeView({ source, lang }: CodeRendererProps): ReactNode {
-  const html = useMemo(() => highlightCode(source, lang), [source, lang]);
+  const [html, setHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    setHtml(null);
+    highlightCode(source, lang).then((result) => {
+      if (live) setHtml(result);
+    });
+    return () => {
+      live = false;
+    };
+  }, [source, lang]);
+
   return (
     <div className="dg-code" data-dg-part="root" data-lang={lang}>
       <span className="dg-code-lang" data-dg-part="lang">
         {lang}
       </span>
-      <pre className="dg-code-pre" data-dg-part="pre">
+      <div className="dg-code-pre" data-dg-part="pre">
         {html === null ? (
-          <code className="dg-code-source" data-dg-part="fallback">
-            {source}
-          </code>
+          <pre className="dg-code-plain" data-dg-part="fallback">
+            <code>{source}</code>
+          </pre>
         ) : (
-          <code
-            className={`hljs language-${lang}`}
+          <div
             data-dg-part="code"
-            // highlight.js output over a plain string; no model HTML.
+            // Shiki output generated locally from a plain, validated string;
+            // no model HTML is ever passed through here.
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}
-      </pre>
+      </div>
     </div>
   );
 }

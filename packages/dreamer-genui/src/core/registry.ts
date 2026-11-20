@@ -120,6 +120,13 @@ export interface RegistryOptions {
    * Defaults to `process.env.NODE_ENV !== 'production'`.
    */
   strictPlugins?: boolean;
+  /**
+   * Enable/disable built-in plugins by name, e.g.
+   * `createRegistry({ plugins: { assessment: true, lottie: false } })`.
+   * Unlisted plugins keep their declared default (`defaultEnabled`).
+   * Unknown names are ignored.
+   */
+  plugins?: Record<string, boolean>;
 }
 
 export interface UsePluginOptions {
@@ -209,17 +216,34 @@ const CORE_BLOCKS: Record<string, BlockDefinition> = {
     promptGuide: 'question block: kind (mcq|truefalse|short|numeric|cloze|matching|ordering|hotspot|labelDiagram|extended), prompt: Inline[]. Never add a key inside quiz/exam assessments.',
     parts: { parts: ['root', 'prompt', 'body', 'feedback'], tokens: ['accent', 'radius'], events: ['answer'] },
   }),
-  assessment: defineBlock({
-    schema: AssessmentBlockSchema,
-    promptGuide: 'assessment block: mode (practice|quiz|exam|review), sections[].questions[]. No answer keys in quiz/exam payloads.',
-    parts: { parts: ['root', 'header', 'navigator', 'timer', 'question', 'submit'], tokens: ['accent', 'radius'], events: ['assessment', 'answer'] },
-  }),
 };
 
 const CORE_BLOCK_PLUGIN = definePlugin({
   name: 'core',
   version: '1.0.0',
   provides: { blocks: CORE_BLOCKS },
+});
+
+/**
+ * Assessment is **opt-in** (§9.2): a board should not become an exam surface
+ * by accident, so the plugin ships registered but disabled. Hosts enable it
+ * with `createRegistry({ plugins: { assessment: true } })`; until then the
+ * block is absent from the renderer, the prompt guide, the JSON Schema and
+ * the advertised capabilities.
+ */
+const ASSESSMENT_PLUGIN = definePlugin({
+  name: 'assessment',
+  version: '1.0.0',
+  defaultEnabled: false,
+  provides: {
+    blocks: {
+      assessment: defineBlock({
+        schema: AssessmentBlockSchema,
+        promptGuide: 'assessment block: mode (practice|quiz|exam|review), sections[].questions[]. No answer keys in quiz/exam payloads.',
+        parts: { parts: ['root', 'header', 'navigator', 'timer', 'question', 'submit'], tokens: ['accent', 'radius'], events: ['assessment', 'answer'] },
+      }),
+    },
+  },
 });
 
 /**
@@ -438,9 +462,10 @@ const STRINGS_PLUGIN = definePlugin({
 
 const DEFAULT_PLUGINS = [
   CORE_BLOCK_PLUGIN,
-  TABLE_PLUGIN,
   MATH_PLUGIN,
   CODE_PLUGIN,
+  TABLE_PLUGIN,
+  ASSESSMENT_PLUGIN,
   UI_KIT_PLUGIN,
   THEME_PLUGIN,
   MOTION_PLUGIN,
@@ -573,6 +598,10 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
         });
       }
     }
+
+    // Opt-in built-ins register their entries disabled (§9.2) until the host
+    // enables them by name (see `options.plugins`).
+    if (plugin.defaultEnabled === false) disable(plugin.name);
 
     if (plugin.install) {
       try {
@@ -752,6 +781,13 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   for (const plugin of DEFAULT_PLUGINS) {
     if (options.replace && plugin.name === THEME_PLUGIN.name) continue;
     use(plugin, { builtin: true });
+  }
+
+  // Host flags for built-ins (§8.3): `plugins: { assessment: true, lottie: false }`.
+  for (const [name, enabled] of Object.entries(options.plugins ?? {})) {
+    if (!plugins.has(name)) continue;
+    if (enabled) enable(name);
+    else disable(name);
   }
 
   if (options.replace) {

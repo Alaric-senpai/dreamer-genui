@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { describe, expect, test } from 'vitest';
 import { BoardResolver } from '../../packages/dreamer-genui/src/core/resolver';
+import { createRegistry } from '../../packages/dreamer-genui/src/core';
 import type { ReplyLike } from '../../packages/dreamer-genui/src/core/resolver';
 import type { CameraOp } from '../../packages/dreamer-genui/src/schema/ops';
 
@@ -13,7 +14,11 @@ const examFixture = JSON.parse(
 const splitLayout = { op: 'layout' as const, layout: { kind: 'split' as const } };
 
 function examResolver(strategy: 'queue' | 'reject' = 'queue') {
-  const resolver = new BoardResolver({ examLockStrategy: strategy });
+  const resolver = new BoardResolver({
+    examLockStrategy: strategy,
+    // Assessment ships as an opt-in plugin (§9.2), disabled by default.
+    registry: createRegistry({ plugins: { assessment: true } }),
+  });
   resolver.applyFinal(examFixture);
   const machine = resolver.assessments.get('exam-paper');
   if (!machine) throw new Error('missing exam machine');

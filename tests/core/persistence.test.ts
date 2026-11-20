@@ -131,7 +131,10 @@ describe('persistence: ops log and replay (§7.3)', () => {
 
   test('assessment states are recorded in the log and restored by replay', () => {
     const clock = fakeClock();
-    const resolver = new BoardResolver({ clock });
+    const resolver = new BoardResolver({
+      clock,
+      registry: createRegistry({ plugins: { assessment: true } }),
+    });
     const assessmentOp: Op = {
       op: 'append',
       blocks: [{

@@ -76,3 +76,29 @@ describe('runPluginConformance', () => {
     );
   });
 });
+
+describe('plugin enable/disable config', () => {
+  test('assessment is registered but disabled by default', () => {
+    const registry = createRegistry();
+    const entry = registry.list('blocks').find((candidate) => candidate.name === 'assessment');
+    expect(entry?.plugin).toBe('assessment');
+    expect(entry?.disabled).toBe(true);
+    expect(getSystemPromptGuide(registry)).not.toContain('assessment block');
+  });
+
+  test('createRegistry({ plugins }) enables an opt-in built-in', () => {
+    const registry = createRegistry({ plugins: { assessment: true } });
+    const entry = registry.list('blocks').find((candidate) => candidate.name === 'assessment');
+    expect(entry?.disabled).toBe(false);
+    // The default `lesson` profile deliberately excludes the assessment shell.
+    expect(getSystemPromptGuide(registry, { profile: 'assessment' })).toContain('assessment');
+  });
+
+  test('createRegistry({ plugins }) disables a default built-in', () => {
+    const registry = createRegistry({ plugins: { math: false, code: false } });
+    for (const block of ['math', 'code']) {
+      expect(registry.list('blocks').find((candidate) => candidate.name === block)?.disabled).toBe(true);
+    }
+    expect(getSystemPromptGuide(registry)).not.toContain('math block');
+  });
+});

@@ -10,7 +10,7 @@ that type actually enters the board.
 | Plugin | Provides | Lazy chunk |
 | :--- | :--- | :--- |
 | `math` | `math` block, inline `math` mark | KaTeX + `mhchem` |
-| `code` | `code` block | `highlight.js` core + a small language set |
+| `code` | `code` block | Shiki (JS regex engine) + a small language set |
 | `table` | `table` block | rendered in the core renderer |
 | `chart` / `lottie` | `chart` and `lottie` figures | figure chunk |
 
@@ -86,6 +86,25 @@ core.
 
 ## Disabling and overriding
 
+Every built-in is a plugin, and `createRegistry` takes a `plugins` map so a
+host can choose the board's vocabulary up front:
+
+```ts
+const registry = createRegistry({
+  plugins: {
+    math: false,        // drop KaTeX entirely
+    lottie: false,      // never load the animation player
+    assessment: true,   // opt in to the exam/assessment shell
+  },
+});
+```
+
+Unlisted plugins keep their declared default. `assessment` is the only
+built-in that ships **disabled**: an exam surface should be a deliberate
+host decision, not something a tutor can summon by accident. Enabling it
+registers the `assessment` block in the renderer, the prompt guide, the JSON
+Schema and the capabilities together.
+
 ```ts
 const registry = createRegistry();
 registry.disable('math');       // math disappears from the tutor's vocabulary
@@ -99,7 +118,7 @@ full API.
 
 ## Offline and privacy
 
-The core never fetches. KaTeX, highlight.js, the chart code and the Lottie
+The core never fetches. KaTeX, Shiki, the chart code and the Lottie
 player are bundled chunks served from your application; no CDN is contacted at
 runtime. Assets such as Lottie JSON are resolved by the host, so authentication,
 caching and CSP stay under your control.

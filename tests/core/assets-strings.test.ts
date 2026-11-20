@@ -113,7 +113,7 @@ describe('capability profiles (§9.4)', () => {
   });
 
   test('assessment profile keeps the shell but trims content types', () => {
-    const registry = createRegistry();
+    const registry = createRegistry({ plugins: { assessment: true } });
     const types = profileBlockTypes(registry, 'assessment');
     expect(types).toContain('assessment');
     expect(types).not.toContain('table');

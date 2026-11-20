@@ -124,11 +124,11 @@ Raw "tokens" may be unavailable depending on host policy; if a theme request is 
 
 - **question**: question block: kind (mcq|truefalse|short|numeric|cloze|matching|ordering|hotspot|labelDiagram|extended), prompt: Inline[]. Never add a key inside quiz/exam assessments.
 
-- **table**: table block: columns: {id, label}[], rows: {colId: Inline[]}[]
-
 - **math**: math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.
 
 - **code**: code block: lang (python|javascript|etc.), source is the code string.
+
+- **table**: table block: columns: {id, label}[], rows: {colId: Inline[]}[]
 
 - **card**: card block: title?, description?, media?, blocks: Block[], footer?, variant (plain|outlined|elevated|accent); interactive:true emits select. Use a card for one composed idea, not a dashboard of cards.
 

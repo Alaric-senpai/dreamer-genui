@@ -1,5 +1,5 @@
 /**
- * Code wrapper (M6a). highlight.js and its language definitions live in the
+ * Code wrapper (M6a). Shiki and its language definitions live in the
  * lazy `dreamer-genui/code` chunk; the fallback is escaped plain text.
  */
 import { lazy, Suspense } from 'react';

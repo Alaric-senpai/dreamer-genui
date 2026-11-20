@@ -315,6 +315,13 @@ export interface PluginDefinition {
   requires?: string[];
   /** Take priority over an existing registration of the same kind/name. */
   override?: boolean;
+  /**
+   * Whether the plugin's entries are active when the registry is created.
+   * Defaults to `true`; opt-in plugins (for example `assessment`) ship with
+   * `false` so the board stays un-opinionated until the host enables them
+   * with `createRegistry({ plugins: { assessment: true } })`.
+   */
+  defaultEnabled?: boolean;
   provides?: PluginProvides;
   install?: (ctx: PluginInstallContext) => void;
 }
@@ -324,6 +331,7 @@ export function definePlugin(definition: PluginDefinition): PluginDefinition {
   return {
     ...definition,
     engine: definition.engine ?? '^1.0.0',
+    defaultEnabled: definition.defaultEnabled ?? true,
     provides: definition.provides ?? {},
   };
 }

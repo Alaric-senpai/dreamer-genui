@@ -67,9 +67,9 @@ describe('M6a content built-ins', () => {
   test('code block renders highlighted tokens', async () => {
     const { container, errors } = setup(fixture('code-basic.json'));
     await waitFor(() => {
-      expect(container.querySelector('.dg-code .hljs')).toBeInTheDocument();
-    }, { timeout: 20000 });
-    expect(container.querySelectorAll('.hljs-keyword').length).toBeGreaterThan(0);
+      expect(container.querySelector('.dg-code .shiki')).toBeInTheDocument();
+    }, { timeout: 30000 });
+    expect(container.querySelectorAll('.dg-code [style*="--shiki-token"]').length).toBeGreaterThan(0);
     expect(errors).toHaveLength(0);
   });
 
