@@ -15,13 +15,14 @@ const ROUTES = [
   { href: '/m4d', id: 'M4d', title: 'UI kit (shadcn parity)', status: 'done', note: '12 tutor-addressable blocks, host-only kit, themable and tree-shakeable' },
   { href: '/m5', id: 'M5', title: 'Figures & diagrams', status: 'done', note: 'flowcharts, diagrams, timelines, labeled art, charts, alt fallbacks' },
   { href: '/m5b', id: 'M5b', title: '3D figures & model connectors', status: 'done', note: 'model3d, scene3d, static/http/cached connectors, cue tours, parts list' },
+  { href: '/m6a', id: 'M6a', title: 'Content built-ins', status: 'done', note: 'lazy math, code, table, chart and lottie plugins; disable/override demos' },
   { href: '/showreel', id: '§9.4', title: 'Showreel', status: 'done', note: 'eleven-beat motion-graphic gate' },
   { href: '/plain-css', id: 'M3', title: 'Plain-CSS host', status: 'done', note: 'no Tailwind required' },
   { href: '/app', id: 'app', title: 'Live board app', status: 'ongoing', note: "A live example of the board working in realime"}
 ] as const;
 
 const PLANNED = [
-  ['M6a/M6b', 'questions, assessment, exam run-through'],
+  ['M6b', 'questions and assessment, exam run-through'],
   ['M7', 'plugins, devtools, authoring'],
   ['M8', 'hardening and release (v2.2)'],
 ] as const;

@@ -1,0 +1,105 @@
+---
+title: Math, code, tables and media
+description: The M6a content built-ins — lazy math, code, table, chart and Lottie plugins, how to disable or override them, and the offline guarantees.
+---
+
+The content built-ins are **default plugins**: they are registered by
+`createRegistry()`, advertised to the tutor, and loaded only when a block of
+that type actually enters the board.
+
+| Plugin | Provides | Lazy chunk |
+| :--- | :--- | :--- |
+| `math` | `math` block, inline `math` mark | KaTeX + `mhchem` |
+| `code` | `code` block | `highlight.js` core + a small language set |
+| `table` | `table` block | rendered in the core renderer |
+| `chart` / `lottie` | `chart` and `lottie` figures | figure chunk |
+
+Because they are plugins, `registry.disable('math')` removes the block from the
+renderer, the prompt guide, the exported JSON Schema and `getCapabilities()`
+together. The board then reports `unknown-type` for that block and keeps
+rendering everything else.
+
+## Math
+
+```ts
+type MathBlock = {
+  type: 'math';
+  tex: string;         // KaTeX-compatible source; \ce{} from mhchem works
+  display?: boolean;   // block (default) or inline rendering
+};
+```
+
+Inline math is a mark:
+
+```json
+{ "type": "text", "variant": "definition", "content": [
+  "The area of a circle is ",
+  { "mark": "math", "tex": "A = \\pi r^{2}" },
+  "."
+] }
+```
+
+KaTeX runs with `trust: false` and `throwOnError: false`: no model-supplied
+`\href`, `\htmlClass` or raw HTML reaches the DOM, and a bad expression renders
+as its plain source instead of throwing. The KaTeX stylesheet ships with the
+lazy chunk, so a board with no math never downloads it.
+
+## Code
+
+```ts
+type CodeBlock = {
+  type: 'code';
+  lang: string;     // python | javascript | typescript | json | bash | css | xml | sql
+  source: string;
+};
+```
+
+Only those languages are registered in the lazy highlight chunk. An unknown
+`lang` renders unhighlighted source; it never falls back to loading a language
+from the network. Highlighted tokens are themed through `--dg-code-*` variables
+(see the [theming guide](/docs/concepts/theming)) and keep AA contrast under
+every shipped mood.
+
+## Tables
+
+```ts
+type TableBlock = {
+  type: 'table';
+  columns: { id: string; label: string }[];
+  rows: Record<string, Inline[]>[];               // keyed by column id
+  highlight?: { rows?: number[]; cols?: string[] };
+};
+```
+
+Cells are real `<td>` elements and focusable: focusing one emits a `focus`
+event with `nodeId` and its row/column ref, so a tutor can react to a student
+reading the table. Highlighted rows/columns are marked with `data-dg-highlight`
+and tinted through `--dg-color-accent`.
+
+## Charts and Lottie
+
+Charts (`bar`, `line`, `pie`, `scatter`) and Lottie animations are figures, so
+they live inside a `figure` block and always carry `alt`. Lottie is played by
+the expression-free player; animation JSON arrives through the host's
+`resolveAsset` (or an inline string/URL the host chose), never fetched by the
+core.
+
+## Disabling and overriding
+
+```ts
+const registry = createRegistry();
+registry.disable('math');       // math disappears from the tutor's vocabulary
+```
+
+To keep the block type but change how it renders, override the rendering
+component through `components` or replace the plugin entry with
+`registry.override('blocks', 'math', myDefinition)`. See
+[Registry and generators](/docs/reference/generators-and-registry) for the
+full API.
+
+## Offline and privacy
+
+The core never fetches. KaTeX, highlight.js, the chart code and the Lottie
+player are bundled chunks served from your application; no CDN is contacted at
+runtime. Assets such as Lottie JSON are resolved by the host, so authentication,
+caching and CSP stay under your control.

@@ -24,6 +24,9 @@ const VALID = [
   'labeled-art.json',
   'chart-bar.json',
   'math-chem.json',
+  'math-inline.json',
+  'table-basic.json',
+  'code-basic.json',
   'lottie-basic.json',
   'streaming-partial.json',
   // M4b additions (v2.1 / v2.2 protocol surface).

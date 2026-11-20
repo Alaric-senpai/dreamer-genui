@@ -1,0 +1,37 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "state-table",
+          "type": "table",
+          "columns": [
+            { "id": "state", "label": "State" },
+            { "id": "particles", "label": "Particle arrangement" },
+            { "id": "energy", "label": "Energy" }
+          ],
+          "rows": [
+            {
+              "state": ["Solid"],
+              "particles": ["Closely packed, regular lattice"],
+              "energy": ["Lowest"]
+            },
+            {
+              "state": ["Liquid"],
+              "particles": ["Close together, irregular"],
+              "energy": ["Higher"]
+            },
+            {
+              "state": ["Gas"],
+              "particles": ["Far apart, random"],
+              "energy": ["Highest"]
+            }
+          ],
+          "highlight": { "rows": [1], "cols": ["energy"] }
+        }
+      ]
+    }
+  ]
+}

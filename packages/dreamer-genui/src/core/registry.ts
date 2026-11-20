@@ -201,9 +201,6 @@ const CORE_BLOCKS: Record<string, BlockDefinition> = {
   steps: defineBlock({ schema: StepsBlockSchema, promptGuide: 'steps block: items array with {id, title, content: Inline[]}. reveal=sequential reveals one at a time.' }),
   callout: defineBlock({ schema: CalloutBlockSchema, promptGuide: 'callout block: tone (info|success|warn|danger), content: Inline[].' }),
   group: defineBlock({ schema: GroupBlockSchema, promptGuide: 'group block: layout (stack|row|grid) plus direction/wrap/align/justify/gap/columns, blocks: Block[].' }),
-  table: defineBlock({ schema: TableBlockSchema, promptGuide: 'table block: columns: {id, label}[], rows: {colId: Inline[]}[]' }),
-  math: defineBlock({ schema: MathBlockSchema, promptGuide: 'math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.' }),
-  code: defineBlock({ schema: CodeBlockSchema, promptGuide: 'code block: lang (python|javascript|etc.), source is the code string.' }),
   list: defineBlock({ schema: ListBlockSchema, promptGuide: 'list block: style (bullet|number|check|none), items: {id?, content: Inline[]}[] .' }),
   compare: defineBlock({ schema: CompareBlockSchema, promptGuide: 'compare block: columns: {id, title: Inline[], items: Inline[][]}[]; optional highlight {col,row}.' }),
   flashcards: defineBlock({ schema: FlashcardsBlockSchema, promptGuide: 'flashcards block: cards: {id, front: Inline[], back: Inline[]}[], flip tap|auto, optional rating.' }),
@@ -223,6 +220,53 @@ const CORE_BLOCK_PLUGIN = definePlugin({
   name: 'core',
   version: '1.0.0',
   provides: { blocks: CORE_BLOCKS },
+});
+
+/**
+ * Content built-ins are separate default plugins (§9.2) so a host can disable
+ * one (`registry.disable('math')`) and have it disappear from the renderer,
+ * the prompt guide, the JSON Schema and the capabilities together.
+ */
+const TABLE_PLUGIN = definePlugin({
+  name: 'table',
+  version: '1.0.0',
+  provides: {
+    blocks: {
+      table: defineBlock({
+        schema: TableBlockSchema,
+        promptGuide: 'table block: columns: {id, label}[], rows: {colId: Inline[]}[]',
+        parts: { parts: ['root', 'table', 'head', 'row', 'cell'], tokens: ['surface', 'border', 'accent', 'ink'], events: ['focus'] },
+      }),
+    },
+  },
+});
+
+const MATH_PLUGIN = definePlugin({
+  name: 'math',
+  version: '1.0.0',
+  provides: {
+    blocks: {
+      math: defineBlock({
+        schema: MathBlockSchema,
+        promptGuide: 'math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.',
+        parts: { parts: ['root', 'fallback'], tokens: ['ink', 'accent'], events: [] },
+      }),
+    },
+  },
+});
+
+const CODE_PLUGIN = definePlugin({
+  name: 'code',
+  version: '1.0.0',
+  provides: {
+    blocks: {
+      code: defineBlock({
+        schema: CodeBlockSchema,
+        promptGuide: 'code block: lang (python|javascript|etc.), source is the code string.',
+        parts: { parts: ['root', 'lang', 'pre', 'code', 'fallback'], tokens: ['surface', 'ink', 'muted', 'accent'], events: [] },
+      }),
+    },
+  },
 });
 
 /**
@@ -394,6 +438,9 @@ const STRINGS_PLUGIN = definePlugin({
 
 const DEFAULT_PLUGINS = [
   CORE_BLOCK_PLUGIN,
+  TABLE_PLUGIN,
+  MATH_PLUGIN,
+  CODE_PLUGIN,
   UI_KIT_PLUGIN,
   THEME_PLUGIN,
   MOTION_PLUGIN,

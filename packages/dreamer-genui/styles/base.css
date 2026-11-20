@@ -1650,8 +1650,8 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
   overflow: hidden;
   border-radius: var(--dg-radius-md, 8px);
   background:
-    radial-gradient(120% 90% at 50% 0%, color-mix(in oklab, var(--dg-color-surface, #fff) 82%, transparent), transparent 70%),
-    var(--dg-color-bg, #f6f6f2);
+    radial-gradient(120% 90% at 50% 0%, color-mix(in oklab, var(--dg-color-surface, #ffffff) 82%, transparent), transparent 70%),
+    var(--dg-color-bg, #f7f7f5);
   touch-action: none;
 }
 .dg-figure3d-canvas {
@@ -1674,7 +1674,7 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: var(--dg-color-bg, #f6f6f2);
+  background: var(--dg-color-bg, #f7f7f5);
 }
 .dg-figure3d-snapshot { pointer-events: none; }
 .dg-figure3d[data-dg-ready='true'] .dg-figure3d-poster { display: none; }
@@ -1692,7 +1692,7 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
   padding: 0.25rem 0.6rem;
   border: 1px solid var(--dg-color-border, #e2e2dc);
   border-radius: 999px;
-  background: var(--dg-color-surface, #fff);
+  background: var(--dg-color-surface, #ffffff);
   color: inherit;
   font: inherit;
   font-size: 0.78rem;
@@ -1717,7 +1717,7 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
   max-width: 60%;
   padding: 0.15rem 0.45rem;
   border-radius: var(--dg-radius-sm, 4px);
-  background: color-mix(in oklab, var(--dg-color-surface, #fff) 86%, transparent);
+  background: color-mix(in oklab, var(--dg-color-surface, #ffffff) 86%, transparent);
   border: 1px solid var(--dg-color-border, #e2e2dc);
   font-size: 0.75rem;
   font-weight: 600;
@@ -1733,7 +1733,7 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
   padding: 0.2rem 0.55rem;
   border: 1px solid var(--dg-color-border, #e2e2dc);
   border-radius: var(--dg-radius-sm, 4px);
-  background: var(--dg-color-surface, #fff);
+  background: var(--dg-color-surface, #ffffff);
   color: inherit;
   font: inherit;
   font-size: 0.72rem;
@@ -1785,7 +1785,7 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
   max-height: var(--dg-figure3d-height, 22rem);
   object-fit: contain;
   border-radius: var(--dg-radius-md, 8px);
-  background: var(--dg-color-bg, #f6f6f2);
+  background: var(--dg-color-bg, #f7f7f5);
 }
 .dg-figure3d-fallback [data-dg-part='alt'] {
   margin: 0;
@@ -1808,4 +1808,123 @@ button.dg-timeline-cell:focus-visible { outline: 2px solid var(--dg-color-accent
 @media (prefers-reduced-motion: reduce) {
   .dg-figure3d-flow { animation: none; }
 }
+}
+
+/* ---------------------------------------------------------------------------
+ * Content built-ins (M6a): table, math, code
+ * ------------------------------------------------------------------------ */
+@layer dreamer-genui {
+  .dg-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .dg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--dg-text-body, calc(1rem * var(--dg-density-scale, 1)));
+    color: var(--dg-color-ink, #1f1f1d);
+    text-align: start;
+  }
+  .dg-table-head {
+    padding: var(--dg-table-pad, 0.6em 0.75em);
+    border-bottom: 2px solid var(--dg-color-border, #e2e2dc);
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .dg-table-cell {
+    padding: var(--dg-table-pad, 0.6em 0.75em);
+    border-bottom: 1px solid var(--dg-color-border, #e2e2dc);
+    vertical-align: top;
+  }
+  .dg-table-cell:focus-visible {
+    outline: 2px solid var(--dg-color-accent, #2e5dc4);
+    outline-offset: -2px;
+  }
+  .dg-table-head[data-dg-highlight='true'],
+  .dg-table-cell[data-dg-highlight='true'] {
+    background: color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 12%, transparent);
+  }
+  .dg-table-row[data-dg-highlight='true'] {
+    background: color-mix(in oklab, var(--dg-color-accent, #2e5dc4) 7%, transparent);
+  }
+
+  .dg-math {
+    color: var(--dg-color-ink, #1f1f1d);
+    max-width: 100%;
+  }
+  .dg-math-display {
+    display: block;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.25em 0;
+  }
+  .dg-math-display .katex-display {
+    margin: 0;
+  }
+  .dg-math-fallback {
+    font-family: var(--dg-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 0.85em;
+    padding: 0.15em 0.35em;
+    border-radius: var(--dg-radius-sm, 4px);
+    background: color-mix(in oklab, var(--dg-color-muted, #565650) 12%, transparent);
+    overflow-wrap: anywhere;
+  }
+
+  .dg-code {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--dg-color-border, #e2e2dc);
+    border-radius: var(--dg-radius-md, 8px);
+    background: var(--dg-code-bg, #171a21);
+    color: var(--dg-code-ink, #e8eaf0);
+  }
+  .dg-code-lang {
+    position: absolute;
+    inset-block-start: 0.45rem;
+    inset-inline-end: 0.6rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--dg-code-lang, #9aa3b2);
+    pointer-events: none;
+  }
+  .dg-code-pre {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    font-family: var(--dg-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: var(--dg-code-size, 0.82rem);
+    line-height: 1.55;
+    tab-size: 2;
+  }
+  .dg-code-pre code {
+    font: inherit;
+    background: none;
+    padding: 0;
+    white-space: pre;
+  }
+  .dg-code .hljs-comment,
+  .dg-code .hljs-quote { color: var(--dg-code-comment, #7c8798); font-style: italic; }
+  .dg-code .hljs-keyword,
+  .dg-code .hljs-selector-tag,
+  .dg-code .hljs-literal { color: var(--dg-code-keyword, #c792ea); }
+  .dg-code .hljs-string,
+  .dg-code .hljs-attr,
+  .dg-code .hljs-template-string { color: var(--dg-code-string, #a5d6a7); }
+  .dg-code .hljs-number,
+  .dg-code .hljs-symbol { color: var(--dg-code-number, #f2b36b); }
+  .dg-code .hljs-title,
+  .dg-code .hljs-function,
+  .dg-code .hljs-section { color: var(--dg-code-title, #82c7ff); }
+  .dg-code .hljs-variable,
+  .dg-code .hljs-params { color: var(--dg-code-var, #e8eaf0); }
+  .dg-code .hljs-built_in,
+  .dg-code .hljs-type { color: var(--dg-code-builtin, #7ad9d0); }
+  .dg-code .hljs-meta { color: var(--dg-color-muted, #565650); }
+
+  @container (max-width: 480px) {
+    .dg-code-pre { padding: 0.75rem; font-size: 0.76rem; }
+    .dg-table { font-size: 0.9rem; }
+  }
 }

@@ -16,6 +16,9 @@ export default defineConfig({
         './packages/dreamer-genui/src/figures/index.tsx',
         import.meta.url,
       ).pathname,
+      // M6a content chunks are separate tsup entries too.
+      'dreamer-genui/math': new URL('./packages/dreamer-genui/src/math/index.tsx', import.meta.url).pathname,
+      'dreamer-genui/code': new URL('./packages/dreamer-genui/src/code/index.tsx', import.meta.url).pathname,
     },
   },
   test: {

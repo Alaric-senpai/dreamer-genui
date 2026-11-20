@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "code-loop",
+          "type": "code",
+          "lang": "python",
+          "source": "def average(values):\n    total = 0\n    for value in values:\n        total += value\n    return total / len(values)\n\nprint(average([4, 8, 15, 16, 23, 42]))"
+        }
+      ]
+    }
+  ]
+}

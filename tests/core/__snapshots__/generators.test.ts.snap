@@ -116,12 +116,6 @@ Raw "tokens" may be unavailable depending on host policy; if a theme request is 
 
 - **group**: group block: layout (stack|row|grid) plus direction/wrap/align/justify/gap/columns, blocks: Block[].
 
-- **table**: table block: columns: {id, label}[], rows: {colId: Inline[]}[]
-
-- **math**: math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.
-
-- **code**: code block: lang (python|javascript|etc.), source is the code string.
-
 - **list**: list block: style (bullet|number|check|none), items: {id?, content: Inline[]}[] .
 
 - **compare**: compare block: columns: {id, title: Inline[], items: Inline[][]}[]; optional highlight {col,row}.
@@ -129,6 +123,12 @@ Raw "tokens" may be unavailable depending on host policy; if a theme request is 
 - **flashcards**: flashcards block: cards: {id, front: Inline[], back: Inline[]}[], flip tap|auto, optional rating.
 
 - **question**: question block: kind (mcq|truefalse|short|numeric|cloze|matching|ordering|hotspot|labelDiagram|extended), prompt: Inline[]. Never add a key inside quiz/exam assessments.
+
+- **table**: table block: columns: {id, label}[], rows: {colId: Inline[]}[]
+
+- **math**: math block: tex is a KaTeX-compatible string. Use \\ce{} for chemical equations.
+
+- **code**: code block: lang (python|javascript|etc.), source is the code string.
 
 - **card**: card block: title?, description?, media?, blocks: Block[], footer?, variant (plain|outlined|elevated|accent); interactive:true emits select. Use a card for one composed idea, not a dashboard of cards.
 

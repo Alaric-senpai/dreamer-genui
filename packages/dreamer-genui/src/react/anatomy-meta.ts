@@ -280,6 +280,33 @@ export const COMPONENT_META = {
     events: [],
     effects: [],
   }),
+  table: defineComponentMeta({
+    name: 'table',
+    parts: ['root', 'table', 'head', 'row', 'cell'],
+    tokens: ['--dg-color-surface', '--dg-color-border', '--dg-color-accent', '--dg-color-ink', '--dg-radius-md', '--dg-min-target'],
+    variants: ['highlight-row', 'highlight-col'],
+    dataAttrs: ['data-node-id', 'data-dg-row', 'data-dg-col', 'data-dg-highlight'],
+    events: ['focus'],
+    effects: [],
+  }),
+  math: defineComponentMeta({
+    name: 'math',
+    parts: ['root', 'fallback'],
+    tokens: ['--dg-color-ink', '--dg-color-accent'],
+    variants: ['display', 'inline'],
+    dataAttrs: ['data-dg-part'],
+    events: [],
+    effects: [],
+  }),
+  code: defineComponentMeta({
+    name: 'code',
+    parts: ['root', 'lang', 'pre', 'code', 'fallback'],
+    tokens: ['--dg-code-bg', '--dg-code-ink', '--dg-color-muted', '--dg-color-accent', '--dg-radius-md'],
+    variants: [],
+    dataAttrs: ['data-lang'],
+    events: [],
+    effects: [],
+  }),
 } as const satisfies Record<string, ComponentMeta>;
 
 /** Lookup form of {@link COMPONENT_META} used by docs and the conformance test. */

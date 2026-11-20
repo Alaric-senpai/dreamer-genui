@@ -144,7 +144,7 @@ describe('M5 figures', () => {
     expect(img).toHaveAttribute('alt', 'A resolved diagram');
   });
 
-  test('3D kinds fall back to alt until M5b', async () => {
+  test('3D kinds render the lazy runtime with an accessible fallback', async () => {
     const reply = {
       v: 1,
       ops: [{
@@ -157,8 +157,13 @@ describe('M5 figures', () => {
       }],
     } as unknown as Reply;
     const { container } = setup(reply);
-    await waitFor(() => expect(screen.getByText('An interactive model')).toBeInTheDocument());
-    expect(container.querySelector('[data-dg-figure]')).not.toBeInTheDocument();
+    // jsdom has no WebGL and no connector is registered, so the runtime is
+    // expected to settle on its poster/alt fallback rather than a canvas.
+    await waitFor(
+      () => expect(container.querySelector('[data-dg-figure="figure3d"]')).toBeInTheDocument(),
+      { timeout: 20000 },
+    );
+    expect(screen.getByText('An interactive model')).toBeInTheDocument();
   });
 
   test('reduced motion removes stagger delays from figure nodes', async () => {

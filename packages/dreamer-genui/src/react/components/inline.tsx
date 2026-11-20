@@ -4,6 +4,7 @@ import type { Inline, Mark, TermMark as TermMarkValue } from '../../schema/inlin
 import type { UIEvent } from '../../schema/events';
 import { useEmitEvent } from '../provider';
 import { Annotated } from './annotations';
+import { InlineMathView } from './math';
 
 function markText(t: string | string[] | undefined): string {
   if (Array.isArray(t)) return t.join(' ');
@@ -83,8 +84,7 @@ export function MarkRenderer({ mark }: { mark: Mark }): ReactNode {
       );
     }
     case 'math':
-      // KaTeX rendering lands in M6; plain text keeps content visible and safe.
-      return <code className="dg-mark-math" data-tex={mark.tex}>{mark.tex}</code>;
+      return <InlineMathView tex={mark.tex} />;
   }
 }
 

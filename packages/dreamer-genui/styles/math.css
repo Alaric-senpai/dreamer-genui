@@ -1,0 +1,10 @@
+/*
+ * dreamer-genui math stylesheet (M6a).
+ *
+ * The `math` block and the inline `math` mark render through the lazily
+ * loaded `dreamer-genui/math` chunk, whose module imports KaTeX's own CSS.
+ * Hosts that render math outside the board (or that preload the stylesheet)
+ * can import this file instead; `katex` is a dependency of this package, so
+ * the import resolves from the consumer's node_modules. No CDN is used.
+ */
+@import 'katex/dist/katex.min.css';

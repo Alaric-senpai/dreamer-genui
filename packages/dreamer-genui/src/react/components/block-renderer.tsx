@@ -26,6 +26,9 @@ import {
 import { renderInline } from './inline';
 import { FigureView } from './figure';
 import { CompareView } from './compare';
+import { TableView } from './table';
+import { MathView } from './math';
+import { CodeView } from './code';
 
 /** Fallback render for invalid/unknown/failed nodes — never blank, never crash. */
 export function FallbackView({ node }: { node: Node }): ReactNode {
@@ -199,9 +202,11 @@ function DefaultBlockView({ node, nested }: { node: Node; nested: boolean }): Re
     case 'compare':
       return <CompareView block={node.block} />;
     case 'table':
+      return <TableView block={node.block} />;
     case 'math':
+      return <MathView tex={node.block.tex} display={node.block.display} />;
     case 'code':
-      return <FallbackView node={node} />;
+      return <CodeView source={node.block.source} lang={node.block.lang} />;
     default:
       return <FallbackView node={node} />;
   }

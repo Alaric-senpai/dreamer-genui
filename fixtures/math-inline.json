@@ -1,0 +1,34 @@
+{
+  "v": 1,
+  "ops": [
+    {
+      "op": "append",
+      "blocks": [
+        {
+          "id": "inline-math-note",
+          "type": "text",
+          "variant": "definition",
+          "content": [
+            "The area of a circle is ",
+            { "mark": "math", "tex": "A = \\pi r^{2}" },
+            ", so doubling the radius multiplies the area by ",
+            { "mark": "math", "tex": "4" },
+            "."
+          ]
+        },
+        {
+          "id": "inline-math-water",
+          "type": "text",
+          "variant": "body",
+          "content": [
+            "Water, ",
+            { "mark": "math", "tex": "\\ce{H2O}" },
+            ", is the solvent for ",
+            { "mark": "math", "tex": "\\ce{NaCl}" },
+            " in this example."
+          ]
+        }
+      ]
+    }
+  ]
+}
